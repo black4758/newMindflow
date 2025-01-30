@@ -4,7 +4,7 @@ import {
   require_react
 } from "./chunk-N3BBKUNS.js";
 
-// node_modules/lucide-react/dist/esm/icons/index.js
+// node_modules/lucide-react/dist/esm/icons/index.jsx
 var icons_exports = {};
 __export(icons_exports, {
   AArrowDown: () => AArrowDown,
@@ -36707,7 +36707,7 @@ lucide-react/dist/esm/icons/zoom-out.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/index.js:
+lucide-react/dist/esm/icons/index.jsx:
   (**
    * @license lucide-react v0.474.0 - ISC
    *

@@ -1,39 +1,22 @@
-import React from 'react';
-import { Menu, Search, ExternalLink, Star } from 'lucide-react';
+import React from "react";
+import { User } from 'lucide-react';
 
-const Sidebar = () => {
-    return (
-        <div className="w-64 h-screen bg-gray-100 p-4">
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-8">
-                <Menu className="w-6 h-6" />
-                <Search className="w-6 h-6" />
-                <ExternalLink className="w-6 h-6" />
-                <Star className="w-6 h-6" />
-            </div>
+const Navbar = () => {
+	return (
+		<nav className="bg-white px-10 py-2.5">
+			<div className="flex justify-end items-center">
+				<div>
+					<span className="px-4">사용자</span>
+				</div>
+				<div className="flex items-center">
+					<button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+						<User className="h-6 w-6 text-gray-600"/>
+					</button>
+				</div>
+			</div>
 
-            {/* Navigation Sections */}
-            <div className="space-y-8">
-                <div>
-                    <h2 className="text-sm font-semibold mb-4">최근</h2>
-                    <nav className="space-y-2">
-                        {[1, 2, 3, 4].map((item) => (
-                            <div key={item} className="h-6 bg-gray-200 rounded"></div>
-                        ))}
-                    </nav>
-                </div>
-
-                <div>
-                    <h2 className="text-sm font-semibold mb-4">지난 일</h2>
-                    <nav className="space-y-2">
-                        {[1, 2, 3, 4, 5, 6, 7].map((item) => (
-                            <div key={item} className="h-6 bg-gray-200 rounded"></div>
-                        ))}
-                    </nav>
-                </div>
-            </div>
-        </div>
-    );
+		</nav>
+	);
 };
 
-export default Sidebar;
+export default Navbar;

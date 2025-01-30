@@ -271,7 +271,7 @@ var require_scheduler_development = __commonJS({
   }
 });
 
-// node_modules/scheduler/index.js
+// node_modules/scheduler/index.jsx
 var require_scheduler = __commonJS({
   "node_modules/scheduler/index.js"(exports, module) {
     "use strict";
@@ -527,7 +527,7 @@ var require_react_dom_development = __commonJS({
   }
 });
 
-// node_modules/react-dom/index.js
+// node_modules/react-dom/index.jsx
 var require_react_dom = __commonJS({
   "node_modules/react-dom/index.js"(exports, module) {
     "use strict";
