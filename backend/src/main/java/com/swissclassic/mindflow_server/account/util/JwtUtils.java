@@ -1,10 +1,10 @@
-package com.swissclassic.mindflow_server.security;
+package com.swissclassic.mindflow_server.account.util;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
-import com.swissclassic.mindflow_server.config.JwtProperties;
+import com.swissclassic.mindflow_server.account.config.JwtProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

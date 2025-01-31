@@ -1,7 +1,6 @@
-package com.swissclassic.mindflow_server.config;
+package com.swissclassic.mindflow_server.account.config;
 
-import com.swissclassic.mindflow_server.config.JwtAuthenticationFilter;
-import com.swissclassic.mindflow_server.service.CustomUserDetailsService;
+import com.swissclassic.mindflow_server.account.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

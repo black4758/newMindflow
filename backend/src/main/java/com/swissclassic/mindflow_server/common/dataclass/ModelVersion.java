@@ -1,4 +1,4 @@
-package com.swissclassic.mindflow_server.dataclass;
+package com.swissclassic.mindflow_server.common.dataclass;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -8,17 +8,21 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table(name = "llm_providers")
-public class LlmProvider {
+@Table(name = "model_versions")
+public class ModelVersion {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 50)
+    @ManyToOne
+    @JoinColumn(name = "provider_id", nullable = false)
+    private LlmProvider provider;
+
+    @Column(nullable = false, length = 255)
     private String name;
 
     @Column(nullable = false, length = 255)
-    private String apiAddress;
+    private String apiName;
 
     // Constructors, getters, setters
 }

@@ -1,5 +1,6 @@
-package com.swissclassic.mindflow_server.dataclass;
+package com.swissclassic.mindflow_server.conversation.dataclass;
 
+import com.swissclassic.mindflow_server.account.dataclass.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

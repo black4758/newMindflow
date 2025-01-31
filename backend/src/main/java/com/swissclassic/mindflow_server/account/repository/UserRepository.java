@@ -1,6 +1,6 @@
-package com.swissclassic.mindflow_server.repository;
+package com.swissclassic.mindflow_server.account.repository;
 
-import com.swissclassic.mindflow_server.dataclass.User;
+import com.swissclassic.mindflow_server.account.dataclass.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

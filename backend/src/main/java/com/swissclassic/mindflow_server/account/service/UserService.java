@@ -1,8 +1,8 @@
-package com.swissclassic.mindflow_server.service;
+package com.swissclassic.mindflow_server.account.service;
 
-import com.swissclassic.mindflow_server.dataclass.User;
-import com.swissclassic.mindflow_server.dataclass.RegisterRequest;
-import com.swissclassic.mindflow_server.repository.UserRepository;
+import com.swissclassic.mindflow_server.account.dataclass.User;
+import com.swissclassic.mindflow_server.account.dataclass.RegisterRequest;
+import com.swissclassic.mindflow_server.account.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

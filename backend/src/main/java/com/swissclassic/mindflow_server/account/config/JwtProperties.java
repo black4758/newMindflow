@@ -1,4 +1,4 @@
-package com.swissclassic.mindflow_server.config;
+package com.swissclassic.mindflow_server.account.config;
 
 import lombok.Getter;
 import lombok.Setter;

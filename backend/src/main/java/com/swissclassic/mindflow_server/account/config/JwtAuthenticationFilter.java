@@ -1,7 +1,7 @@
-package com.swissclassic.mindflow_server.config;
+package com.swissclassic.mindflow_server.account.config;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.swissclassic.mindflow_server.service.CustomUserDetailsService;
+import com.swissclassic.mindflow_server.account.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,7 +14,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import com.swissclassic.mindflow_server.security.JwtUtils;
+import com.swissclassic.mindflow_server.account.util.JwtUtils;
 
 import org.springframework.web.filter.OncePerRequestFilter;
 
