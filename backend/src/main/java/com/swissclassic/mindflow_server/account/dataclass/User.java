@@ -51,34 +51,27 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(length = 255)
-    private String socialProvider;
-
     @Column(updatable = false)
     private LocalDateTime createdAt;
-
-    private LocalDateTime deletedAt;
 
     @Column(length = 255)
     private String refreshToken;
 
-    private Long balance = 0L;
-
     public User() {
     }
 
-    public User(Long id, String accountId, String username, String password, String displayName, String email, String socialProvider, LocalDateTime createdAt, LocalDateTime deletedAt, String refreshToken, Long balance) {
+    public User(
+            Long id, String accountId, String username, String password, String displayName, String email,
+            LocalDateTime createdAt, String refreshToken
+    ) {
         this.id = id;
         this.accountId = accountId;
         this.username = username;
         this.password = password;
         this.displayName = displayName;
         this.email = email;
-        this.socialProvider = socialProvider;
         this.createdAt = createdAt;
-        this.deletedAt = deletedAt;
         this.refreshToken = refreshToken;
-        this.balance = balance;
     }
 
     @Override
@@ -90,11 +83,8 @@ public class User {
                 ", password='" + password + '\'' +
                 ", displayName='" + displayName + '\'' +
                 ", email='" + email + '\'' +
-                ", socialProvider='" + socialProvider + '\'' +
                 ", createdAt=" + createdAt +
-                ", deletedAt=" + deletedAt +
-                ", refreshToken='" + refreshToken + '\'' +
-                ", balance=" + balance +
+                ", refreshToken='" + refreshToken +
                 '}';
     }
 }
