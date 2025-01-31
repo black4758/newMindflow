@@ -1,40 +1,13 @@
-import React, { useReducer, useRef, useEffect } from "react";
+import React, { useReducer, useRef, useEffect, useState } from "react";
 import { ArrowUpCircle } from 'lucide-react';
-import '../styles/style.css';
-
-const initialState = {
-    message: '',
-    isHovered: false,
-    messages: [],
-};
-
-const ACTIONS = {
-    SET_MESSAGE: 'SET_MESSAGE',
-    CLEAR_MESSAGE: 'CLEAR_MESSAGE',
-    SET_HOVER: 'SET_HOVER',
-    ADD_MESSAGE: 'ADD_MESSAGE',
-};
-
-const chatReducer = (state, action) => {
-    switch (action.type) {
-        case ACTIONS.SET_MESSAGE:
-            return { ...state, message: action.payload };
-        case ACTIONS.CLEAR_MESSAGE:
-            return { ...state, message: '' };
-        case ACTIONS.SET_HOVER:
-            return { ...state, isHovered: action.payload };
-        case ACTIONS.ADD_MESSAGE:
-            return {
-                ...state,
-                messages: [...state.messages, action.payload]
-            };
-        default:
-            return state;
-    }
-};
+import ModelCard from "../components/common/ModelCard.jsx";
+import { NONEXIST_MODEL, EXIST_MODEL } from "../store/dummyData.js";
+import { chatReducer, initialState, ACTIONS } from "../store/chat/chatReducer.js";
 
 const Mainpage = () => {
     const [state, dispatch] = useReducer(chatReducer, initialState);
+    const [showModelSelection, setShowModelSelection] = useState(false);
+    const [messageCount, setMessageCount] = useState(0);
     const textareaRef = useRef(null);
     const messagesEndRef = useRef(null);
 
@@ -43,36 +16,67 @@ const Mainpage = () => {
             textareaRef.current.style.height = "auto";
             textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
         }
-    }, [state.message]);
+    }, [state.user_message]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [state.messages]);
 
+    const handleModelSelect = (model, response) => {
+        const assistantMessage = {
+            id: Date.now() + 1,
+            text: response,
+            timestamp: new Date().toLocaleTimeString(),
+            sender: 'assistant',
+            model: model
+        };
+
+        dispatch({ type: ACTIONS.ADD_MESSAGE, payload: assistantMessage });
+        setShowModelSelection(false);
+    };
+
     const handleSendMessage = () => {
-        if (state.message.trim()) {
-            // 사용자 메시지
+        if (state.user_message.trim()) {
             const userMessage = {
                 id: Date.now(),
-                text: state.message.trim(),
+                text: state.user_message.trim(),
                 timestamp: new Date().toLocaleTimeString(),
                 sender: 'user'
             };
 
-            // 더미 응답 메시지
-            const dummyResponse = {
-                id: Date.now() + 1,
-                text: "으아아아아아",
-                timestamp: new Date().toLocaleTimeString(),
-                sender: 'assistant'
-            };
-
             dispatch({ type: ACTIONS.ADD_MESSAGE, payload: userMessage });
 
-            // 응답 메시지를 약간의 딜레이 후 표시
-            setTimeout(() => {
-                dispatch({ type: ACTIONS.ADD_MESSAGE, payload: dummyResponse });
-            }, 1000);
+            // 첫 메시지인 경우 NONEXIST_MODEL, 이후는 EXIST_MODEL 사용
+            const dummyResponse = messageCount === 0 ? NONEXIST_MODEL : EXIST_MODEL;
+            setMessageCount(prev => prev + 1); // 메시지 카운트 증가
+
+            // 모델 존재 여부 확인
+            if (dummyResponse?.["model"]) {
+                // 단일 모델 응답
+                const assistantMessage = {
+                    id: Date.now() + 1,
+                    text: dummyResponse["response"]["content"],
+                    timestamp: new Date().toLocaleTimeString(),
+                    sender: 'assistant',
+                    model: dummyResponse["model"]
+                };
+
+                setTimeout(() => {
+                    dispatch({ type: ACTIONS.ADD_MESSAGE, payload: assistantMessage });
+                }, 1000);
+            } else if (dummyResponse?.["models"]) {
+                // 다중 모델 응답
+                const modelResponses = dummyResponse["models"].map(model => ({
+                    models: model,
+                    response: dummyResponse["responses"][model]["content"]
+                }));
+
+                setShowModelSelection(true);
+                dispatch({
+                    type: ACTIONS.SET_MULTI_MODEL_RESPONSES,
+                    payload: modelResponses
+                });
+            }
 
             dispatch({ type: ACTIONS.CLEAR_MESSAGE });
         }
@@ -88,7 +92,6 @@ const Mainpage = () => {
     return (
       <div className="flex flex-col h-full">
           {state.messages.length === 0 ? (
-            // 초기 환영 메시지
             <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                     <h1 className="text-4xl font-bold mb-4">환영합니다!</h1>
@@ -96,7 +99,6 @@ const Mainpage = () => {
                 </div>
             </div>
           ) : (
-            // 채팅 메시지 목록
             <div className="flex-1 overflow-auto p-4">
                 <div className="max-w-4xl mx-auto">
                     {state.messages.map((msg) => (
@@ -106,39 +108,53 @@ const Mainpage = () => {
                       >
                           <div
                             className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                              msg.sender === 'user'
-                                ? 'bg-gray-200'
-                                : 'bg-white'
+                              msg.sender === 'user' ? 'bg-gray-200' : 'bg-white'
                             }`}
                           >
+                              {msg.model && (
+                                <div className="text-xs text-gray-500 mb-1">
+                                    {msg.model}
+                                </div>
+                              )}
                               <p className="break-words">{msg.text}</p>
-
                           </div>
                       </div>
                     ))}
+                    {showModelSelection && state.multiModelResponses && (
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                          {state.multiModelResponses.map((item, index) => (
+                            <ModelCard
+                              key={index}
+                              model={item.models}
+                              response={item.response}
+                              onSelect={handleModelSelect}
+                            />
+                          ))}
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                 </div>
             </div>
           )}
 
-          {/* 입력 영역 */}
           <div className="w-full p-4 bg-white">
               <div className="max-w-4xl mx-auto">
                   <div className="flex items-center justify-center gap-2">
                       <div className="min-w-[70%] bg-gray-100 rounded-2xl px-4 py-2 border relative">
                             <textarea
                               ref={textareaRef}
-                              value={state.message}
+                              value={state.user_message}
                               onChange={(e) => dispatch({
                                   type: ACTIONS.SET_MESSAGE,
                                   payload: e.target.value
                               })}
                               onKeyDown={handleKeyPress}
-                              className="w-full bg-gray-100 outline-none pr-10 resize-none overflow-hidden min-h-[40px] max-h-[200px] pb-6"
+                              className="w-full bg-gray-100 outline-none pr-10 resize-none overflow-hidden min-h-[40px] max-h-[200px]"
+                              placeholder="메시지를 입력하세요..."
                             />
                           <button
                             onClick={handleSendMessage}
-                            disabled={!state.message.trim()}
+                            disabled={!state.user_message.trim()}
                             onMouseEnter={() => dispatch({ type: ACTIONS.SET_HOVER, payload: true })}
                             onMouseLeave={() => dispatch({ type: ACTIONS.SET_HOVER, payload: false })}
                             className="absolute right-3 bottom-2 transition-colors disabled:opacity-50 z-10 cursor-pointer"
