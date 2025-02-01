@@ -1,4 +1,4 @@
-package com.swissclassic.mindflow_server.common.dataclass;
+package com.swissclassic.mindflow_server.common.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;

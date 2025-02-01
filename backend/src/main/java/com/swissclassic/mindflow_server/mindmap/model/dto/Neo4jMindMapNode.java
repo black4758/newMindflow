@@ -1,4 +1,4 @@
-package com.swissclassic.mindflow_server.mindmap.dataclass;
+package com.swissclassic.mindflow_server.mindmap.model.dto;
 
 import lombok.Getter;
 import lombok.Setter;

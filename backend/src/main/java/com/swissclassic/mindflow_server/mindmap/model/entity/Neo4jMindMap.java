@@ -1,5 +1,6 @@
-package com.swissclassic.mindflow_server.mindmap.dataclass;
+package com.swissclassic.mindflow_server.mindmap.model.entity;
 
+import com.swissclassic.mindflow_server.mindmap.model.dto.Neo4jMindMapNode;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.neo4j.core.schema.Id;

@@ -1,8 +1,8 @@
 package com.swissclassic.mindflow_server.account.controller;
 
-import com.swissclassic.mindflow_server.account.dataclass.User;
-import com.swissclassic.mindflow_server.account.dataclass.LoginRequest;
-import com.swissclassic.mindflow_server.account.dataclass.RegisterRequest;
+import com.swissclassic.mindflow_server.account.model.entity.User;
+import com.swissclassic.mindflow_server.account.model.dto.LoginRequest;
+import com.swissclassic.mindflow_server.account.model.dto.RegisterRequest;
 import com.swissclassic.mindflow_server.account.repository.UserRepository;
 import com.swissclassic.mindflow_server.util.JwtUtils;
 import com.swissclassic.mindflow_server.account.service.UserService;

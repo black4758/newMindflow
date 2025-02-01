@@ -1,5 +1,6 @@
-package com.swissclassic.mindflow_server.conversation.dataclass;
+package com.swissclassic.mindflow_server.conversation.model.entity;
 
+import com.swissclassic.mindflow_server.conversation.model.dto.Sentence;
 import lombok.Getter;
 import lombok.Setter;
 import org.bson.types.ObjectId;
