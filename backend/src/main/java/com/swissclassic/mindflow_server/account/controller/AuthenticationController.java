@@ -4,7 +4,7 @@ import com.swissclassic.mindflow_server.account.dataclass.User;
 import com.swissclassic.mindflow_server.account.dataclass.LoginRequest;
 import com.swissclassic.mindflow_server.account.dataclass.RegisterRequest;
 import com.swissclassic.mindflow_server.account.repository.UserRepository;
-import com.swissclassic.mindflow_server.account.util.JwtUtils;
+import com.swissclassic.mindflow_server.util.JwtUtils;
 import com.swissclassic.mindflow_server.account.service.UserService;
 import jakarta.validation.Valid;
 import lombok.Getter;

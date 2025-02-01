@@ -1,4 +1,4 @@
-package com.swissclassic.mindflow_server.account.config;
+package com.swissclassic.mindflow_server.config;
 
 import com.swissclassic.mindflow_server.account.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
