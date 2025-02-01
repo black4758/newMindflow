@@ -38,19 +38,23 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 // Disable CSRF since tokens are immune to it
-                .csrf().disable()
+                .csrf()
+                .disable()
                 // Disable session management; use stateless JWT
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 // Define authorization rules
                 .authorizeHttpRequests(authorize -> authorize
                         // Permit access to registration and login endpoints
-                        .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**")
+                        .permitAll()
                         // Secure all other endpoints
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest()
+                        .authenticated())
                 // Add the JWT filter before UsernamePasswordAuthenticationFilter
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        ;
 
         return http.build();
     }

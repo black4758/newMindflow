@@ -45,9 +45,8 @@ public class AuthenticationController {
             User user = userService.registerUser(registerRequest);
             return ResponseEntity.ok("User registered successfully.");
         } catch (Exception e) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Error: " + e.getMessage());
+            return ResponseEntity.badRequest()
+                                 .body("Error: " + e.getMessage());
         }
     }
 
@@ -61,23 +60,22 @@ public class AuthenticationController {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             // Authenticate the user
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUsername(),
-                            loginRequest.getPassword()
-                    )
-            );
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getAccountId(),
+                                                                                                                       loginRequest.getPassword()
+            ));
 
             // Set the authentication in the security context
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            SecurityContextHolder.getContext()
+                                 .setAuthentication(authentication);
 
             // Generate JWT token
-            String jwt = jwtUtils.generateJwtToken(loginRequest.getUsername());
+            String jwt = jwtUtils.generateJwtToken(loginRequest.getAccountId());
 
             // Return the JWT in the response
             return ResponseEntity.ok(new JwtResponse(jwt));
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("Invalid username or password.");
         }
     }
 
@@ -86,8 +84,8 @@ public class AuthenticationController {
      */
     @Getter
     static class JwtResponse {
-        private String token;
-        private String type = "Bearer";
+        private final String token;
+        private final String type = "Bearer";
 
         public JwtResponse(String token) {
             this.token = token;
