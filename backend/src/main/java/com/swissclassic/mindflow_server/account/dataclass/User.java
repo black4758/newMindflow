@@ -3,8 +3,12 @@ package com.swissclassic.mindflow_server.account.dataclass;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 유저 모델 정의.
@@ -31,7 +35,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Table(name = "users")
-public class User {
+public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -86,5 +90,45 @@ public class User {
                 ", createdAt=" + createdAt +
                 ", refreshToken='" + refreshToken +
                 '}';
+    }
+
+
+    @Override
+    public List<? extends GrantedAuthority> getAuthorities() {
+        // Return the roles/authorities assigned to the user.
+        // For now, if there are none, you can return an empty list:
+        return Collections.emptyList();
+    }
+
+    @Override
+    public String getPassword() {
+        return this.password;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.username;
+    }
+
+    // For simplicity, return true for the following.
+    // In a real application, you would add proper logic.
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 }

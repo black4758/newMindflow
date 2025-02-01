@@ -51,10 +51,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwt != null) {
                 // Validate the token
                 DecodedJWT decodedJWT = jwtUtils.validateJwtToken(jwt);
-                String username = decodedJWT.getSubject();
+                String accountId = decodedJWT.getSubject();
 
                 // Load user details from the database
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(accountId);
 
                 // Create authentication token
                 UsernamePasswordAuthenticationToken authentication =
