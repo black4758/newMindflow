@@ -38,6 +38,8 @@ public class ChatService {
                             .build())
                     .collect(Collectors.toList());
 
+            String currentTime = LocalDateTime.now().toString();
+
             // ChatLog 생성 및 저장
             ChatLog chatLog = ChatLog.builder()
                     .accountId(request.getAccountId())
@@ -45,7 +47,7 @@ public class ChatService {
                     .id(aiResponse.getId())
                     .question(request.getQuestion())
                     .answerSentences(sentences)
-                    .createdAt(LocalDateTime.now())
+                    .createdAt(currentTime)
                     .build();
 
             ChatLog savedLog = chatLogRepository.save(chatLog);

@@ -18,7 +18,7 @@ public class ChatResponse {
     private String accountId;  // 추가
     private Long chatRoomId;   // 추가
     private String question;
-    private LocalDateTime createdAt;
+    private String createdAt;
     private List<AnswerSentenceDto> answerSentences;
 
     @Getter

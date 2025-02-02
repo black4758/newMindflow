@@ -20,6 +20,7 @@ import java.util.List;
 @Builder
 public class ChatLog {
     @Id
+    @Field("id")
     private String id;
 
     @Field("account_id")
@@ -31,9 +32,8 @@ public class ChatLog {
 //    private String topic;
 //    private List<Double> embedding;
 
-    @CreatedDate
     @Field("created_at")
-    private LocalDateTime createdAt;  // Date 대신 LocalDateTime 사용
+    private String createdAt;  // Date 대신 LocalDateTime 사용
 
     private String question;
 
