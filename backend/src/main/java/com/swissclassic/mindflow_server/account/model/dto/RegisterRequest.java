@@ -1,4 +1,4 @@
-package com.swissclassic.mindflow_server.account.dataclass;
+package com.swissclassic.mindflow_server.account.model.dto;
 
 import lombok.Data;
 

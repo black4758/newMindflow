@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,27 +37,27 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                // Disable CSRF since tokens are immune to it
-                .csrf()
-                .disable()
-                // Disable session management; use stateless JWT
-                .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                .and()
-                // Define authorization rules
+        return http
+                // CSRF 비활성화 (새로운 방식)
+                .csrf(AbstractHttpConfigurer::disable)
+                // 세션 관리 설정 (새로운 방식)
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                // 요청 인증 규칙 설정
                 .authorizeHttpRequests(authorize -> authorize
-                        // Permit access to registration and login endpoints
-                        .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**")
-                        .permitAll()
-                        // Secure all other endpoints
-                        .anyRequest()
-                        .authenticated())
-                // Add the JWT filter before UsernamePasswordAuthenticationFilter
+                        // 기존 허용 경로
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        // 채팅 API 경로 추가
+                        .requestMatchers("/api/chat/**").permitAll()
+                        // 나머지는 인증 필요
+                        .anyRequest().authenticated()
+                )
+                // JWT 필터 추가
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-        ;
-
-        return http.build();
+                .build();
     }
 
     /**
