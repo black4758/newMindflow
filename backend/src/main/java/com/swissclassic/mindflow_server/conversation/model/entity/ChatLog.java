@@ -20,16 +20,13 @@ import java.util.List;
 @Builder
 public class ChatLog {
     @Id
-    private ObjectId id;
+    private String id;
 
     @Field("account_id")
     private String accountId;
 
     @Field("chat_room_id")
     private Long chatRoomId;
-
-    @Field("conversation_id")
-    private String conversationId;
 
 //    private String topic;
 //    private List<Double> embedding;

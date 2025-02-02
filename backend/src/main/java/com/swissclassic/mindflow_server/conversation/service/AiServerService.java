@@ -16,8 +16,10 @@ import reactor.core.publisher.Mono;
 public class AiServerService {
     private final WebClient aiServerWebClient;
 
-    public AiServerResponse getAiResponse(String question) {
+    public AiServerResponse getAiResponse(String accountId, Long chatRoomId, String question) {
         AiServerRequest request = AiServerRequest.builder()
+                .accountId(accountId)
+                .chatRoomId(chatRoomId)
                 .question(question)
                 .build();
 

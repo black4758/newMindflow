@@ -96,6 +96,7 @@ query_prompt = ChatPromptTemplate.from_messages([
    - 우선 MATCH로 연관된 기존 노드 검색
    - 연관 노드가 있으면 거기서부터 확장
    - 연관 노드가 없으면 새로운 구조 생성
+   - 모든 관계는 방향이 있어야 함
    - CREATE와 MATCH를 함께 사용할 때는 WITH 절 필수
    - 예시:
      MATCH (existing:Topic)
@@ -105,7 +106,7 @@ query_prompt = ChatPromptTemplate.from_messages([
      CREATE (existing)-[:HAS_SUBTOPIC]->(new)
 
 5. 관계 유형:
-   - HAS_SUBTOPIC: 계층 관계 (상위-하위 개념)
+   - HAS_SUBTOPIC: 계층 관계 (상위->하위 개념)
    - RELATED_TO: 연관 관계 (유사 주제간)
    - COMPARED_TO: 비교 관계 (대조되는 개념)
 
@@ -140,22 +141,24 @@ query_chain = query_prompt | chat_model | StrOutputParser()
 
 def get_mindmap_structure():
     """현재 마인드맵의 구조를 반환"""
-    return """
-    MATCH (n:Topic)-[r]->(m:Topic)
-    RETURN collect({
-        source: {
-            id: elementId(n),
-            title: n.title,
-            content: n.content
-        },
-        relationship: type(r),
-        target: {
-            id: elementId(m),
-            title: m.title,
-            content: m.content
-        }
-    }) as structure
-    """
+    with neo4j_driver.session(database="mindmap") as session:
+        result = session.run("""
+        MATCH (n:Topic)-[r]->(m:Topic)
+        RETURN collect({
+            source: {
+                id: elementId(n),
+                title: n.title,
+                content: n.content
+            },
+            relationship: type(r),
+            target: {
+                id: elementId(m),
+                title: m.title,
+                content: m.content
+            }
+        }) as structure
+        """)
+        return result.single()["structure"]
 
 def datetime_handler(obj):
     """datetime 객체를 JSON 직렬화"""
@@ -163,59 +166,16 @@ def datetime_handler(obj):
         return obj.isoformat()
     raise TypeError(f'Object of type {type(obj)} is not JSON serializable')
 
-def generate_mindmap_query(conversation_data):
-    try:
-        with neo4j_driver.session(database="mindmap") as session:
-            result = session.run(get_mindmap_structure())
-            structure = result.single()['structure']
-            
-            query = query_chain.invoke({
-                "structure": json.dumps(structure, indent=2, default=str) if structure else "아직 생성된 노드가 없습니다.",
-                "question": conversation_data['question'],
-                "answer_lines": json.dumps(conversation_data['answer_lines'], indent=2, default=datetime_handler),
-                "mongo_ref": conversation_data["_id"],
-
-                "chat_room_id" : "room1",
-                "account_id" : "rhs1",
-            })
-            
-            return query
-            
-    except Exception as e:
-        print(f"쿼리 생성 오류: {e}")
-        return None
-    
-
-def generate_and_execute_mindmap_query(conversation_data):
-    """마인드맵 쿼리 생성 및 실행"""
-    try:
-        # 현재 마인드맵 구조 가져오기
-        structure = get_mindmap_structure()
-        
-        # 각 문장별로 개별적으로 쿼리 생성
-        for sentence in conversation_data['answerSentences']:
-            query = query_chain.invoke({
-                "structure": json.dumps(structure, indent=2, default=str) if structure else "아직 생성된 노드가 없습니다.",
-                "question": conversation_data['question'],
-                "answer_lines": [sentence],  # 한 문장씩 처리
-                "account_id": conversation_data.get('accountId', 'default'),
-                "chat_room_id": conversation_data.get('chatRoomId', 'default'),
-                "mongo_ref": sentence['sentenceId']  # 각 문장의 ID를 mongo_ref로 사용
-            })
-            
-            # 생성된 쿼리 실행
-            with neo4j_driver.session(database="mindmap") as session:
-                session.run(query)
-                
-        return True
-            
-    except Exception as e:
-        print(f"마인드맵 쿼리 생성/실행 오류: {e}")
-        return False
-
 @app.route('/')
 def home():
     return render_template('index.html')
+
+def escape_cypher_quotes(text):
+    """Neo4j Cypher 쿼리용 문자열 이스케이프"""
+    if text is None:
+        return text
+    # 작은따옴표를 두 개의 작은따옴표로 대체
+    return text.replace("'", "''")
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -223,44 +183,62 @@ def chat():
         data = request.json
         if not data or 'question' not in data:
             return jsonify({'status': 'error', 'message': '질문이 없습니다.'}), 400
-        
-        question = data['question']
 
+        question = data['question']
+        chat_id = str(uuid.uuid4())
         answer = chat_chain.invoke({"question": question})
 
-
-        if answer:
-
-            conversation_id = str(uuid.uuid4())
-            
-            answer_sentences = [line.strip() for line in answer.split('\n') if line.strip()]
-
-        # 각 문장에 sentence_id 부여
+        # 답변을 문장 단위로 분리
+        answer_sentences = [line.strip() for line in answer.split('\n') if line.strip()]
+        
+        # 각 문장에 sentence_id 부여 및 Cypher 이스케이프 처리
         sentences_with_ids = [
             {
                 'sentenceId': str(uuid.uuid4()),
-                'content': sentence
+                'content': escape_cypher_quotes(sentence)  # Cypher 이스케이프 처리
             }
             for sentence in answer_sentences
         ]
 
+        # 마인드맵 쿼리 생성 및 실행
+        mindmap_updated = False
         try:
-            # 마인드맵 쿼리 생성 및 실행
-            mindmap_updated = generate_and_execute_mindmap_query({
-                'question': question,
-                'accountId': data.get('accountId', 'default'),
-                'chatRoomId': data.get('chatRoomId', 'default'),
-                'answerSentences': sentences_with_ids,  # 각 문장의 ID가 포함된 리스트
-            })
+            current_structure = get_mindmap_structure()
+            
+            # 쿼리 생성 전에 모든 문자열 이스케이프 처리
+            query_data = {
+                "structure": json.dumps(current_structure, indent=2, default=str) if current_structure else "아직 생성된 노드가 없습니다.",
+                "question": escape_cypher_quotes(question),
+                "answer_lines": sentences_with_ids,
+                "account_id": data.get('accountId'),
+                "chat_room_id": data.get('chatRoomId'),
+                "mongo_ref": chat_id
+            }
+            
+            query = query_chain.invoke(query_data)
+            # print("Generated Query:", query)  # 디버깅용 쿼리 출력
+
+            # 생성된 쿼리 실행
+            with neo4j_driver.session(database="mindmap") as session:
+                session.run(query)
+                mindmap_updated = True
+
         except Exception as e:
             print(f"마인드맵 쿼리 생성/실행 오류: {str(e)}")
-            mindmap_updated = False
+            # print(f"Generated data: {query_data}")  # 디버깅용 데이터 출력
 
+        # MongoDB 저장용 응답에는 원본 텍스트 사용
         response_data = {
             'status': 'success',
-            'conversationId': conversation_id,
+            'id': chat_id,
             'answer': answer,
-            'answerSentences': sentences_with_ids,
+            'answerSentences': [
+                {
+                    'sentenceId': s['sentenceId'],
+                    'content': sentence  # 원본 텍스트
+                }
+                for s, sentence in zip(sentences_with_ids, answer_sentences)
+            ],
             'mindmapUpdated': mindmap_updated
         }
 

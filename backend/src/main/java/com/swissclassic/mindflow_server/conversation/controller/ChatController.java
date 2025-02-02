@@ -32,6 +32,8 @@ public class ChatController {
     public ResponseEntity<ChatResponse> chat(@RequestBody ChatRequest request) {
         return ResponseEntity.ok(chatService.processChat(request));
     }
+
+
     @Operation(
             summary = "채팅방 대화 내역 조회",
             description = "특정 채팅방의 모든 대화 내역을 조회합니다."
