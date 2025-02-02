@@ -24,7 +24,11 @@ public class ChatService {
     public ChatResponse processChat(ChatRequest request) {
         try {
             // AI 서버에서 응답 받기
-            AiServerResponse aiResponse = aiServerService.getAiResponse(request.getQuestion());
+            AiServerResponse aiResponse = aiServerService.getAiResponse(
+                    request.getAccountId(),
+                    request.getChatRoomId(),
+                    request.getQuestion()
+            );
 
             // AI 응답을 ChatLog 형식으로 변환
             List<ChatLog.AnswerSentence> sentences = aiResponse.getAnswerSentences().stream()
@@ -38,13 +42,16 @@ public class ChatService {
             ChatLog chatLog = ChatLog.builder()
                     .accountId(request.getAccountId())
                     .chatRoomId(request.getChatRoomId())
-                    .conversationId(aiResponse.getConversationId())
+                    .id(aiResponse.getId())
                     .question(request.getQuestion())
                     .answerSentences(sentences)
                     .createdAt(LocalDateTime.now())
                     .build();
 
             ChatLog savedLog = chatLogRepository.save(chatLog);
+
+            System.out.println("MongoDB 데이터 저장");
+
             return convertToResponse(savedLog);
         } catch (Exception e) {
             log.error("Chat processing error: ", e);
@@ -77,7 +84,7 @@ public class ChatService {
                 .collect(Collectors.toList());
 
         return ChatResponse.builder()
-                .conversationId(chatLog.getConversationId())
+                .id(chatLog.getId())
                 .accountId(chatLog.getAccountId())
                 .chatRoomId(chatLog.getChatRoomId())
                 .question(chatLog.getQuestion())

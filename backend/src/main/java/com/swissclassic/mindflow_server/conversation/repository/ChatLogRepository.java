@@ -12,6 +12,6 @@ import java.util.Optional;
 public interface ChatLogRepository extends MongoRepository<ChatLog, ObjectId> {
     List<ChatLog> findByChatRoomIdOrderByCreatedAtDesc(Long chatRoomId);
     List<ChatLog> findByAccountIdOrderByCreatedAtDesc(String accountId);
-    Optional<ChatLog> findByConversationId(String conversationId);
+    Optional<ChatLog> findById(String id);
     List<ChatLog> findByAccountIdAndChatRoomIdOrderByCreatedAtDesc(String accountId, Long chatRoomId);
 }
