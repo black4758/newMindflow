@@ -59,7 +59,7 @@ query_prompt = ChatPromptTemplate.from_messages([
          created_at: datetime()
      }})
 
-1. 기존 마인드맵과의 연결성 분석 (최우선 규칙):
+2. 기존 마인드맵과의 연결성 분석 (최우선 규칙):
    - 새로운 내용을 추가하기 전에 반드시 기존 노드의 title과 content를 검사
    - 연관된 내용이 있다면 해당 노드를 MATCH하여 거기서부터 확장
    - 연관성 검사 예시 쿼리:
@@ -69,7 +69,7 @@ query_prompt = ChatPromptTemplate.from_messages([
      CREATE (new:Topic {{...}})
      CREATE (existing)-[:HAS_SUBTOPIC]->(new)
 
-2. 계층 구조 생성 규칙:
+3. 계층 구조 생성 규칙:
    - 완전히 새로운 주제인 경우에만 새 루트 노드 생성
    - 대화 내용을 최대한 세분화하여 다단계 계층 구조로 구성
    - 각 개념이나 단계는 더 작은 하위 개념으로 분해
@@ -83,7 +83,7 @@ query_prompt = ChatPromptTemplate.from_messages([
           -> 하위 개념 추가
              -> 세부 설명 추가
 
-3. 노드 생성 시:
+4. 노드 생성 시:
    - 각 단계별로 적절한 추상화 수준 유지
    - 상위 개념은 포괄적으로, 하위 개념은 구체적으로 작성
    - 모든 노드에 mongo_ref: '{mongo_ref}' 포함
@@ -92,7 +92,7 @@ query_prompt = ChatPromptTemplate.from_messages([
    - 각 노드의 mongo_ref 속성에는 해당 답변 문장의 line_id를 저장
    - 기존 노드에 연결 시 chat_room_id 및 account_id 일치 여부 확인
 
-4. Cypher 쿼리 작성 규칙:
+5. Cypher 쿼리 작성 규칙:
    - 우선 MATCH로 연관된 기존 노드 검색
    - 연관 노드가 있으면 거기서부터 확장
    - 연관 노드가 없으면 새로운 구조 생성
@@ -105,30 +105,18 @@ query_prompt = ChatPromptTemplate.from_messages([
      CREATE (new:Topic {{...}})
      CREATE (existing)-[:HAS_SUBTOPIC]->(new)
 
-5. 관계 유형:
+6. 관계 유형:
    - HAS_SUBTOPIC: 계층 관계 (상위->하위 개념)
    - RELATED_TO: 연관 관계 (유사 주제간)
    - COMPARED_TO: 비교 관계 (대조되는 개념)
 
-6. 연관성 판단 기준:
+7. 연관성 판단 기준:
    - 동일한 주제 영역
    - 유사한 개념/의미
    - 상위-하위 개념 관계
    - 원인-결과 관계
    - 부분-전체 관계
      
-추가 규칙:
-     
-1. 문자열 값의 이스케이프 처리:
-  - 작은따옴표(') -> 두 개('')로 처리
-  - 큰따옴표(") -> \"로 처리
-  - 백슬래시(\) -> \\로 처리
-  - 역따옴표(`) -> 제거 또는 다른 문자로 대체
-
-2. 이스케이프 예시:
-  '챔피언' -> ''챔피언''
-  "텍스트" -> \"텍스트\"
-  백틱`제거` -> 백틱제거
 
 가능한 한 깊은 계층 구조를 만들되, 자연스러운 관계를 유지하세요.
 기존 노드와의 연결을 최우선으로 고려하고, 완전히 새로운 주제인 경우에만 새 루트 노드를 생성하세요.
@@ -139,11 +127,12 @@ Cypher 쿼리만 반환하고 다른 설명은 하지 말아주세요.""")
 chat_chain = chat_prompt | chat_model | StrOutputParser()
 query_chain = query_prompt | chat_model | StrOutputParser()
 
-def get_mindmap_structure():
-    """현재 마인드맵의 구조를 반환"""
+def get_mindmap_structure(account_id):
+    """특정 account_id에 해당하는 마인드맵 구조를 반환"""
     with neo4j_driver.session(database="mindmap") as session:
         result = session.run("""
         MATCH (n:Topic)-[r]->(m:Topic)
+        WHERE n.account_id = $account_id AND m.account_id = $account_id
         RETURN collect({
             source: {
                 id: elementId(n),
@@ -157,7 +146,7 @@ def get_mindmap_structure():
                 content: m.content
             }
         }) as structure
-        """)
+        """, account_id=account_id)
         return result.single()["structure"]
 
 def datetime_handler(obj):
@@ -171,11 +160,28 @@ def home():
     return render_template('index.html')
 
 def escape_cypher_quotes(text):
-    """Neo4j Cypher 쿼리용 문자열 이스케이프"""
+    """Neo4j Cypher 쿼리용 문자열 이스케이프 개선"""
     if text is None:
         return text
-    # 작은따옴표를 두 개의 작은따옴표로 대체
-    return text.replace("'", "''")
+        
+    # 축약형(I'm, don't 등)과 따옴표를 포함한 텍스트를 처리하기 위해
+    # 작은따옴표를 두 개의 작은따옴표로 이스케이프 처리
+    escaped_text = ""
+    prev_char = None
+    
+    for char in text:
+        if char == "'":
+            # 이전 문자가 알파벳이고 다음 문자가 m, s, t, ve, ll 등인 경우를 처리하기 위해
+            # 그대로 작은따옴표 하나만 사용
+            if (prev_char and prev_char.isalpha()) and len(escaped_text) < len(text) - 1:
+                escaped_text += "'"
+            else:
+                escaped_text += "''"
+        else:
+            escaped_text += char
+        prev_char = char
+    
+    return escaped_text
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -203,15 +209,19 @@ def chat():
         # 마인드맵 쿼리 생성 및 실행
         mindmap_updated = False
         try:
-            current_structure = get_mindmap_structure()
+
+            accountId = data.get('accountId')
+            chatRoomId = data.get('chatRoomId')
+
+            current_structure = get_mindmap_structure(accountId)
             
             # 쿼리 생성 전에 모든 문자열 이스케이프 처리
             query_data = {
                 "structure": json.dumps(current_structure, indent=2, default=str) if current_structure else "아직 생성된 노드가 없습니다.",
                 "question": escape_cypher_quotes(question),
                 "answer_lines": sentences_with_ids,
-                "account_id": data.get('accountId'),
-                "chat_room_id": data.get('chatRoomId'),
+                "account_id": accountId,
+                "chat_room_id": chatRoomId,
                 "mongo_ref": chat_id
             }
             
