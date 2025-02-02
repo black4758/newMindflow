@@ -15,6 +15,19 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# MongoDB 설정
+try:
+    mongo_client = MongoClient('mongodb://localhost:27017/')
+    db = mongo_client['chat_database']
+    # conversations = db['conversations']
+
+    chat_rooms = db['chat_rooms']
+    chat_logs = db['chat_logs']
+
+except Exception as e:
+    print(f"MongoDB 연결 오류: {e}")
+    raise e
+
 # Neo4j 설정
 try:
     neo4j_uri = "neo4j://localhost:7687"
@@ -26,7 +39,6 @@ except Exception as e:
 
 # LangChain 설정
 chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
-
 
 # 일반 대화용 프롬프트 템플릿
 chat_prompt = ChatPromptTemplate.from_messages([
@@ -184,34 +196,6 @@ def generate_mindmap_query(conversation_data):
     except Exception as e:
         print(f"쿼리 생성 오류: {e}")
         return None
-    
-
-def generate_and_execute_mindmap_query(conversation_data):
-    """마인드맵 쿼리 생성 및 실행"""
-    try:
-        # 현재 마인드맵 구조 가져오기
-        structure = get_mindmap_structure()
-        
-        # 각 문장별로 개별적으로 쿼리 생성
-        for sentence in conversation_data['answerSentences']:
-            query = query_chain.invoke({
-                "structure": json.dumps(structure, indent=2, default=str) if structure else "아직 생성된 노드가 없습니다.",
-                "question": conversation_data['question'],
-                "answer_lines": [sentence],  # 한 문장씩 처리
-                "account_id": conversation_data.get('accountId', 'default'),
-                "chat_room_id": conversation_data.get('chatRoomId', 'default'),
-                "mongo_ref": sentence['sentenceId']  # 각 문장의 ID를 mongo_ref로 사용
-            })
-            
-            # 생성된 쿼리 실행
-            with neo4j_driver.session(database="mindmap") as session:
-                session.run(query)
-                
-        return True
-            
-    except Exception as e:
-        print(f"마인드맵 쿼리 생성/실행 오류: {e}")
-        return False
 
 @app.route('/')
 def home():
@@ -234,38 +218,63 @@ def chat():
             conversation_id = str(uuid.uuid4())
             
             answer_sentences = [line.strip() for line in answer.split('\n') if line.strip()]
-
-        # 각 문장에 sentence_id 부여
-        sentences_with_ids = [
-            {
-                'sentenceId': str(uuid.uuid4()),
-                'content': sentence
-            }
-            for sentence in answer_sentences
-        ]
-
-        try:
-            # 마인드맵 쿼리 생성 및 실행
-            mindmap_updated = generate_and_execute_mindmap_query({
+            
+            conversation_document = {
+                'account_id' : "account_id",
+                'chat_room_id' : "chat_room_id",
+                'id': conversation_id,
                 'question': question,
-                'accountId': data.get('accountId', 'default'),
-                'chatRoomId': data.get('chatRoomId', 'default'),
-                'answerSentences': sentences_with_ids,  # 각 문장의 ID가 포함된 리스트
+                'answer_sentences': [
+                    {
+                        'sentence_id': str(uuid.uuid4()),
+                        'content': sentence,
+                        'is_deleted': False
+                    }
+                    for sentence in answer_sentences
+                ],
+                'timestamp': datetime.now(),
+                'processed': False
+            }
+            
+            chat_logs.insert_one(conversation_document)
+
+            conversation_data = {
+                'id': conversation_id,
+                'question': question,
+                'answer_lines': [
+                    {
+                        'line_id': sentence['sentence_id'],
+                        'content': sentence['content']
+                    }
+                    for sentence in conversation_document['answer_sentences']
+                ]
+            }
+            
+
+            update_query = generate_mindmap_query(conversation_data)
+            
+            if update_query:
+                with neo4j_driver.session(database="mindmap") as session:
+                    session.run(update_query)
+                    chat_logs.update_one(
+                        {'id': conversation_id},
+                        {'$set': {'processed': True}}
+                    )
+
+
+            return jsonify({
+                'status': 'success',
+                'answer': answer,
+                'conversation_id': conversation_id,
+                'answer_sentences': [
+                    {
+                        'sentence_id': sentence['sentence_id'],
+                        'content': sentence['content']
+                    }
+                    for sentence in conversation_document['answer_sentences']
+                ]
             })
-        except Exception as e:
-            print(f"마인드맵 쿼리 생성/실행 오류: {str(e)}")
-            mindmap_updated = False
-
-        response_data = {
-            'status': 'success',
-            'conversationId': conversation_id,
-            'answer': answer,
-            'answerSentences': sentences_with_ids,
-            'mindmapUpdated': mindmap_updated
-        }
-
-        return jsonify(response_data)
-
+            
     except Exception as e:
         print(f"Chat 엔드포인트 오류: {e}")
         return jsonify({
@@ -403,3 +412,4 @@ if __name__ == '__main__':
         app.run(debug=True, port=5001)
     finally:
         neo4j_driver.close()
+        mongo_client.close()

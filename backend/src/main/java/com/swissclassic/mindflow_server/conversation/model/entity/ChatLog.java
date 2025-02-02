@@ -1,18 +1,71 @@
 package com.swissclassic.mindflow_server.conversation.model.entity;
 
-import com.swissclassic.mindflow_server.conversation.model.dto.Sentence;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.bson.types.ObjectId;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
-@Setter
+
 @Getter
-@Document(collection = "conversations")
-public class Conversation {
+@ToString
+@Document(collection = "chat_logs")
+@NoArgsConstructor // 파라미터가 없는 기본 생성자를 자동으로 만들어줍니다.
+@AllArgsConstructor // 모든 필드를 파라미터로 받는 생성자를 자동으로 만들어줍니다.
+@Builder
+public class ChatLog {
+    @Id
+    private ObjectId id;
+
+    @Field("account_id")
+    private String accountId;
+
+    @Field("chat_room_id")
+    private Long chatRoomId;
+
+    @Field("conversation_id")
+    private String conversationId;
+
+//    private String topic;
+//    private List<Double> embedding;
+
+    @CreatedDate
+    @Field("created_at")
+    private LocalDateTime createdAt;  // Date 대신 LocalDateTime 사용
+
+    private String question;
+
+    @Field("answer_sentences")
+    private List<AnswerSentence> answerSentences;
+
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AnswerSentence {
+
+        @Field("sentence_id")
+        private String sentenceId;
+        private String content;
+        @Field("is_deleted")
+        private boolean isDeleted;
+    }
+
+}
+
+
+
+
+/*
+* @Getter
+@Document(collection = "chat_logs")
+public class ChatLog {
     private ObjectId id;              // MongoDB _id field
     private Long user_id;             // Foreign key to User.id
     private Long chat_room_id;        // Foreign key to ChatRoom.id
@@ -24,12 +77,12 @@ public class Conversation {
     private List<Sentence> sentences; // List of Sentence objects
 
     // Default constructor (required for MongoDB deserialization)
-    public Conversation() {
+    public ChatLog() {
     }
 
     // Parameterized constructor
-    public Conversation(ObjectId id, long user_id, long chat_room_id, String topic, long model_id,
-                        List<Double> embedding, String question, Date created_at, List<Sentence> sentences) {
+    public ChatLog(ObjectId id, long user_id, long chat_room_id, String topic, long model_id,
+                   List<Double> embedding, String question, Date created_at, List<Sentence> sentences) {
         this.id = id;
         this.user_id = user_id;
         this.chat_room_id = chat_room_id;
@@ -57,3 +110,4 @@ public class Conversation {
                 '}';
     }
 }
+* */

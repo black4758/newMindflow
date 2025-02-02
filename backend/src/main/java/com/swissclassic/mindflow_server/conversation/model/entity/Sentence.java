@@ -1,4 +1,4 @@
-package com.swissclassic.mindflow_server.conversation.model.dto;
+package com.swissclassic.mindflow_server.conversation.model.entity;
 
 import lombok.Getter;
 import lombok.Setter;
