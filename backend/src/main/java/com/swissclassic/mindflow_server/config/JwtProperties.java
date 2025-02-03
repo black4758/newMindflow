@@ -23,4 +23,5 @@ public class JwtProperties {
      * JWT token expiration time in milliseconds.
      */
     private long expirationMs;
+    private long refreshExpirationMs;
 }

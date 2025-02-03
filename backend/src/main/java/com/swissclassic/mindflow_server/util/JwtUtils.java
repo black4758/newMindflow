@@ -43,6 +43,20 @@ public class JwtUtils {
     }
 
     /**
+     * Generates a JWT token for the given username.
+     *
+     * @param username the username for which the token is generated
+     * @return the generated JWT token
+     */
+    public String generateRefreshToken(String username) {
+        return JWT.create()
+                  .withSubject(username)
+                  .withIssuedAt(new Date())
+                  .withExpiresAt(new Date(System.currentTimeMillis() + jwtProperties.getRefreshExpirationMs()))
+                  .sign(getAlgorithm());
+    }
+
+    /**
      * Validates the given JWT token.
      *
      * @param token the JWT token to validate
