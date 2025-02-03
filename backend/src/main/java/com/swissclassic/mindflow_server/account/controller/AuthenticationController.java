@@ -127,11 +127,21 @@ public class AuthenticationController {
     }
 
     @DeleteMapping("/delete/{userId}")
-    @Operation(summary = "회원 탈퇴 (현재 미구현)", description = "사용자 계정을 삭제합니다. 관련된 모든 데이터가 삭제됩니다.")
+    @Operation(summary = "회원 탈퇴 (일부 구현됨)", description = "사용자 계정을 삭제합니다. 관련된 모든 데이터가 삭제됩니다.")
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
         // 계정 아이디 찾기
+        if (userRepository.findById(userId)
+                          .isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("Invalid user id.");
+        }
         // 계정 정보 삭제
-        throw new NotImplementedException();
+        userRepository.deleteAllById(userId);
+        // TODO: neo4j 삭제
+        // TODO: mongodb 삭제
+
+        return ResponseEntity.status(HttpStatus.OK)
+                             .body("Deleting account successful.");
     }
 
     @PostMapping("/find-id")
