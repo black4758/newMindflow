@@ -1,5 +1,5 @@
 import React from "react"
-import Onedata from "../feature/Onedata.jsx"
+import Onedata from "../components/feature/Onedata.jsx"
 
 const OnedataPage = () => {
   return (
@@ -9,4 +9,4 @@ const OnedataPage = () => {
   )
 }
 
-export default OnedataPage 
+export default OnedataPage
