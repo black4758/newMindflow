@@ -1,12 +1,14 @@
 package com.swissclassic.mindflow_server.account.controller;
 
+import com.swissclassic.mindflow_server.account.model.dto.*;
 import com.swissclassic.mindflow_server.account.model.entity.User;
-import com.swissclassic.mindflow_server.account.model.dto.LoginRequest;
-import com.swissclassic.mindflow_server.account.model.dto.RegisterRequest;
 import com.swissclassic.mindflow_server.account.repository.UserRepository;
+import com.swissclassic.mindflow_server.account.service.PasswordResetService;
 import com.swissclassic.mindflow_server.util.JwtUtils;
 import com.swissclassic.mindflow_server.account.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.Getter;
@@ -17,7 +19,8 @@ import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpServerErrorException;
+
+import java.util.Optional;
 
 /**
  * REST controller for authentication-related endpoints.
@@ -28,6 +31,9 @@ import org.springframework.web.client.HttpServerErrorException;
 public class AuthenticationController {
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private PasswordResetService passwordResetService;
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -70,6 +76,11 @@ public class AuthenticationController {
             summary = "로그인",
             description = "계정 ID와 비밀번호로 로그인하고 JWT 토큰을 발급받습니다."
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "로그인 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             // Authenticate the user
@@ -99,6 +110,7 @@ public class AuthenticationController {
             description = "사용자의 로그아웃을 처리하고 토큰을 무효화합니다."
     )
     public ResponseEntity<?> logout(@RequestBody Long userId) {
+        // 세션 토큰 날리기
         throw new NotImplementedException();
     }
 
@@ -108,6 +120,8 @@ public class AuthenticationController {
             description = "사용자 계정을 삭제합니다. 관련된 모든 데이터가 삭제됩니다."
     )
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
+        // 계정 아이디 찾기
+        // 계정 정보 삭제
         throw new NotImplementedException();
     }
 
@@ -117,34 +131,68 @@ public class AuthenticationController {
             description = "사용자의 이름과 이메일을 통해 계정 ID를 찾습니다."
     )
     public ResponseEntity<?> findAccountId(@RequestBody String name, @RequestBody String email) {
+        // 이름과 이메일의 존재 여부 확인
         throw new NotImplementedException();
     }
 
     @PostMapping("/account-verification")
     @Operation(
-            summary = "계정 확인 (현재 미구현)",
+            summary = "계정 확인",
             description = "계정 ID와 이메일을 통해 사용자 계정의 존재 여부를 확인합니다."
     )
-    public ResponseEntity<?> verifyAccount(@RequestBody String accountId, @RequestBody String email) {
-        throw new NotImplementedException();
+    public ResponseEntity<?> verifyAccount(@RequestBody AccountVerificationRequest accountVerificationRequest) {
+        String accountId = accountVerificationRequest.getAccountId();
+        String email = accountVerificationRequest.getEmail();
+        User user = userRepository.findByAccountId(accountId)
+                                  .orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("Invalid account id.");
+        }
+        if (!user.getEmail()
+                 .equals(email)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("Account id and email does not match.");
+        }
+
+        passwordResetService.initiatePasswordReset(accountId, email);
+        return ResponseEntity.status(HttpStatus.OK)
+                             .body("Token is valid.");
     }
 
     @PostMapping("/token-verification")
     @Operation(
-            summary = "토큰 검증 (현재 미구현)",
+            summary = "토큰 검증",
             description = "비밀번호 재설정 등에 사용되는 임시 토큰의 유효성을 검증합니다."
     )
-    public ResponseEntity<?> verifyToken(@RequestBody String key) {
-        throw new NotImplementedException();
+    public ResponseEntity<?> verifyToken(@RequestBody TokenVerificationRequest tokenVerificationRequest) {
+        String accountId = tokenVerificationRequest.getAccountId();
+        String token = tokenVerificationRequest.getToken();
+        if (passwordResetService.verifyToken(accountId, token)) {
+            return ResponseEntity.status(HttpStatus.OK)
+                                 .body("Token is valid.");
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("Incorrect Token.");
+        }
     }
 
     @PatchMapping("/reset-password")
     @Operation(
-            summary = "비밀번호 재설정 (현재 미구현)",
+            summary = "비밀번호 재설정",
             description = "토큰 검증 후 새로운 비밀번호로 재설정합니다."
     )
-    public ResponseEntity<?> resetPassword(@RequestBody String newPassword) {
-        throw new NotImplementedException();
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
+        String accountId = resetPasswordRequest.getAccountId();
+        String token = resetPasswordRequest.getToken();
+        String newPassword = resetPasswordRequest.getNewPassword();
+        boolean success = passwordResetService.resetPassword(accountId, token, newPassword);
+        if (success) {
+            return ResponseEntity.ok("Password reset successful.");
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                 .body("Password reset failed. Invalid token or account id.");
+        }
     }
 
     /**
