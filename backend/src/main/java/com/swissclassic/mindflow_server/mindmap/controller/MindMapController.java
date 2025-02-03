@@ -14,11 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Slf4j
 public class MindMapController {
-    private final MindMapService mindMapService;
 
-    @PostMapping("/query")
-    public ResponseEntity<Void> executeQuery(@RequestBody String cypherQuery) {
-        mindMapService.executeQuery(cypherQuery);
-        return ResponseEntity.ok().build();
-    }
+
 }
