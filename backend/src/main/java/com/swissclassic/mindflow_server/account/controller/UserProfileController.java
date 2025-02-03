@@ -10,6 +10,9 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,12 +28,29 @@ public class UserProfileController {
 
     @PostMapping("/profiles/{userId}")
     @Operation(summary = "프로필 조회", description = "사용자의 userId에 따라 프로필을 조회합니다.")
-    public ResponseEntity<?> getUserProfile(@PathVariable Long userId) {
+    public ResponseEntity<?> getUserProfile(
+            @PathVariable Long userId, @AuthenticationPrincipal User currentUser
+    ) {
+        System.out.println("Authentication in controller: " +
+                                   SecurityContextHolder.getContext()
+                                                        .getAuthentication());  // Check authentication
+        System.out.println("Current user in controller: " + currentUser);  // Check current user
+
         User user = userRepository.findById(userId)
                                   .orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                 .body("User not found.");
+        }
+        System.out.println("Current user: " + (currentUser != null ? currentUser.getUsername() : "null"));
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("User not authenticated.");
+        }
+        Long currentId = currentUser.getId();
+        if (!userId.equals(currentId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("You are not allowed to get other user's profile.");
         }
         UserProfileResponse userProfileResponse = new UserProfileResponse(
                 user.getAccountId(), user.getEmail(), user.getUsername(), user.getDisplayName());
