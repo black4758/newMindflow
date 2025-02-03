@@ -3,7 +3,9 @@ package com.swissclassic.mindflow_server.conversation.service;
 
 import com.swissclassic.mindflow_server.conversation.model.dto.ChatRequest;
 import com.swissclassic.mindflow_server.conversation.model.dto.ChatResponse;
+import reactor.core.publisher.Mono;
 
 public interface AiServerService {
-    ChatResponse processChat(ChatRequest request);  // AI 응답 받기 + MongoDB 저장
+    Mono<String> getChatResponse(ChatRequest chatRequest);
+    Mono<String> getAllChatResponse(ChatRequest chatRequest);
 }
