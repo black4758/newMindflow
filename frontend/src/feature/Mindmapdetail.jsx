@@ -71,28 +71,35 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Mindmap2Ddetail = ({ graphData, searchTerm, searchResults, setSearchResults }) => {
+const Onedata = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const fgRef = useRef();
+  const [is3D, setIs3D] = useState(getViewMode());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [highlightNodes, setHighlightNodes] = useState(new Set());
   const [highlightLinks, setHighlightLinks] = useState(new Set());
   const [hoverNode, setHoverNode] = useState(null);
+  const rawData = location.state?.graphData;
 
-  // 받은 데이터를 ForceGraph2D 형식으로 변환
+  // 받은 데이터를 ForceGraph3D 형식으로 변환
   const data = useMemo(() => {
-    if (!graphData) return null;
+    if (!rawData) return null;
 
     // 노드의 레벨(level) 계산 함수
     const calculateLevel = (nodeId, parentId = null, level = 0, visited = new Set()) => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = graphData.nodes.find(n => n.id === nodeId);
+      // 현재 노드 찾기
+      const node = rawData.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = graphData.relationships
+      // 자식 노드들의 레벨 계산
+      const children = rawData.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -101,22 +108,25 @@ const Mindmap2Ddetail = ({ graphData, searchTerm, searchResults, setSearchResult
       });
     };
 
-    // 루트 노드들 찾기
-    const rootNodes = graphData.nodes
-      .filter(node => !graphData.relationships.some(rel => rel.target === node.id))
+    // 루트 노드들 찾기 (들어오는 엣지가 없는 노드들)
+    const rootNodes = rawData.nodes
+      .filter(node => !rawData.relationships.some(rel => rel.target === node.id))
       .map(node => node.id);
 
+    // 각 루트 노드에서 시작하여 레벨 계산
     rootNodes.forEach(rootId => calculateLevel(rootId));
 
+    // 색상 배열 정의 (레벨별 색상)
     const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
 
+    // 그래프 데이터 생성
     const gData = {
-      nodes: graphData.nodes.map(node => ({
+      nodes: rawData.nodes.map(node => ({
         ...node,
         label: node.title,
-        color: colors[node.level % colors.length]
+        color: colors[node.level % colors.length] // 레벨에 따라 색상 할당
       })),
-      links: graphData.relationships.map(rel => ({
+      links: rawData.relationships.map(rel => ({
         source: rel.source,
         target: rel.target,
         type: rel.type
@@ -140,33 +150,50 @@ const Mindmap2Ddetail = ({ graphData, searchTerm, searchResults, setSearchResult
     });
 
     return gData;
-  }, [graphData]);
+  }, [rawData]);
 
-  // 검색 관련 코드
-  React.useEffect(() => {
-    if (searchTerm.trim() && data) {
+  // useEffect(() => {
+  //   if (!data) {
+  //     navigate('/test');
+  //     return;
+  //   }
+
+  //   const bloomPass = new UnrealBloomPass();
+  //   bloomPass.strength = 0.3;
+  //   bloomPass.radius = 0;
+  //   bloomPass.threshold = 0;
+  //   fgRef.current.postProcessingComposer().addPass(bloomPass);
+  // }, [data, navigate]);
+
+  // 검색 관련 코드 수정
+  const handleSearchChange = (event) => {
+    const term = event.target.value;
+    setSearchTerm(term);
+    
+    if (term.trim() && data) {  // data 존재 여부 확인 추가
       const results = data.nodes.filter(node => 
-        node.title.toLowerCase().includes(searchTerm.toLowerCase())
+        node.title.toLowerCase().includes(term.toLowerCase())
       );
       setSearchResults(results);
     } else {
       setSearchResults([]);
     }
-  }, [searchTerm, data, setSearchResults]);
+  };
 
   const handleNodeFocus = useCallback(node => {
-    fgRef.current.centerAt(node.x, node.y, 1000);
-    fgRef.current.zoom(2, 1000);
-  }, []);
-
-  // 노드 크기 계산 함수
-  const getNodeSize = (text, ctx, fontSize) => {
-    ctx.font = `${fontSize}px Sans-Serif`;
-    const textWidth = ctx.measureText(text).width;
-    const width = textWidth + 20;
-    const height = fontSize + 10;
-    return { width, height };
-  };
+    const distance = 40;
+    if (is3D) {
+      const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+      fgRef.current.cameraPosition(
+        { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+        node,
+        3000
+      );
+    } else {
+      fgRef.current.centerAt(node.x, node.y, 1000);
+      fgRef.current.zoom(2, 1000);
+    }
+  }, [is3D]);
 
   // 하이라이트 업데이트 함수
   const updateHighlight = () => {
@@ -210,6 +237,15 @@ const Mindmap2Ddetail = ({ graphData, searchTerm, searchResults, setSearchResult
     return sprite;
   };
 
+  // Mindmap.jsx의 getNodeSize 함수 추가
+  const getNodeSize = (text, ctx, fontSize) => {
+    ctx.font = `${fontSize}px Sans-Serif`;
+    const textWidth = ctx.measureText(text).width;
+    const width = textWidth + 20;
+    const height = fontSize + 10;
+    return { width, height };
+  };
+
   // 공통 props 정의
   const commonProps = {
     linkWidth: 1,
@@ -249,7 +285,7 @@ const Mindmap2Ddetail = ({ graphData, searchTerm, searchResults, setSearchResult
         <input
           type="text"
           value={searchTerm}
-          onChange={(event) => setSearchResults(event.target.value)}
+          onChange={handleSearchChange}
           placeholder="노드 검색..."
           style={styles.searchInput}
         />
@@ -274,57 +310,78 @@ const Mindmap2Ddetail = ({ graphData, searchTerm, searchResults, setSearchResult
         )}
       </div>
 
-      <ForceGraph2D
-        ref={fgRef}
-        graphData={data}
-        nodeCanvasObject={(node, ctx, globalScale) => {
-          const fontSize = 12;
-          const { width, height } = getNodeSize(node.title, ctx, fontSize);
-          const isHighlighted = highlightNodes.has(node);
-          const radius = 5;
+      <button
+        className="fixed bottom-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg"
+        onClick={() => setIs3D(!is3D)}
+      >
+        {is3D ? '2D로 보기' : '3D로 보기'}
+      </button>
 
-          ctx.save();
+      {is3D ? (
+        <ForceGraph3D
+          ref={fgRef}
+          graphData={data}
+          nodeThreeObject={node => {
+            const sprite = new SpriteText(node.title);
+            sprite.color = node.color;
+            sprite.textHeight = 8;
+            return sprite;
+          }}
+          {...commonProps}
+        />
+      ) : (
+        <ForceGraph2D
+          ref={fgRef}
+          graphData={data}
+          nodeCanvasObject={(node, ctx, globalScale) => {
+            const fontSize = 12;
+            const { width, height } = getNodeSize(node.title, ctx, fontSize);
+            const isHighlighted = highlightNodes.has(node);
+            const radius = 5;
 
-          // 텍스트 박스 그리기
-          ctx.beginPath();
-          ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2);
-          ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2);
-          ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius);
-          ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius);
-          ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2);
-          ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2);
-          ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius);
-          ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius);
-          ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2);
-          ctx.closePath();
+            ctx.save();
 
-          // 배경색 설정
-          ctx.fillStyle = isHighlighted ? "#4299e1" : node.color.replace(')', ', 0.5)').replace('rgb', 'rgba');
-          ctx.fill();
+            // 텍스트 박스 그리기
+            ctx.beginPath();
+            ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2);
+            ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2);
+            ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius);
+            ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius);
+            ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2);
+            ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2);
+            ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius);
+            ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius);
+            ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2);
+            ctx.closePath();
 
-          // 테두리 설정
-          if (isHighlighted) {
-            ctx.strokeStyle = node === hoverNode ? "#ef4444" : "#f59e0b";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
+            // 배경색 설정
+            ctx.fillStyle = isHighlighted ? "#4299e1" : node.color.replace(')', ', 0.5)').replace('rgb', 'rgba');
+            ctx.fill();
 
-          // 텍스트 설정
-          ctx.font = `${fontSize}px Sans-Serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillStyle = isHighlighted ? "#ffffff" : "#1a365d";
-          ctx.fillText(node.title, node.x, node.y);
+            // 테두리 설정
+            if (isHighlighted) {
+              ctx.strokeStyle = node === hoverNode ? "#ef4444" : "#f59e0b";
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
 
-          ctx.restore();
+            // 텍스트 설정
+            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = isHighlighted ? "#ffffff" : "#1a365d";
+            ctx.fillText(node.title, node.x, node.y);
 
-          // 노드의 실제 크기 설정
-          node.size = Math.max(width, height);
-          node.width = width;
-          node.height = height;
-        }}
-        {...commonProps}
-      />
+            ctx.restore();
+
+            // 노드의 실제 크기 설정
+            node.size = Math.max(width, height);
+            node.width = width;
+            node.height = height;
+          }}
+          {...commonProps}
+        />
+      )}
 
       {/* 호버 시 보여줄 상세 정보 팝업 */}
       {hoverNode && (
@@ -345,4 +402,4 @@ const Mindmap2Ddetail = ({ graphData, searchTerm, searchResults, setSearchResult
   );
 };
 
-export default Mindmap2Ddetail;
+export default Onedata;

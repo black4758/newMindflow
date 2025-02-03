@@ -1,53 +1,12 @@
-import React, { useState } from "react";
-import Mindmap2D from "../feature/Mindmap2D";
-import Mindmap3D from "../feature/Mindmap3D";
-import SearchComponent from "../components/SearchComponent";
+import React from "react"
+import Mindmap from "../feature/Mindmap"
 
 const MindmapPage = () => {
-  const [is3D, setIs3D] = useState(localStorage.getItem('viewMode') === '3d');
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-
-  const handleViewModeChange = () => {
-    const newMode = !is3D;
-    localStorage.setItem('viewMode', newMode ? '3d' : '2d');
-    setIs3D(newMode);
-  };
-
   return (
     <div className="w-full h-full relative">
-      {/* 검색 컴포넌트 */}
-      <SearchComponent
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        searchResults={searchResults}
-        setSearchResults={setSearchResults}
-      />
-
-      {/* 2D/3D 전환 버튼 */}
-      <button
-        className="absolute bottom-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg"
-        onClick={handleViewModeChange}
-      >
-        {is3D ? '2D로 보기' : '3D로 보기'}
-      </button>
-
-      {/* 조건부 렌더링으로 2D/3D 그래프 전환 */}
-      {is3D ? (
-        <Mindmap3D
-          searchTerm={searchTerm}
-          searchResults={searchResults}
-          setSearchResults={setSearchResults}
-        />
-      ) : (
-        <Mindmap2D
-          searchTerm={searchTerm}
-          searchResults={searchResults}
-          setSearchResults={setSearchResults}
-        />
-      )}
+      <Mindmap />
     </div>
-  );
-};
+  )
+}
 
-export default MindmapPage;
+export default MindmapPage
