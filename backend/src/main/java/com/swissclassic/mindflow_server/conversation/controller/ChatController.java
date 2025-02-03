@@ -54,8 +54,25 @@ public class ChatController {
             });
             return re;
         }
+        Mono<String> re =aiServerService.getChatResponse(chatRequest);
+        re.subscribe(response -> {
 
-        return aiServerService.getChatResponse(chatRequest);
+            try {
+                JSONObject jsonResponse = new JSONObject(response);
+                String content = jsonResponse.getJSONObject("response").getString("content");
+                System.out.println(content);
+                chatLogService.saveChatLog(
+                        String.valueOf(chatRequest.getChatRoomId()),
+                        chatRequest.getUserInput(),
+                        content,
+                        chatRequest.getModel()
+                );
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        return re;
     }
 
 //    @Operation(
