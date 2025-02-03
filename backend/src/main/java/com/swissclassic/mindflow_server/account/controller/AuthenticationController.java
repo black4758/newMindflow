@@ -127,12 +127,28 @@ public class AuthenticationController {
 
     @PostMapping("/find-id")
     @Operation(
-            summary = "계정 ID 찾기 (현재 미구현)",
+            summary = "계정 ID 찾기",
             description = "사용자의 이름과 이메일을 통해 계정 ID를 찾습니다."
     )
-    public ResponseEntity<?> findAccountId(@RequestBody String name, @RequestBody String email) {
+    public ResponseEntity<?> findAccountId(@RequestBody FindIdRequest findIdRequest) {
+        String name = findIdRequest.getName();
+        String email = findIdRequest.getEmail();
+
         // 이름과 이메일의 존재 여부 확인
-        throw new NotImplementedException();
+        User user = userRepository.findByUsername(name)
+                                  .orElse(null);
+
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("Invalid username.");
+        }
+        if (!user.getEmail()
+                 .equals(email)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("User name and email does not match.");
+        }
+        return ResponseEntity.status(HttpStatus.OK)
+                             .body(user.getAccountId());
     }
 
     @PostMapping("/account-verification")
