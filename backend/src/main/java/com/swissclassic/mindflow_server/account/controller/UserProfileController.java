@@ -6,6 +6,7 @@ import com.swissclassic.mindflow_server.account.model.entity.User;
 import com.swissclassic.mindflow_server.account.repository.UserRepository;
 import com.swissclassic.mindflow_server.account.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
+@SecurityRequirement(name = "bearer-jwt")
 public class UserProfileController {
 
     @Autowired
@@ -27,13 +29,13 @@ public class UserProfileController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/profiles/{userId}")
-    @Operation(summary = "프로필 조회", description = "사용자의 userId에 따라 프로필을 조회합니다.")
+    @Operation(summary = "프로필 조회", description = "사용자의 userId에 따라 프로필을 조회합니다.",
+            security = {@SecurityRequirement(name = "bearer-jwt")})
     public ResponseEntity<?> getUserProfile(
             @PathVariable Long userId, @AuthenticationPrincipal User currentUser
     ) {
-        System.out.println("Authentication in controller: " +
-                                   SecurityContextHolder.getContext()
-                                                        .getAuthentication());  // Check authentication
+        System.out.println("Authentication in controller: " + SecurityContextHolder.getContext()
+                                                                                   .getAuthentication());  // Check authentication
         System.out.println("Current user in controller: " + currentUser);  // Check current user
 
         User user = userRepository.findById(userId)
@@ -60,7 +62,8 @@ public class UserProfileController {
     }
 
     @PostMapping("/profiles/{userId}/patch")
-    @Operation(summary = "프로필 수정", description = "사용자의 userId에 따라 프로필을 수정합니다.")
+    @Operation(summary = "프로필 수정", description = "사용자의 userId에 따라 프로필을 수정합니다.",
+            security = {@SecurityRequirement(name = "bearer-jwt")})
     public ResponseEntity<?> editUserProfile(
             @PathVariable Long userId, @RequestBody EditUserProfileRequest editUserProfileRequest
     ) {
