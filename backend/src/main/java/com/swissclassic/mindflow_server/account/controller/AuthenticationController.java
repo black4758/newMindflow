@@ -49,10 +49,7 @@ public class AuthenticationController {
      * @return a ResponseEntity with a success or error message
      */
     @PostMapping("/register")
-    @Operation(
-            summary = "회원 가입",
-            description = "사용자의 정보를 받아 회원가입을 진행합니다."
-    )
+    @Operation(summary = "회원 가입", description = "사용자의 정보를 받아 회원가입을 진행합니다.")
     public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
         try {
             User user = userService.registerUser(registerRequest);
@@ -70,34 +67,36 @@ public class AuthenticationController {
      * @return a ResponseEntity with a JWT token or error message
      */
     @PostMapping("/login")
-    @Operation(
-            summary = "로그인",
-            description = "계정 ID와 비밀번호로 로그인하고 JWT 토큰을 발급받습니다."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "로그인 성공"),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청")
-    })
+    @Operation(summary = "로그인", description = "계정 ID와 비밀번호로 로그인하고 JWT 토큰을 발급받습니다.")
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "로그인 성공"), @ApiResponse(responseCode = "401", description = "인증 실패"), @ApiResponse(responseCode = "400", description = "잘못된 요청")})
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             // Authenticate the user
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(
-                            loginRequest.getAccountId(),
-                            loginRequest.getPassword()
-                    )
-            );
+                    new UsernamePasswordAuthenticationToken(loginRequest.getAccountId(), loginRequest.getPassword()));
+
+            User user = userRepository.findByAccountId(loginRequest.getAccountId())
+                                      .orElse(null);
+            if (user == null) {
+                throw new BadCredentialsException("");
+            }
+
 
             // Set the authentication in the security context
             SecurityContextHolder.getContext()
                                  .setAuthentication(authentication);
 
             // Generate JWT token
-            String jwt = jwtUtils.generateJwtToken(loginRequest.getAccountId());
+            String accessToken = jwtUtils.generateJwtToken(loginRequest.getAccountId());
+            String refreshToken = jwtUtils.generateRefreshToken(user.getId()
+                                                                    .toString());
+
+            user.setRefreshToken(refreshToken);
+            userRepository.save(user);
+
 
             // Return the JWT in the response
-            return ResponseEntity.ok(new JwtResponse(jwt));
+            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("Invalid username or password.");
@@ -105,10 +104,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/logout")
-    @Operation(
-            summary = "로그아웃",
-            description = "사용자의 로그아웃을 처리하고 토큰을 무효화합니다."
-    )
+    @Operation(summary = "로그아웃", description = "사용자의 로그아웃을 처리하고 토큰을 무효화합니다.")
     public ResponseEntity<?> logout(@RequestBody Long userId) {
         Authentication auth = SecurityContextHolder.getContext()
                                                    .getAuthentication();
@@ -131,10 +127,7 @@ public class AuthenticationController {
     }
 
     @DeleteMapping("/delete/{userId}")
-    @Operation(
-            summary = "회원 탈퇴 (현재 미구현)",
-            description = "사용자 계정을 삭제합니다. 관련된 모든 데이터가 삭제됩니다."
-    )
+    @Operation(summary = "회원 탈퇴 (현재 미구현)", description = "사용자 계정을 삭제합니다. 관련된 모든 데이터가 삭제됩니다.")
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
         // 계정 아이디 찾기
         // 계정 정보 삭제
@@ -142,10 +135,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/find-id")
-    @Operation(
-            summary = "계정 ID 찾기",
-            description = "사용자의 이름과 이메일을 통해 계정 ID를 찾습니다."
-    )
+    @Operation(summary = "계정 ID 찾기", description = "사용자의 이름과 이메일을 통해 계정 ID를 찾습니다.")
     public ResponseEntity<?> findAccountId(@RequestBody FindAccountIdRequest findAccountIdRequest) {
         String name = findAccountIdRequest.getName();
         String email = findAccountIdRequest.getEmail();
@@ -168,10 +158,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/account-verification")
-    @Operation(
-            summary = "계정 확인",
-            description = "계정 ID와 이메일을 통해 사용자 계정의 존재 여부를 확인합니다."
-    )
+    @Operation(summary = "계정 확인", description = "계정 ID와 이메일을 통해 사용자 계정의 존재 여부를 확인합니다.")
     public ResponseEntity<?> verifyAccount(@RequestBody AccountVerificationRequest accountVerificationRequest) {
         String accountId = accountVerificationRequest.getAccountId();
         String email = accountVerificationRequest.getEmail();
@@ -193,10 +180,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/token-verification")
-    @Operation(
-            summary = "토큰 검증",
-            description = "비밀번호 재설정 등에 사용되는 임시 토큰의 유효성을 검증합니다."
-    )
+    @Operation(summary = "토큰 검증", description = "비밀번호 재설정 등에 사용되는 임시 토큰의 유효성을 검증합니다.")
     public ResponseEntity<?> verifyToken(@RequestBody TokenVerificationRequest tokenVerificationRequest) {
         String accountId = tokenVerificationRequest.getAccountId();
         String token = tokenVerificationRequest.getToken();
@@ -210,10 +194,7 @@ public class AuthenticationController {
     }
 
     @PatchMapping("/reset-password")
-    @Operation(
-            summary = "비밀번호 재설정",
-            description = "토큰 검증 후 새로운 비밀번호로 재설정합니다."
-    )
+    @Operation(summary = "비밀번호 재설정", description = "토큰 검증 후 새로운 비밀번호로 재설정합니다.")
     public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
         String accountId = resetPasswordRequest.getAccountId();
         String token = resetPasswordRequest.getToken();
