@@ -1,37 +1,36 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import Navbar from "./components/layout/Navbar"
+import Sidebar from "./components/layout/Sidebar"
+// import MainPage from "./pages/MainPage"
+// import MindmapPage from "./pages/MindmapPage"
+import routes from "./routes"
 import React, { useState } from 'react'
-import Navbar from './components/layout/Navbar.jsx';
-import Sidebar from './components/layout/Sidebar.jsx';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import routes from "./routes/index.jsx";
 import './index.css';
-import Login from "./pages/Auth.jsx";
 
-
-const App = () => {
+function App() {
   return (
-    <>
-      <Login />
-    </>
-    // <Router>
-    //   <div className="flex h-screen w-full">
-    //     <Sidebar />
-    //     <div className="flex flex-col flex-1 overflow-hidden">
-    //       <Navbar />
-    //       <main className="flex-1 overflow-auto">
-    //         <Routes>
-    //           {routes.map((route) => (
-    //             <Route
-    //               key={route.path}
-    //               path={route.path}
-    //               element={route.element}
-    //             />
-    //           ))}
-    //         </Routes>
-    //       </main>
-    //     </div>
-    //   </div>
-    // </ Router>
-  );
-};
+    <Router>
+      <div className="flex h-screen bg-[#353a3e]">
+        {/* 사이드바 */}
+        <Sidebar />
 
-export default App;
+        {/* 메인 컨텐츠 영역 */}
+        <div className="flex-1 flex flex-col">
+          {/* 상단 네비바 */}
+          <Navbar />
+
+          {/* 실제 페이지 컨텐츠 영역 */}
+          <main className="flex-1 px-5">
+            <Routes>
+              {routes.map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
+            </Routes>
+          </main>
+        </div>
+      </div>
+    </Router>
+  )
+}
+
+export default App

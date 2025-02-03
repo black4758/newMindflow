@@ -3897,7 +3897,7 @@ var __iconNode210 = [
 ];
 var BoomBox = createLucideIcon("BoomBox", __iconNode210);
 
-// node_modules/lucide-react/dist/esm/icons/bot-message-square.js
+// node_modules/lucide-react/dist/esm/icons/bot-user_message-square.js
 var __iconNode211 = [
   ["path", { d: "M12 6V2H8", key: "1155em" }],
   ["path", { d: "m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z", key: "w2lp3e" }],
@@ -11794,7 +11794,7 @@ var __iconNode900 = [
 ];
 var Merge = createLucideIcon("Merge", __iconNode900);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-code.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-code.js
 var __iconNode901 = [
   ["path", { d: "M10 9.5 8 12l2 2.5", key: "3mjy60" }],
   ["path", { d: "m14 9.5 2 2.5-2 2.5", key: "1bir2l" }],
@@ -11802,7 +11802,7 @@ var __iconNode901 = [
 ];
 var MessageCircleCode = createLucideIcon("MessageCircleCode", __iconNode901);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-dashed.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-dashed.js
 var __iconNode902 = [
   ["path", { d: "M13.5 3.1c-.5 0-1-.1-1.5-.1s-1 .1-1.5.1", key: "16ll65" }],
   ["path", { d: "M19.3 6.8a10.45 10.45 0 0 0-2.1-2.1", key: "1nq77a" }],
@@ -11815,7 +11815,7 @@ var __iconNode902 = [
 ];
 var MessageCircleDashed = createLucideIcon("MessageCircleDashed", __iconNode902);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-heart.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-heart.js
 var __iconNode903 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }],
   [
@@ -11828,7 +11828,7 @@ var __iconNode903 = [
 ];
 var MessageCircleHeart = createLucideIcon("MessageCircleHeart", __iconNode903);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-more.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-more.js
 var __iconNode904 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }],
   ["path", { d: "M8 12h.01", key: "czm47f" }],
@@ -11837,7 +11837,7 @@ var __iconNode904 = [
 ];
 var MessageCircleMore = createLucideIcon("MessageCircleMore", __iconNode904);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-off.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-off.js
 var __iconNode905 = [
   ["path", { d: "M20.5 14.9A9 9 0 0 0 9.1 3.5", key: "1iebmn" }],
   ["path", { d: "m2 2 20 20", key: "1ooewy" }],
@@ -11845,7 +11845,7 @@ var __iconNode905 = [
 ];
 var MessageCircleOff = createLucideIcon("MessageCircleOff", __iconNode905);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-plus.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-plus.js
 var __iconNode906 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }],
   ["path", { d: "M8 12h8", key: "1wcyev" }],
@@ -11853,7 +11853,7 @@ var __iconNode906 = [
 ];
 var MessageCirclePlus = createLucideIcon("MessageCirclePlus", __iconNode906);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-question.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-question.js
 var __iconNode907 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }],
   ["path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", key: "1u773s" }],
@@ -11861,7 +11861,7 @@ var __iconNode907 = [
 ];
 var MessageCircleQuestion = createLucideIcon("MessageCircleQuestion", __iconNode907);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-reply.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-reply.js
 var __iconNode908 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }],
   ["path", { d: "m10 15-3-3 3-3", key: "1pgupc" }],
@@ -11869,7 +11869,7 @@ var __iconNode908 = [
 ];
 var MessageCircleReply = createLucideIcon("MessageCircleReply", __iconNode908);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-warning.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-warning.js
 var __iconNode909 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }],
   ["path", { d: "M12 8v4", key: "1got3b" }],
@@ -11877,7 +11877,7 @@ var __iconNode909 = [
 ];
 var MessageCircleWarning = createLucideIcon("MessageCircleWarning", __iconNode909);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle-x.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle-x.js
 var __iconNode910 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }],
   ["path", { d: "m15 9-6 6", key: "1uzhvr" }],
@@ -11885,13 +11885,13 @@ var __iconNode910 = [
 ];
 var MessageCircleX = createLucideIcon("MessageCircleX", __iconNode910);
 
-// node_modules/lucide-react/dist/esm/icons/message-circle.js
+// node_modules/lucide-react/dist/esm/icons/user_message-circle.js
 var __iconNode911 = [
   ["path", { d: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z", key: "vv11sd" }]
 ];
 var MessageCircle = createLucideIcon("MessageCircle", __iconNode911);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-code.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-code.js
 var __iconNode912 = [
   ["path", { d: "M10 7.5 8 10l2 2.5", key: "xb17xw" }],
   ["path", { d: "m14 7.5 2 2.5-2 2.5", key: "5rap1v" }],
@@ -11899,7 +11899,7 @@ var __iconNode912 = [
 ];
 var MessageSquareCode = createLucideIcon("MessageSquareCode", __iconNode912);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-dashed.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-dashed.js
 var __iconNode913 = [
   ["path", { d: "M10 17H7l-4 4v-7", key: "1r71xu" }],
   ["path", { d: "M14 17h1", key: "nufu4t" }],
@@ -11913,7 +11913,7 @@ var __iconNode913 = [
 ];
 var MessageSquareDashed = createLucideIcon("MessageSquareDashed", __iconNode913);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-diff.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-diff.js
 var __iconNode914 = [
   ["path", { d: "m5 19-2 2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2", key: "1xuzuj" }],
   ["path", { d: "M9 10h6", key: "9gxzsh" }],
@@ -11922,14 +11922,14 @@ var __iconNode914 = [
 ];
 var MessageSquareDiff = createLucideIcon("MessageSquareDiff", __iconNode914);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-dot.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-dot.js
 var __iconNode915 = [
   ["path", { d: "M11.7 3H5a2 2 0 0 0-2 2v16l4-4h12a2 2 0 0 0 2-2v-2.7", key: "uodpkb" }],
   ["circle", { cx: "18", cy: "6", r: "3", key: "1h7g24" }]
 ];
 var MessageSquareDot = createLucideIcon("MessageSquareDot", __iconNode915);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-heart.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-heart.js
 var __iconNode916 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   [
@@ -11942,7 +11942,7 @@ var __iconNode916 = [
 ];
 var MessageSquareHeart = createLucideIcon("MessageSquareHeart", __iconNode916);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-lock.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-lock.js
 var __iconNode917 = [
   ["path", { d: "M19 15v-2a2 2 0 1 0-4 0v2", key: "h3d1vz" }],
   ["path", { d: "M9 17H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3.5", key: "xsnnhn" }],
@@ -11950,7 +11950,7 @@ var __iconNode917 = [
 ];
 var MessageSquareLock = createLucideIcon("MessageSquareLock", __iconNode917);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-more.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-more.js
 var __iconNode918 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   ["path", { d: "M8 10h.01", key: "19clt8" }],
@@ -11959,7 +11959,7 @@ var __iconNode918 = [
 ];
 var MessageSquareMore = createLucideIcon("MessageSquareMore", __iconNode918);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-off.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-off.js
 var __iconNode919 = [
   ["path", { d: "M21 15V5a2 2 0 0 0-2-2H9", key: "43el77" }],
   ["path", { d: "m2 2 20 20", key: "1ooewy" }],
@@ -11967,7 +11967,7 @@ var __iconNode919 = [
 ];
 var MessageSquareOff = createLucideIcon("MessageSquareOff", __iconNode919);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-plus.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-plus.js
 var __iconNode920 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   ["path", { d: "M12 7v6", key: "lw1j43" }],
@@ -11975,7 +11975,7 @@ var __iconNode920 = [
 ];
 var MessageSquarePlus = createLucideIcon("MessageSquarePlus", __iconNode920);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-quote.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-quote.js
 var __iconNode921 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   ["path", { d: "M8 12a2 2 0 0 0 2-2V8H8", key: "1jfesj" }],
@@ -11983,7 +11983,7 @@ var __iconNode921 = [
 ];
 var MessageSquareQuote = createLucideIcon("MessageSquareQuote", __iconNode921);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-reply.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-reply.js
 var __iconNode922 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   ["path", { d: "m10 7-3 3 3 3", key: "1eugdv" }],
@@ -11991,7 +11991,7 @@ var __iconNode922 = [
 ];
 var MessageSquareReply = createLucideIcon("MessageSquareReply", __iconNode922);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-share.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-share.js
 var __iconNode923 = [
   ["path", { d: "M21 12v3a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h7", key: "tqtdkg" }],
   ["path", { d: "M16 3h5v5", key: "1806ms" }],
@@ -11999,7 +11999,7 @@ var __iconNode923 = [
 ];
 var MessageSquareShare = createLucideIcon("MessageSquareShare", __iconNode923);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-text.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-text.js
 var __iconNode924 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   ["path", { d: "M13 8H7", key: "14i4kc" }],
@@ -12007,7 +12007,7 @@ var __iconNode924 = [
 ];
 var MessageSquareText = createLucideIcon("MessageSquareText", __iconNode924);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-warning.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-warning.js
 var __iconNode925 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   ["path", { d: "M12 7v2", key: "stiyo7" }],
@@ -12015,7 +12015,7 @@ var __iconNode925 = [
 ];
 var MessageSquareWarning = createLucideIcon("MessageSquareWarning", __iconNode925);
 
-// node_modules/lucide-react/dist/esm/icons/message-square-x.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square-x.js
 var __iconNode926 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }],
   ["path", { d: "m14.5 7.5-5 5", key: "3lb6iw" }],
@@ -12023,7 +12023,7 @@ var __iconNode926 = [
 ];
 var MessageSquareX = createLucideIcon("MessageSquareX", __iconNode926);
 
-// node_modules/lucide-react/dist/esm/icons/message-square.js
+// node_modules/lucide-react/dist/esm/icons/user_message-square.js
 var __iconNode927 = [
   ["path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", key: "1lielz" }]
 ];
@@ -26003,7 +26003,7 @@ lucide-react/dist/esm/icons/boom-box.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/bot-message-square.js:
+lucide-react/dist/esm/icons/bot-user_message-square.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31523,7 +31523,7 @@ lucide-react/dist/esm/icons/merge.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-code.js:
+lucide-react/dist/esm/icons/user_message-circle-code.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31531,7 +31531,7 @@ lucide-react/dist/esm/icons/message-circle-code.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-dashed.js:
+lucide-react/dist/esm/icons/user_message-circle-dashed.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31539,7 +31539,7 @@ lucide-react/dist/esm/icons/message-circle-dashed.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-heart.js:
+lucide-react/dist/esm/icons/user_message-circle-heart.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31547,7 +31547,7 @@ lucide-react/dist/esm/icons/message-circle-heart.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-more.js:
+lucide-react/dist/esm/icons/user_message-circle-more.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31555,7 +31555,7 @@ lucide-react/dist/esm/icons/message-circle-more.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-off.js:
+lucide-react/dist/esm/icons/user_message-circle-off.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31563,7 +31563,7 @@ lucide-react/dist/esm/icons/message-circle-off.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-plus.js:
+lucide-react/dist/esm/icons/user_message-circle-plus.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31571,7 +31571,7 @@ lucide-react/dist/esm/icons/message-circle-plus.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-question.js:
+lucide-react/dist/esm/icons/user_message-circle-question.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31579,7 +31579,7 @@ lucide-react/dist/esm/icons/message-circle-question.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-reply.js:
+lucide-react/dist/esm/icons/user_message-circle-reply.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31587,7 +31587,7 @@ lucide-react/dist/esm/icons/message-circle-reply.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-warning.js:
+lucide-react/dist/esm/icons/user_message-circle-warning.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31595,7 +31595,7 @@ lucide-react/dist/esm/icons/message-circle-warning.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle-x.js:
+lucide-react/dist/esm/icons/user_message-circle-x.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31603,7 +31603,7 @@ lucide-react/dist/esm/icons/message-circle-x.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-circle.js:
+lucide-react/dist/esm/icons/user_message-circle.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31611,7 +31611,7 @@ lucide-react/dist/esm/icons/message-circle.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-code.js:
+lucide-react/dist/esm/icons/user_message-square-code.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31619,7 +31619,7 @@ lucide-react/dist/esm/icons/message-square-code.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-dashed.js:
+lucide-react/dist/esm/icons/user_message-square-dashed.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31627,7 +31627,7 @@ lucide-react/dist/esm/icons/message-square-dashed.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-diff.js:
+lucide-react/dist/esm/icons/user_message-square-diff.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31635,7 +31635,7 @@ lucide-react/dist/esm/icons/message-square-diff.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-dot.js:
+lucide-react/dist/esm/icons/user_message-square-dot.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31643,7 +31643,7 @@ lucide-react/dist/esm/icons/message-square-dot.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-heart.js:
+lucide-react/dist/esm/icons/user_message-square-heart.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31651,7 +31651,7 @@ lucide-react/dist/esm/icons/message-square-heart.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-lock.js:
+lucide-react/dist/esm/icons/user_message-square-lock.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31659,7 +31659,7 @@ lucide-react/dist/esm/icons/message-square-lock.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-more.js:
+lucide-react/dist/esm/icons/user_message-square-more.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31667,7 +31667,7 @@ lucide-react/dist/esm/icons/message-square-more.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-off.js:
+lucide-react/dist/esm/icons/user_message-square-off.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31675,7 +31675,7 @@ lucide-react/dist/esm/icons/message-square-off.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-plus.js:
+lucide-react/dist/esm/icons/user_message-square-plus.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31683,7 +31683,7 @@ lucide-react/dist/esm/icons/message-square-plus.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-quote.js:
+lucide-react/dist/esm/icons/user_message-square-quote.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31691,7 +31691,7 @@ lucide-react/dist/esm/icons/message-square-quote.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-reply.js:
+lucide-react/dist/esm/icons/user_message-square-reply.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31699,7 +31699,7 @@ lucide-react/dist/esm/icons/message-square-reply.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-share.js:
+lucide-react/dist/esm/icons/user_message-square-share.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31707,7 +31707,7 @@ lucide-react/dist/esm/icons/message-square-share.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-text.js:
+lucide-react/dist/esm/icons/user_message-square-text.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31715,7 +31715,7 @@ lucide-react/dist/esm/icons/message-square-text.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-warning.js:
+lucide-react/dist/esm/icons/user_message-square-warning.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31723,7 +31723,7 @@ lucide-react/dist/esm/icons/message-square-warning.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square-x.js:
+lucide-react/dist/esm/icons/user_message-square-x.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *
@@ -31731,7 +31731,7 @@ lucide-react/dist/esm/icons/message-square-x.js:
    * See the LICENSE file in the root directory of this source tree.
    *)
 
-lucide-react/dist/esm/icons/message-square.js:
+lucide-react/dist/esm/icons/user_message-square.js:
   (**
    * @license lucide-react v0.474.0 - ISC
    *

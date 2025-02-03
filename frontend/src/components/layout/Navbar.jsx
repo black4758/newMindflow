@@ -1,22 +1,23 @@
-import React from "react";
-import { User } from 'lucide-react';
+import React from "react"
+import { User, Bell, Settings } from "lucide-react"
 
 const Navbar = () => {
-	return (
-		<nav className="bg-white px-10 py-2.5">
-			<div className="flex justify-end items-center">
-				<div>
-					<span className="px-4">사용자</span>
-				</div>
-				<div className="flex items-center">
-					<button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-						<User className="h-6 w-6 text-gray-600"/>
-					</button>
-				</div>
-			</div>
+  return (
+    <nav className="h-14 flex items-center justify-end px-4">
+      {/* 우측 아이콘들만 유지 */}
+      <div className="flex items-center gap-2">
+        <button className="p-2 hover:bg-gray-100 rounded-lg">
+          <Bell size={20} className="text-gray-600" />
+        </button>
+        <button className="p-2 hover:bg-gray-100 rounded-lg">
+          <Settings size={20} className="text-gray-600" />
+        </button>
+        <button className="p-2 hover:bg-gray-100 rounded-lg">
+          <User size={20} className="text-gray-600" />
+        </button>
+      </div>
+    </nav>
+  )
+}
 
-		</nav>
-	);
-};
-
-export default Navbar;
+export default Navbar
