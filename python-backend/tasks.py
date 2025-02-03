@@ -185,7 +185,7 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         query_data = {
             "structure": json.dumps(current_structure, indent=2, default=str) if current_structure else "아직 생성된 노드가 없습니다.",
             "question": escape_cypher_quotes(question),
-            "answer_lines": answer_sentences,
+            "answer_lines": escape_cypher_quotes(answer_sentences),
             "account_id": account_id,
             "chat_room_id": chat_room_id,
             "mongo_ref": chat_id
