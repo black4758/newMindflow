@@ -9,6 +9,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -98,10 +99,9 @@ public class PasswordResetService {
 
     // Generates a random alphanumeric token.
     private String generateRandomToken() {
-        return UUID.randomUUID()
-                   .toString()
-                   .replaceAll("-", "")
-                   .substring(0, 6);
+        SecureRandom random = new SecureRandom();
+        Integer number = random.nextInt(1_000_000); // generates a number between 0 and 999999
+        return String.format("%06d", number);  // pads with leading zeros if necessary
     }
 
     // Sends the token to the user’s email.

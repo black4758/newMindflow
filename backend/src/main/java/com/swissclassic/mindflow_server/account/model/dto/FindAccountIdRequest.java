@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class FindIdRequest {
+public class FindAccountIdRequest {
     String name;
     String email;
 }

@@ -20,8 +20,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
 /**
  * REST controller for authentication-related endpoints.
  */
@@ -84,10 +82,12 @@ public class AuthenticationController {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         try {
             // Authenticate the user
-            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                    loginRequest.getAccountId(),
-                    loginRequest.getPassword()
-            ));
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getAccountId(),
+                            loginRequest.getPassword()
+                    )
+            );
 
             // Set the authentication in the security context
             SecurityContextHolder.getContext()
@@ -106,12 +106,28 @@ public class AuthenticationController {
 
     @PostMapping("/logout")
     @Operation(
-            summary = "로그아웃 (현재 미구현)",
+            summary = "로그아웃",
             description = "사용자의 로그아웃을 처리하고 토큰을 무효화합니다."
     )
     public ResponseEntity<?> logout(@RequestBody Long userId) {
+        Authentication auth = SecurityContextHolder.getContext()
+                                                   .getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("User not authenticated.");
+        }
         // 세션 토큰 날리기
-        throw new NotImplementedException();
+        User user = userRepository.findById(userId)
+                                  .orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("Invalid user id.");
+        }
+        user.setRefreshToken(null);
+        userRepository.save(user);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                             .body("Logged out successfully.");
     }
 
     @DeleteMapping("/delete/{userId}")
@@ -130,9 +146,9 @@ public class AuthenticationController {
             summary = "계정 ID 찾기",
             description = "사용자의 이름과 이메일을 통해 계정 ID를 찾습니다."
     )
-    public ResponseEntity<?> findAccountId(@RequestBody FindIdRequest findIdRequest) {
-        String name = findIdRequest.getName();
-        String email = findIdRequest.getEmail();
+    public ResponseEntity<?> findAccountId(@RequestBody FindAccountIdRequest findAccountIdRequest) {
+        String name = findAccountIdRequest.getName();
+        String email = findAccountIdRequest.getEmail();
 
         // 이름과 이메일의 존재 여부 확인
         User user = userRepository.findByUsername(name)
