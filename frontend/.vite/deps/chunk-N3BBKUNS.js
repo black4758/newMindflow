@@ -750,7 +750,7 @@ var require_react_development = __commonJS({
           var event = new window.ErrorEvent("error", {
             bubbles: true,
             cancelable: true,
-            message: "object" === typeof error && null !== error && "string" === typeof error.message ? String(error.message) : String(error),
+            user_message: "object" === typeof error && null !== error && "string" === typeof error.message ? String(error.message) : String(error),
             error
           });
           if (!window.dispatchEvent(event)) return;
