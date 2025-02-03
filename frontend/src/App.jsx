@@ -1,40 +1,32 @@
-import React, { useState } from 'react'
-import Navbar from './components/layout/Navbar.jsx';
-import Sidebar from './components/layout/Sidebar.jsx';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import routes from "./routes/index.jsx";
-import './index.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import Navbar from "./components/layout/Navbar"
+import Sidebar from "./components/layout/Sidebar"
+import MainPage from "./pages/MainPage"
+import MindmapPage from "./pages/MindmapPage"
 
-// <<<<<<< HEAD
-//
-//
-// function App() {
-//   const [count, setCount] = useState(0)
-// =======
-// >>>>>>> fd3f47be12e8ba98405ce85aa4795bf4536abee8
-
-const App = () => {
+function App() {
   return (
     <Router>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen bg-[#353a3e]">
+        {/* 사이드바 */}
         <Sidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
+
+        {/* 메인 컨텐츠 영역 */}
+        <div className="flex-1 flex flex-col">
+          {/* 상단 네비바 */}
           <Navbar />
-          <main className="flex-1 overflow-auto">
+
+          {/* 실제 페이지 컨텐츠 영역 */}
+          <main className="flex-1 px-5">
             <Routes>
-              {routes.map((route) => (
-                <Route
-                  key={route.path}
-                  path={route.path}
-                  element={route.element}
-                />
-              ))}
+              <Route path="/" element={<MainPage />} />
+              <Route path="/mindmap" element={<MindmapPage />} />
             </Routes>
           </main>
         </div>
       </div>
-    </ Router>
-  );
-};
+    </Router>
+  )
+}
 
-export default App;
+export default App

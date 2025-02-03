@@ -196,16 +196,19 @@ const Mindmap = () => {
   }, [processedData.nodes])
 
   // 노드 클릭/선택 핸들러 수정
-  const handleNodeFocus = useCallback(node => {
+  const handleNodeFocus = useCallback((node) => {
+    // 이미 선택된 노드를 다시 클릭했을 때만 Onedata로 이동
     if (isNodeFocused && selectedNode?.id === node.id) {
       const connectedNodes = new Set();
       connectedNodes.add(node.id);
       
+      // 연결된 노드들 찾기
       testdata.relationships.forEach(rel => {
         if (rel.source === node.id) connectedNodes.add(rel.target);
         if (rel.target === node.id) connectedNodes.add(rel.source);
       });
 
+      // 필터링된 데이터 생성
       const filteredData = {
         nodes: testdata.nodes.filter(n => connectedNodes.has(n.id)),
         relationships: testdata.relationships.filter(rel => 
@@ -213,24 +216,17 @@ const Mindmap = () => {
         )
       };
 
-      navigate('/onedata', { state: { graphData: filteredData } });
+      // state와 함께 navigate 호출
+      navigate('/onedata/', { 
+        state: { graphData: filteredData },
+        replace: true  // 현재 경로를 대체
+      });
     } else {
-      if (is3D) {
-        const distance = 40;
-        const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
-        graphRef.current.cameraPosition(
-          { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
-          node,
-          3000
-        );
-      } else {
-        graphRef.current.centerAt(node.x, node.y, 1000);
-        graphRef.current.zoom(2, 1000);
-      }
-      setSelectedNode(node);
       setIsNodeFocused(true);
+      setSelectedNode(node);
+      handleNodeSelect(node);
     }
-  }, [isNodeFocused, selectedNode, navigate, is3D]);
+  }, [isNodeFocused, selectedNode, handleNodeSelect, navigate]);
 
   return (
     <div className="relative w-full h-full">
