@@ -1,7 +1,7 @@
 import MainPage from "../pages/MainPage.jsx";
 import Login from "../pages/Login.jsx";
 import MindmapPage from "../pages/MindmapPage.jsx";
-import OnedataPage from "../pages/OnedataPage.jsx";
+import MindmapPagedetail from "../pages/MindmapPagedetail.jsx";
 
 const routes = [
     {
@@ -23,9 +23,9 @@ const routes = [
         requireAuth: false
     },
     {
-        path: '/onedata/',
-        element: <OnedataPage />,
-        title: '강조페이지',
+        path: '/mindmap/detail/',
+        element: <MindmapPagedetail />,
+        title: '마인드맵상세페이지',
         requireAuth: false
     },
 ];
