@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import org.apache.commons.lang3.NotImplementedException;
@@ -128,17 +129,19 @@ public class AuthenticationController {
 
     @DeleteMapping("/delete/{userId}")
     @Operation(summary = "회원 탈퇴 (일부 구현됨)", description = "사용자 계정을 삭제합니다. 관련된 모든 데이터가 삭제됩니다.")
+    @Transactional
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
         // 계정 아이디 찾기
-        if (userRepository.findById(userId)
-                          .isEmpty()) {
+        User user = userRepository.findById(userId)
+                                  .orElse(null);
+        if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("Invalid user id.");
         }
         // 계정 정보 삭제
-        userRepository.deleteAllById(userId);
-        // TODO: neo4j 삭제
+        userRepository.delete(user);
         // TODO: mongodb 삭제
+        // TODO: neo4j 삭제
 
         return ResponseEntity.status(HttpStatus.OK)
                              .body("Deleting account successful.");
