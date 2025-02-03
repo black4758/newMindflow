@@ -1,15 +1,22 @@
-import React from "react";
+const ModelCard = ({ text, isUser, model }) => {
+  const getModelIcon = (modelName) => {
+    return `/icons/${modelName}.svg`
+  }
 
-const ModelCard = ({ model, response, onSelect }) => {
-	return (
-		<div
-			onClick={() => onSelect(model, response)}
-			className="p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-white h-full"
-		>
-			<h3 className="font-semibold text-lg mb-2 text-gray-800">{model}</h3>
-			<p className="text-gray-600 line-clamp-3">{response}</p>
-		</div>
-	);
-};
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
+      <div className={`max-w-[70%] p-3 rounded-lg ${isUser ? "bg-[#e0e0e0] text-gray-800" : "bg-[#e0e0e0] text-gray-800"}`}>
+        <div className="flex items-center gap-2">
+          {!isUser && model && (
+            <span className="w-5 h-5">
+              <img src={getModelIcon(model)} alt={`${model} icon`} className="w-full h-full object-contain" />
+            </span>
+          )}
+          <p className="text-sm">{text}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-export default ModelCard;
+export default ModelCard
