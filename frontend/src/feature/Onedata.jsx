@@ -229,31 +229,13 @@ const Onedata = () => {
     updateHighlight();
   };
 
-  // 3D 모드 초기화를 위한 useEffect 추가
-  useEffect(() => {
-    if (is3D && fgRef.current) {
-      // 3D 렌더러 초기화
-      const renderer = fgRef.current.renderer();
-      if (renderer) {
-        // CSS2D 렌더러 추가
-        const labelRenderer = new CSS2DRenderer();
-        labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        labelRenderer.domElement.style.position = 'absolute';
-        labelRenderer.domElement.style.top = '0px';
-        labelRenderer.domElement.style.pointerEvents = 'none';
-        document.querySelector('.scene-container')?.appendChild(labelRenderer.domElement);
-      }
-    }
-  }, [is3D]);
-
-  // 3D 노드 객체 생성 함수
-  const nodeThreeObject = useCallback((node) => {
+  // nodeThreeObject 수정
+  const nodeThreeObject = node => {
     const sprite = new SpriteText(node.title);
-    sprite.color = node.color;
+    sprite.color = node.color;  // 원래 노드의 색상 유지
     sprite.textHeight = 8;
-    sprite.position.set(0, 0, 0);
     return sprite;
-  }, []);
+  };
 
   // Mindmap.jsx의 getNodeSize 함수 추가
   const getNodeSize = (text, ctx, fontSize) => {
@@ -339,11 +321,12 @@ const Onedata = () => {
         <ForceGraph3D
           ref={fgRef}
           graphData={data}
-          nodeThreeObject={nodeThreeObject}
-          extraRenderers={extraRenderers}
-          nodeLabel={(node) => node.content} // content를 label로 표시
-          onNodeHover={setHoverNode}
-          onNodeClick={handleNodeFocus}
+          nodeThreeObject={node => {
+            const sprite = new SpriteText(node.title);
+            sprite.color = node.color;
+            sprite.textHeight = 8;
+            return sprite;
+          }}
           {...commonProps}
         />
       ) : (

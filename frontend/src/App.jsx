@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import Navbar from "./components/layout/Navbar"
 import Sidebar from "./components/layout/Sidebar"
-import MainPage from "./pages/MainPage"
-import MindmapPage from "./pages/MindmapPage"
+// import MainPage from "./pages/MainPage"
+// import MindmapPage from "./pages/MindmapPage"
+import routes from "./routes"
 
 function App() {
   return (
@@ -19,8 +20,9 @@ function App() {
           {/* 실제 페이지 컨텐츠 영역 */}
           <main className="flex-1 px-5">
             <Routes>
-              <Route path="/" element={<MainPage />} />
-              <Route path="/mindmap" element={<MindmapPage />} />
+              {routes.map((route) => (
+                <Route key={route.path} path={route.path} element={route.element} />
+              ))}
             </Routes>
           </main>
         </div>
