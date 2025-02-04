@@ -69,9 +69,9 @@ services:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: "neo4j/REDACTEDREDACTED"   # 직접 계정/비밀번호를 입력
+      NEO4J_AUTH: '${NEO4J_USERNAME}/${NEO4J_PASSWORD}'  # 변수로 수정하고 따옴표로 감쌈
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "REDACTEDREDACTED", "RETURN 1"]
+      test: ["CMD", "cypher-shell", "-u", "${NEO4J_USERNAME}", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
       interval: 10s
       retries: 5
       start_period: 20s
@@ -80,7 +80,6 @@ services:
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
-
 
 networks:
   backend-network:
