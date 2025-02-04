@@ -1,3 +1,6 @@
+import sys
+
+from colorama.win32 import STDERR
 from flask import Flask, request, jsonify, render_template
 from pymongo import MongoClient
 from neo4j import GraphDatabase
@@ -10,26 +13,24 @@ from langchain_anthropic import ChatAnthropic
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 import time as timer
-
-
 from tasks import create_mindmap
 
 load_dotenv()
+neo4j_uri = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
+userid = os.getenv("NEO4J_USER", "neo4j")
+userpw = os.getenv("NEO4J_PASSWORD", "REDACTEDREDACTED")
 
 app = Flask(__name__)
+print(os.getenv("NEO4J_PASSWORD", "password"), file=sys.stderr)
 
 # Neo4j 설정
 try:
-    neo4j_uri = "neo4j://localhost:7687"
-    neo4j_driver = GraphDatabase.driver(neo4j_uri, 
-                                    auth=(os.getenv("NEO4J_USER", "neo4j"), 
-                                            os.getenv("NEO4J_PASSWORD", "password")))
+    neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(userid, userpw))
 except Exception as e:
-    print(f"Neo4j 연결 오류: {e}")
+    print(f"Neo4j 연결 오류: {e} at app")
 
 # LangChain 설정
-chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
-
+chat_model = ChatAnthropic(model="claude-3-5-haiku-latest", max_tokens=4096)
 
 # 일반 대화용 프롬프트 템플릿
 chat_prompt = ChatPromptTemplate.from_messages([
@@ -37,20 +38,20 @@ chat_prompt = ChatPromptTemplate.from_messages([
     ("user", "{question}")
 ])
 
-
 # LangChain 체인 구성
 chat_chain = chat_prompt | chat_model | StrOutputParser()
+
 
 def escape_cypher_quotes(text):
     """Neo4j Cypher 쿼리용 문자열 이스케이프 개선"""
     if text is None:
         return text
-        
+
     # 축약형(I'm, don't 등)과 따옴표를 포함한 텍스트를 처리하기 위해
     # 작은따옴표를 두 개의 작은따옴표로 이스케이프 처리
     escaped_text = ""
     prev_char = None
-    
+
     for char in text:
         if char == "'":
             # 이전 문자가 알파벳이고 다음 문자가 m, s, t, ve, ll 등인 경우를 처리하기 위해
@@ -62,7 +63,7 @@ def escape_cypher_quotes(text):
         else:
             escaped_text += char
         prev_char = char
-    
+
     return escaped_text
 
 
@@ -79,7 +80,7 @@ def chat():
 
         # 답변을 문장 단위로 분리
         answer_sentences = [line.strip() for line in answer.split('\n') if line.strip()]
-        
+
         # 각 문장에 sentence_id 부여 및 Cypher 이스케이프 처리
         sentences_with_ids = [
             {
@@ -120,12 +121,13 @@ def chat():
             'message': str(e)
         }), 500
 
+
 @app.route('/get_mindmap', methods=['GET'])
 def get_mindmap():
     try:
 
         with neo4j_driver.session(database="mindmap") as session:
-            
+
             test_result = session.run("MATCH (n) RETURN count(n) as count")
             node_count = test_result.single()['count']
             print(f"Total nodes in database: {node_count}")
@@ -148,13 +150,13 @@ def get_mindmap():
                     ELSE null
                 END) as rels
             """)
-            
+
             data = result.single()
             return jsonify({
                 'nodes': [node for node in data['nodes'] if node is not None],
                 'relationships': [rel for rel in data['rels'] if rel is not None]
             })
-            
+
     except Exception as e:
         print(f"마인드맵 조회 오류: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
