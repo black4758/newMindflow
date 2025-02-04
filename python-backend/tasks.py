@@ -24,7 +24,7 @@ except Exception as e:
     print(f"Neo4j 연결 오류: {e}")
 
 # LangChain 설정
-chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
+chat_model = ChatAnthropic(model="claude-3-5-haiku-latest", max_tokens=4096)
 
 # Neo4j 쿼리 생성용 프롬프트 템플릿
 query_prompt = ChatPromptTemplate.from_messages([
@@ -186,26 +186,28 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         
         # 쿼리 생성을 위한 데이터 준비
         query_data = {
-            "structure": json.dumps(current_structure, indent=2, default=str) if current_structure else "아직 생성된 노드가 없습니다.",
+            "structure": json.dumps(current_structure, indent=2,
+                                    default=str) if current_structure else "아직 생성된 노드가 없습니다.",
             "question": escape_cypher_quotes(question),
             "answer_lines": answer_sentences,
             "account_id": account_id,
             "chat_room_id": chat_room_id,
             "mongo_ref": chat_id
         }
-        
+
         # 쿼리 생성 및 실행
 
-        print("Cypher 쿼리 생성 시작")  
+        print("Cypher 쿼리 생성 시작")
         query = query_chain.invoke(query_data)
-        print(f"""생성된 Cypher 쿼리:{query}""")
+        query = query.replace("```cypher", "").replace("```", "")
+        print(f"""생성된 Cypher 쿼리:\n{query}""")
 
         print("Neo4j 쿼리 실행 시작")
         with neo4j_driver.session(database="mindmap") as session:
             session.run(query)
         print("마인드맵 생성 작업 완료")
         return True
-    
+
     except Exception as e:
         print(f"""마인드맵 생성 오류:
 - Error Type: {type(e).__name__}

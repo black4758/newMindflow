@@ -44,10 +44,28 @@ public class AuthenticationController {
     private JwtUtils jwtUtils;
 
     /**
-     * Endpoint for user registration.
+     * 새로운 사용자를 시스템에 등록합니다.
+     * <p>
      *
-     * @param registerRequest the registration request containing user details
-     * @return a ResponseEntity with a success or error message
+     * @param registerRequest 회원가입에 필요한 정보를 담은 요청 객체:
+     *                        <p>
+     *                        - accountId: 계정 고유 식별자
+     *                        <p>
+     *                        - password: 사용자 비밀번호
+     *                        <p>
+     *                        - email: 사용자 이메일 주소
+     *                        <p>
+     *                        - username: 사용자 이름
+     *                        <p>
+     *                        - displayName: 표시될 이름
+     *                        <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 회원가입 성공 메시지
+     * <p>
+     * - 400 Bad Request: 회원가입 실패 시 오류 메시지
+     * <p>
+     * @throws Exception 회원가입 과정 실패 시 (예: 중복된 계정 ID)
      */
     @PostMapping("/register")
     @Operation(summary = "회원 가입", description = "사용자의 정보를 받아 회원가입을 진행합니다.")
@@ -62,10 +80,24 @@ public class AuthenticationController {
     }
 
     /**
-     * Endpoint for user login.
+     * 사용자 인증을 수행하고 성공 시 JWT 토큰을 발급합니다.
+     * <p>
      *
-     * @param loginRequest the login request containing username and password
-     * @return a ResponseEntity with a JWT token or error message
+     * @param loginRequest 로그인 요청 객체:
+     *                     <p>
+     *                     - accountId: 사용자 계정 ID
+     *                     <p>
+     *                     - password: 사용자 비밀번호
+     *                     <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 로그인 성공 시 AuthResponse (접근 토큰과 갱신 토큰)
+     * <p>
+     * - 401 Unauthorized: 잘못된 인증 정보
+     * <p>
+     * - 400 Bad Request: 잘못된 요청 형식
+     * <p>
+     * @throws BadCredentialsException 제공된 인증 정보가 유효하지 않은 경우
      */
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "계정 ID와 비밀번호로 로그인하고 JWT 토큰을 발급받습니다.")
@@ -97,15 +129,29 @@ public class AuthenticationController {
 
 
             // Return the JWT in the response
-            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken));
+            return ResponseEntity.ok(new AuthResponse(user.getId(), user.getDisplayName(), accessToken, refreshToken));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("Invalid username or password.");
         }
     }
 
+    /**
+     * 사용자의 로그아웃을 처리하고 갱신 토큰을 무효화합니다.
+     * <p>
+     *
+     * @param userId 로그아웃할 사용자의 ID
+     *               <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 로그아웃 성공 메시지
+     * <p>
+     * - 401 Unauthorized: 인증되지 않은 사용자
+     * <p>
+     * - 401 Unauthorized: 유효하지 않은 사용자 ID
+     */
     @PostMapping("/logout")
-    @Operation(summary = "로그아웃", description = "사용자의 로그아웃을 처리하고 토큰을 무효화합니다.")
+    @Operation(summary = "로그아웃", description = "사용자의 로그아웃을 처리하고 갱신 토큰을 무효화합니다.")
     public ResponseEntity<?> logout(@RequestBody Long userId) {
         Authentication auth = SecurityContextHolder.getContext()
                                                    .getAuthentication();
@@ -127,10 +173,30 @@ public class AuthenticationController {
                              .body("Logged out successfully.");
     }
 
+    /**
+     * 사용자 계정과 관련된 모든 데이터를 삭제합니다.
+     * <p>
+     *
+     * @param userId 삭제할 사용자 계정의 ID
+     *               <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 계정 삭제 성공 메시지
+     * <p>
+     * - 401 Unauthorized: 유효하지 않은 사용자 ID
+     * <p>
+     * @apiNote 현재 부분적으로 구현됨. MongoDB와 Neo4j 데이터 삭제 구현 필요.
+     */
     @DeleteMapping("/delete/{userId}")
-    @Operation(summary = "회원 탈퇴 (일부 구현됨)", description = "사용자 계정을 삭제합니다. 관련된 모든 데이터가 삭제됩니다.")
+    @Operation(summary = "회원 탈퇴 (일부 구현됨)", description = "사용자 계정과 관련된 모든 데이터를 삭제합니다.")
     @Transactional
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
+        Authentication auth = SecurityContextHolder.getContext()
+                                                   .getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("User not authenticated.");
+        }
         // 계정 아이디 찾기
         User user = userRepository.findById(userId)
                                   .orElse(null);
@@ -147,6 +213,24 @@ public class AuthenticationController {
                              .body("Deleting account successful.");
     }
 
+    /**
+     * 사용자의 이름과 이메일을 사용하여 계정 ID를 찾습니다.
+     * <p>
+     *
+     * @param findAccountIdRequest 계정 찾기 요청 객체:
+     *                             <p>
+     *                             - name: 사용자 이름
+     *                             <p>
+     *                             - email: 사용자 이메일 주소
+     *                             <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 찾은 계정 ID
+     * <p>
+     * - 401 Unauthorized: 유효하지 않은 사용자 이름
+     * <p>
+     * - 401 Unauthorized: 이메일 불일치
+     */
     @PostMapping("/find-id")
     @Operation(summary = "계정 ID 찾기", description = "사용자의 이름과 이메일을 통해 계정 ID를 찾습니다.")
     public ResponseEntity<?> findAccountId(@RequestBody FindAccountIdRequest findAccountIdRequest) {
@@ -170,6 +254,24 @@ public class AuthenticationController {
                              .body(user.getAccountId());
     }
 
+    /**
+     * 계정 ID와 이메일을 사용하여 계정의 존재 여부를 확인합니다.
+     * <p>
+     *
+     * @param accountVerificationRequest 계정 확인 요청 객체:
+     *                                   <p>
+     *                                   - accountId: 계정 식별자
+     *                                   <p>
+     *                                   - email: 연관된 이메일 주소
+     *                                   <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 계정이 존재하고 이메일이 일치하는 경우
+     * <p>
+     * - 401 Unauthorized: 유효하지 않은 계정 ID
+     * <p>
+     * - 401 Unauthorized: 이메일 불일치
+     */
     @PostMapping("/account-verification")
     @Operation(summary = "계정 확인", description = "계정 ID와 이메일을 통해 사용자 계정의 존재 여부를 확인합니다.")
     public ResponseEntity<?> verifyAccount(@RequestBody AccountVerificationRequest accountVerificationRequest) {
@@ -192,6 +294,22 @@ public class AuthenticationController {
                              .body("Token is valid.");
     }
 
+    /**
+     * 비밀번호 재설정 토큰의 유효성을 검증합니다.
+     * <p>
+     *
+     * @param tokenVerificationRequest 토큰 검증 요청 객체:
+     *                                 <p>
+     *                                 - accountId: 계정 식별자
+     *                                 <p>
+     *                                 - token: 검증할 재설정 토큰
+     *                                 <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 유효한 토큰
+     * <p>
+     * - 401 Unauthorized: 유효하지 않은 토큰
+     */
     @PostMapping("/token-verification")
     @Operation(summary = "토큰 검증", description = "비밀번호 재설정 등에 사용되는 임시 토큰의 유효성을 검증합니다.")
     public ResponseEntity<?> verifyToken(@RequestBody TokenVerificationRequest tokenVerificationRequest) {
@@ -206,6 +324,24 @@ public class AuthenticationController {
         }
     }
 
+    /**
+     * 토큰 검증 후 사용자의 비밀번호를 재설정합니다.
+     * <p>
+     *
+     * @param resetPasswordRequest 비밀번호 재설정 요청 객체:
+     *                             <p>
+     *                             - accountId: 계정 식별자
+     *                             <p>
+     *                             - token: 검증된 재설정 토큰
+     *                             <p>
+     *                             - newPassword: 설정할 새 비밀번호
+     *                             <p>
+     * @return ResponseEntity:
+     * <p>
+     * - 200 OK: 비밀번호 재설정 성공
+     * <p>
+     * - 400 Bad Request: 유효하지 않은 토큰 또는 존재하지 않는 계정 ID
+     */
     @PatchMapping("/reset-password")
     @Operation(summary = "비밀번호 재설정", description = "토큰 검증 후 새로운 비밀번호로 재설정합니다.")
     public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
