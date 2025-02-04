@@ -1,4 +1,4 @@
-import MainPage from "../pages/MainPage.jsx"
+import MainPage from "../pages/Mainpage.jsx"
 import Login from "../pages/Login.jsx"
 import MindmapPage from "../pages/MindmapPage.jsx"
 import OnedataPage from "../pages/OnedataPage.jsx"
