@@ -1,10 +1,10 @@
 import React from "react"
-import Mindmapdetail from "../components/feature/Mindmapdetail.jsx"
+import Onedata from "../components/feature/Onedata.js"
 
 const OnedataPage = () => {
   return (
     <div className="w-full h-full relative">
-      <Mindmapdetail />
+      <Onedata />
     </div>
   )
 }

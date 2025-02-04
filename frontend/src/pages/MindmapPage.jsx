@@ -1,5 +1,5 @@
 import React from "react"
-import Mindmap from "../feature/Mindmap"
+import Mindmap from "../components/feature/Mindmap"
 
 const MindmapPage = () => {
   return (

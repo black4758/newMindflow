@@ -195,25 +195,36 @@ const Onedata = () => {
     }
   }, [is3D]);
 
-  // 하이라이트 업데이트 함수
-  const updateHighlight = () => {
-    setHighlightNodes(new Set(highlightNodes));
-    setHighlightLinks(new Set(highlightLinks));
-  };
-
-  // 노드 호버 핸들러
-  const handleNodeHover = node => {
-    highlightNodes.clear();
-    highlightLinks.clear();
-    if (node) {
-      highlightNodes.add(node);
-      node.neighbors?.forEach(neighbor => highlightNodes.add(neighbor));
-      node.links?.forEach(link => highlightLinks.add(link));
+  // updateHighlight 함수 추가
+  const updateHighlight = useCallback(() => {
+    if (!hoverNode) {
+      setHighlightNodes(new Set());
+      setHighlightLinks(new Set());
+      return;
     }
 
-    setHoverNode(node || null);
+    const connectedNodes = data?.links
+      .filter((link) => link.source === hoverNode || link.target === hoverNode)
+      .map((link) => (link.source === hoverNode ? link.target : link.source));
+
+    setHighlightNodes(new Set([hoverNode, ...connectedNodes]));
+    setHighlightLinks(new Set(data?.links.filter((link) => link.source === hoverNode || link.target === hoverNode)));
+  }, [hoverNode, data?.links]);
+
+  // useEffect 추가
+  useEffect(() => {
     updateHighlight();
-  };
+  }, [updateHighlight]);
+
+  // 노드 호버 핸들러 수정
+  const handleNodeHover = useCallback((node) => {
+    setHoverNode(node);
+    if (node) {
+      document.body.style.cursor = "pointer";
+    } else {
+      document.body.style.cursor = "default";
+    }
+  }, []);
 
   // 링크 호버 핸들러
   const handleLinkHover = link => {
@@ -279,6 +290,21 @@ const Onedata = () => {
     onNodeClick: handleNodeFocus
   };
 
+  // useEffect 수정
+  useEffect(() => {
+    if (fgRef.current) {
+      if (is3D) {
+        // 3D 모드: 집중형 배치
+        fgRef.current.d3Force("charge").strength(-30);
+        fgRef.current.d3Force("link").distance(50);
+      } else {
+        // 2D 모드: 확산형 배치
+        fgRef.current.d3Force("charge").strength(-200);
+        fgRef.current.d3Force("link").distance(200);
+      }
+    }
+  }, [is3D]);
+
   return (
     <div style={styles.container}>
       <div style={styles.searchContainer}>
@@ -328,16 +354,26 @@ const Onedata = () => {
             return sprite;
           }}
           {...commonProps}
+          d3Force="charge"
+          d3ForceStrength={-30}
+          linkDistance={50}
         />
       ) : (
         <ForceGraph2D
           ref={fgRef}
           graphData={data}
+          width={window.innerWidth - 256}
+          height={window.innerHeight - 64}
+          nodeRelSize={1}
+          nodeVal={1}
+          nodeColor={(node) => "#4299e1"}
+          nodeOpacity={1}
+          nodeCanvasObjectMode={() => "replace"}
           nodeCanvasObject={(node, ctx, globalScale) => {
             const fontSize = 12;
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
             const isHighlighted = highlightNodes.has(node);
-            const radius = 5;
+            const radius = 8;
 
             ctx.save();
 
@@ -355,7 +391,7 @@ const Onedata = () => {
             ctx.closePath();
 
             // 배경색 설정
-            ctx.fillStyle = isHighlighted ? "#4299e1" : node.color.replace(')', ', 0.5)').replace('rgb', 'rgba');
+            ctx.fillStyle = isHighlighted ? "#4299e1" : "rgba(66, 153, 225, 0.2)";
             ctx.fill();
 
             // 테두리 설정
@@ -379,7 +415,28 @@ const Onedata = () => {
             node.width = width;
             node.height = height;
           }}
-          {...commonProps}
+          linkWidth={1}
+          linkColor={(link) => (highlightLinks.has(link) ? "#94a3b8" : "rgba(226, 232, 240, 0.2)")}
+          linkDirectionalParticles={4}
+          linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 2 : 0)}
+          linkDirectionalParticleSpeed={0.005}
+          onNodeHover={handleNodeHover}
+          onNodeDragEnd={(node) => {
+            node.fx = node.x;
+            node.fy = node.y;
+          }}
+          d3Force="charge"
+          d3ForceStrength={-200}
+          linkDistance={200}
+          nodeLabel={(node) => ""}
+          backgroundColor="#fbfbfb"
+          nodePointerAreaPaint={(node, color, ctx) => {
+            const fontSize = 12;
+            const { width, height } = getNodeSize(node.title, ctx, fontSize);
+            ctx.fillStyle = color;
+            ctx.fillRect(node.x - width / 2, node.y - height / 2, width, height);
+          }}
+          onNodeClick={handleNodeFocus}
         />
       )}
 
