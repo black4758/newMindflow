@@ -43,6 +43,9 @@ public class ChatLogServiceImpl implements ChatLogService{
 
         // MongoDB에 저장
         chatLogRepository.save(chatLog);
+
+
+
     }
     @Override
     public List<ChatLog> getMessagesByChatRoomId(String chatRoomId) {
