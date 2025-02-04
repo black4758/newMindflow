@@ -180,6 +180,7 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
 
         # 마인드맵 구조 가져오기
         current_structure = get_mindmap_structure(account_id)
+
         
         # 쿼리 생성을 위한 데이터 준비
         query_data = {
@@ -207,5 +208,11 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         print(f"""마인드맵 생성 오류:
 - Error Type: {type(e).__name__}
 - Error Message: {str(e)}
+- Input Data: 
+  account_id: {account_id}
+  chat_room_id: {chat_room_id}
+  chat_id: {chat_id}
+  question: {question}
+  answer_sentences: {answer_sentences}
 """)
         return False
