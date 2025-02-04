@@ -11,15 +11,17 @@ from celery_config import celery
 
 
 
-# Neo4j 설정
+# 환경 변수로 Neo4j 연결 정보 가져오기
+neo4j_uri = os.getenv("NEO4J_URI")
+neo4j_user = os.getenv("NEO4J_USER")
+neo4j_password = os.getenv("NEO4J_PASSWORD")
+
+# Neo4j 연결
 try:
-    neo4j_uri = "neo4j://localhost:7687"
-    neo4j_driver = GraphDatabase.driver(neo4j_uri, 
-                                    auth=(os.getenv("NEO4J_USER", "neo4j"), 
-                                            os.getenv("NEO4J_PASSWORD", "password")))
+    neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+    print("Neo4j 연결 성공")
 except Exception as e:
     print(f"Neo4j 연결 오류: {e}")
-
 
 # LangChain 설정
 chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
