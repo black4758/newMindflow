@@ -4,16 +4,13 @@ import com.swissclassic.mindflow_server.account.model.dto.EditUserProfileRequest
 import com.swissclassic.mindflow_server.account.model.dto.UserProfileResponse;
 import com.swissclassic.mindflow_server.account.model.entity.User;
 import com.swissclassic.mindflow_server.account.repository.UserRepository;
-import com.swissclassic.mindflow_server.account.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
