@@ -129,7 +129,7 @@ public class AuthenticationController {
 
 
             // Return the JWT in the response
-            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken));
+            return ResponseEntity.ok(new AuthResponse(user.getId(), user.getDisplayName(), accessToken, refreshToken));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("Invalid username or password.");
@@ -191,6 +191,12 @@ public class AuthenticationController {
     @Operation(summary = "회원 탈퇴 (일부 구현됨)", description = "사용자 계정과 관련된 모든 데이터를 삭제합니다.")
     @Transactional
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
+        Authentication auth = SecurityContextHolder.getContext()
+                                                   .getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("User not authenticated.");
+        }
         // 계정 아이디 찾기
         User user = userRepository.findById(userId)
                                   .orElse(null);
