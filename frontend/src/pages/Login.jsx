@@ -64,7 +64,7 @@ const Login = () => {
 
           <p className="text-center text-sm text-gray-400">
             계정이 없으신가요?{" "}
-            <a href="#" className="font-medium text-green-500 hover:text-green-400">
+            <a href="/signup" className="font-medium text-[#0eacf9] hover:text-gray-300">
               회원가입
             </a>
           </p>
@@ -79,15 +79,15 @@ const Login = () => {
           </div>
         </div>
 
-        <button className="w-full flex items-center justify-center px-4 py-2 bg-yellow-400 rounded-md text-sm font-medium text-black hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-200">
+        <button className="w-full flex items-center justify-center px-4 py-2 bg-[#FEE500] rounded-md text-sm font-medium text-black hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-200">
           <img src={kakaoIcon} alt="카카오 아이콘" className="w-5 h-5 mr-2" /> 카카오 로그인
         </button>
 
-        <div className="flex justify-center space-x-4 text-sm text-gray-400">
+        <div className="flex justify-center space-x-4 text-sm text-[#0eacf9]">
           <a href="#" className="hover:text-gray-300">
             이용약관
           </a>
-          <span className="text-gray-600">|</span>
+          <span className="text-gray-400">|</span>
           <a href="#" className="hover:text-gray-300">
             개인정보 보호 정책
           </a>

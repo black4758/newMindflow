@@ -1,7 +1,10 @@
 import React from "react"
 import { User, Bell, Settings } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const Navbar = () => {
+  const navigate = useNavigate()
+
   return (
     <nav className="h-14 flex items-center justify-end px-4">
       {/* 우측 아이콘들만 유지 */}
@@ -12,7 +15,10 @@ const Navbar = () => {
         <button className="p-2 hover:bg-gray-100 rounded-lg">
           <Settings size={20} className="text-gray-600" />
         </button>
-        <button className="p-2 hover:bg-gray-100 rounded-lg">
+        <button 
+          onClick={() => navigate('/profile')} 
+          className="p-2 hover:bg-gray-100 rounded-lg"
+        >
           <User size={20} className="text-gray-600" />
         </button>
       </div>

@@ -140,6 +140,7 @@ const Mindmap = () => {
         graphRef.current.d3Force("link").distance(200);    // 링크 길이 증가
       }
     }
+    
   }, [is3D]); // is3D가 변경될 때마다 실행
 
   // 검색어에 따른 결과 필터링

@@ -1,5 +1,6 @@
 import MainPage from "../pages/MainPage.jsx";
 import Login from "../pages/Login.jsx";
+import Signup from "../pages/Signup.jsx"
 import Profile from "../pages/Profile.jsx";
 import MindmapPage from "../pages/MindmapPage.jsx";
 import MindmapPagedetail from "../pages/MindmapPagedetail.jsx";
@@ -16,6 +17,12 @@ const routes = [
         element: <Login />,
         title: '로그인페이지',
         requireAuth: false
+    },
+    {
+        path: "/signup/",
+        element: <Signup />,
+        title: "회원가입페이지",
+        requireAuth: false,
     },
     {
         path: '/profile/',

@@ -4,6 +4,8 @@ import Sidebar from "./components/layout/Sidebar"
 // import MainPage from "./pages/MainPage"
 // import MindmapPage from "./pages/MindmapPage"
 import routes from "./routes"
+import React, { useState } from 'react'
+import './index.css';
 
 function App() {
   return (
