@@ -70,7 +70,7 @@ dependencies {
 
 
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
-
+    implementation 'org.json:json:20210307' // 최신 버전으로 업데이트 가능
 }
 
 dependencyManagement {
