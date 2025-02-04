@@ -35,32 +35,13 @@ public class ChatController {
         }
         if (chatRequest.getChatRoomId()==0){
             chatRequest.setChatRoomId(roomService.createChatRoom(roomService.getTitle(chatRequest.getUserInput()),chatRequest.getCreatorId()).getId());
-            Mono<String> re =aiServerService.getChatResponse(chatRequest);
-            re.subscribe(response -> {
-
-                try {
-                    JSONObject jsonResponse = new JSONObject(response);
-                    String content = jsonResponse.getJSONObject("response").getString("content");
-                    System.out.println(content);
-                    chatLogService.saveChatLog(
-                            String.valueOf(chatRequest.getChatRoomId()),
-                            chatRequest.getUserInput(),
-                            content,
-                            chatRequest.getModel()
-                    );
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-            return re;
         }
-        Mono<String> re =aiServerService.getChatResponse(chatRequest);
-        re.subscribe(response -> {
+        Mono<String> answer =aiServerService.getChatResponse(chatRequest);
+        answer.subscribe(response -> {
 
             try {
                 JSONObject jsonResponse = new JSONObject(response);
                 String content = jsonResponse.getJSONObject("response").getString("content");
-                System.out.println(content);
                 chatLogService.saveChatLog(
                         String.valueOf(chatRequest.getChatRoomId()),
                         chatRequest.getUserInput(),
@@ -72,7 +53,7 @@ public class ChatController {
             }
         });
 
-        return re;
+        return answer;
     }
 
 //    @Operation(
