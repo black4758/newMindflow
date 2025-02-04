@@ -46,7 +46,7 @@ public class ChatController {
                         String.valueOf(chatRequest.getChatRoomId()),
                         chatRequest.getUserInput(),
                         content,
-                        chatRequest.getModel()
+                        String.valueOf(chatRequest.getCreatorId())
                 );
             } catch (JSONException e) {
                 throw new RuntimeException(e);

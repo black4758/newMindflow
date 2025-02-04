@@ -23,7 +23,7 @@ public class ChatLog {
     private String chatRoomId;
     private String question;
     @Column(name = "user_Id")
-    private Long userId;
+    private String userId;
     private List<AnswerSentence> answerSentences;
     @Column(name = "create_at")
     private LocalDateTime createAT;
