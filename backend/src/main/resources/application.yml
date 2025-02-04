@@ -1,0 +1,8 @@
+spring:
+application:
+name: mindflow_server
+
+jwt:
+secret: dyAeHubOOc8KaOfYB6XEQoEj1QzRlVgtjNL8PYs1A1tymZvvqkcEU7L1imkKHeDa
+expiration: 1296000000
+# 15? ??
