@@ -62,13 +62,19 @@ public class UserProfileController {
     @Operation(summary = "프로필 수정", description = "사용자의 userId에 따라 프로필을 수정합니다.",
             security = {@SecurityRequirement(name = "bearer-jwt")})
     public ResponseEntity<?> editUserProfile(
-            @PathVariable Long userId, @RequestBody EditUserProfileRequest editUserProfileRequest
+            @PathVariable Long userId, @RequestBody EditUserProfileRequest editUserProfileRequest,
+            @AuthenticationPrincipal User currentUser
     ) {
         User user = userRepository.findById(userId)
                                   .orElse(null);
         if (user == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                                  .body("User not authenticated.");
+        }
+        Long currentId = currentUser.getId();
+        if (!userId.equals(currentId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                 .body("You are not allowed to edit other user's profile.");
         }
         user.setAccountId(editUserProfileRequest.getAccountId());
         user.setUsername(editUserProfileRequest.getUsername());
