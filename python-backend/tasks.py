@@ -1,12 +1,12 @@
-
-from langchain_anthropic import ChatAnthropic
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema.output_parser import StrOutputParser
 import json
 import os
-from neo4j import GraphDatabase
-from datetime import datetime
+
 from dotenv import load_dotenv
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.output_parser import StrOutputParser
+from langchain_anthropic import ChatAnthropic
+from neo4j import GraphDatabase
+
 from celery_config import celery
 
 load_dotenv()
@@ -14,19 +14,16 @@ load_dotenv()
 # Neo4j 설정
 try:
     neo4j_uri = os.getenv('NEO4J_URI')
-    neo4j_driver = GraphDatabase.driver(neo4j_uri, 
-                                    auth=(os.getenv("NEO4J_USER", "neo4j"), 
-                                            os.getenv("NEO4J_PASSWORD", "password")))
+    neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(
+        os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "password")))
 except Exception as e:
     print(f"Neo4j 연결 오류: {e}")
-
 
 # LangChain 설정
 chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
 
 # Neo4j 쿼리 생성용 프롬프트 템플릿
-query_prompt = ChatPromptTemplate.from_messages([
-    ("user", """
+query_prompt = ChatPromptTemplate.from_messages([("user", """
 
 다음은 현재 마인드맵의 구조와 새로운 대화입니다. 이를 바탕으로 마인드맵을 업데이트하는 Cypher 쿼리를 생성해주세요.
 
@@ -110,11 +107,11 @@ query_prompt = ChatPromptTemplate.from_messages([
 
 가능한 한 깊은 계층 구조를 만들되, 자연스러운 관계를 유지하세요.
 기존 노드와의 연결을 최우선으로 고려하고, 완전히 새로운 주제인 경우에만 새 루트 노드를 생성하세요.
-Cypher 쿼리만 반환하고 다른 설명은 하지 말아주세요.""")
-])
+Cypher 쿼리만 반환하고 다른 설명은 하지 말아주세요.""")])
 
 # LangChain 체인 구성
 query_chain = query_prompt | chat_model | StrOutputParser()
+
 
 def get_mindmap_structure(account_id):
     """특정 account_id에 해당하는 마인드맵 구조를 반환"""
@@ -138,16 +135,17 @@ def get_mindmap_structure(account_id):
         """, account_id=account_id)
         return result.single()["structure"]
 
+
 def escape_cypher_quotes(text):
     """Neo4j Cypher 쿼리용 문자열 이스케이프 개선"""
     if text is None:
         return text
-        
+
     # 축약형(I'm, don't 등)과 따옴표를 포함한 텍스트를 처리하기 위해
     # 작은따옴표를 두 개의 작은따옴표로 이스케이프 처리
     escaped_text = ""
     prev_char = None
-    
+
     for char in text:
         if char == "'":
             # 이전 문자가 알파벳이고 다음 문자가 m, s, t, ve, ll 등인 경우를 처리하기 위해
@@ -159,9 +157,8 @@ def escape_cypher_quotes(text):
         else:
             escaped_text += char
         prev_char = char
-    
-    return escaped_text
 
+    return escaped_text
 
 
 @celery.task
@@ -177,24 +174,18 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         - sentences: {len(answer_sentences)}개
         """)
 
-
         # 마인드맵 구조 가져오기
         current_structure = get_mindmap_structure(account_id)
 
-        
         # 쿼리 생성을 위한 데이터 준비
-        query_data = {
-            "structure": json.dumps(current_structure, indent=2, default=str) if current_structure else "아직 생성된 노드가 없습니다.",
-            "question": escape_cypher_quotes(question),
-            "answer_lines": answer_sentences,
-            "account_id": account_id,
-            "chat_room_id": chat_room_id,
-            "mongo_ref": chat_id
-        }
-        
+        query_data = {"structure": json.dumps(current_structure, indent=2,
+                                              default=str) if current_structure else "아직 생성된 노드가 없습니다.",
+                      "question": escape_cypher_quotes(question), "answer_lines": answer_sentences,
+                      "account_id": account_id, "chat_room_id": chat_room_id, "mongo_ref": chat_id}
+
         # 쿼리 생성 및 실행
 
-        print("Cypher 쿼리 생성 시작")  
+        print("Cypher 쿼리 생성 시작")
         query = query_chain.invoke(query_data)
         print(f"""생성된 Cypher 쿼리:{query}""")
 
@@ -203,7 +194,7 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
             session.run(query)
         print("마인드맵 생성 작업 완료")
         return True
-    
+
     except Exception as e:
         print(f"""마인드맵 생성 오류:
 - Error Type: {type(e).__name__}
