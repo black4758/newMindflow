@@ -353,23 +353,23 @@
       "type": "RELATED_TO"
     },
     {
-      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:12",
-      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:12",
       "type": "HAS_SUBTOPIC"
     },
     {
-      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:13",
-      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:13",
       "type": "HAS_SUBTOPIC"
     },
     {
-      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:14",
-      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:14",
       "type": "HAS_SUBTOPIC"
     },
     {
-      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:15",
-      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:11",
+      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:15",
       "type": "HAS_SUBTOPIC"
     },
     {
