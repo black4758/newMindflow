@@ -30,6 +30,7 @@ const Mindmap = () => {
   const [searchResults, setSearchResults] = useState([])
   const [selectedNode, setSelectedNode] = useState(null)
   const [isNodeFocused, setIsNodeFocused] = useState(false)
+  const [isRootFixed, setIsRootFixed] = useState(false); // 초기값을 false로 변경
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -84,7 +85,13 @@ const Mindmap = () => {
       return {
         ...node,
         color: isRoot ? rootColor : colors[node.level % colors.length],
-        isRoot // 루트 노드 여부 저장
+        isRoot,
+        // 루트 노드이고 isRootFixed가 true일 때만 위치 고정
+        ...(isRoot && isRootFixed && {
+          fx: Math.random() * 500 - 250,
+          fy: Math.random() * 500 - 250,
+          ...(is3D && { fz: Math.random() * 500 - 250 })
+        })
       }
     });
 
@@ -111,7 +118,7 @@ const Mindmap = () => {
     });
 
     return { nodes, links };
-  }, []);
+  }, [isRootFixed, is3D]);
 
   // 루트 노드까지의 경로를 찾는 함수 추가
   const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
@@ -323,10 +330,10 @@ const Mindmap = () => {
 
   return (
     <div className="relative w-full h-full">
-      {/* 검색창 컨테이너 - 절대 위치로 좌측 상단에 배치 */}
-      <div className="absolute left-4 top-4 z-50">
+      {/* 검색창과 체크박스를 포함하는 컨테이너 */}
+      <div className="absolute left-4 top-4 z-50 flex items-center gap-4">
+        {/* 기존 검색창 컨테이너 */}
         <div className="relative">
-          {/* 검색 입력창 */}
           <input
             type="text"
             value={searchTerm}
@@ -360,6 +367,20 @@ const Mindmap = () => {
             </div>
           )}
         </div>
+
+        {/* 루트 노드 고정 체크박스 */}
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="rootNodeFix"
+            checked={isRootFixed}
+            onChange={(e) => setIsRootFixed(e.target.checked)}
+            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label htmlFor="rootNodeFix" className="ml-2 text-sm font-medium text-white">
+            루트 노드 고정
+          </label>
+        </div>
       </div>
 
       {/* 2D/3D 전환 버튼 */}
@@ -385,28 +406,22 @@ const Mindmap = () => {
             const textHeight = baseSize;
             
             // 원형 모양을 위한 패딩과 반경 계산
-            const padding = textHeight * 0.8; // 패딩을 더 크게 설정
-            const radius = textHeight * 1.43; // 더 큰 반경 설정
+            const padding = textHeight * 0.8;
+            const radius = textHeight * 1.43;
             
             if (node.isRoot) {
               sprite.backgroundColor = isHighlighted ? 
                 'rgba(255,107,107,0.9)' : 'rgba(255,107,107,0.6)';
-              sprite.borderColor = isHighlighted ? 
-                'rgba(255,0,0,0.9)' : 'rgba(255,107,107,0.2)';
-              sprite.borderWidth = isHighlighted ? 3 : 2;
-              sprite.borderRadius = radius; // 더 큰 반경 적용
+              sprite.borderWidth = 0; // 테두리 제거
+              sprite.borderRadius = radius;
               sprite.padding = padding;
               sprite.textHeight = textHeight;
             } else {
               sprite.backgroundColor = node.isPathNode ? 
                 (isHighlighted ? 'rgba(245,158,11,0.9)' : 'rgba(245,158,11,0.4)') :
                 (isHighlighted ? 'rgba(66,153,225,0.9)' : 'rgba(66,153,225,0.4)');
-              sprite.borderColor = node === hoverNode ? '#ff4444' :
-                (node.isPathNode ? 
-                  (isHighlighted ? '#f97316' : 'rgba(245,158,11,0.15)') :
-                  (isHighlighted ? '#3b82f6' : 'rgba(66,153,225,0.15)'));
-              sprite.borderWidth = isHighlighted ? 3 : 1;
-              sprite.borderRadius = radius; // 더 큰 반경 적용
+              sprite.borderWidth = 0; // 테두리 제거
+              sprite.borderRadius = radius;
               sprite.padding = padding;
               sprite.textHeight = textHeight;
             }
@@ -414,7 +429,7 @@ const Mindmap = () => {
             // 텍스트 스타일 설정
             sprite.color = isHighlighted ? '#ffffff' : '#f8fafc';
             sprite.fontWeight = 'bold';
-            sprite.strokeWidth = 0; // 텍스트 외곽선 제거
+            sprite.strokeWidth = 0;
             
             // 텍스트를 여러 줄로 나누기
             if (textLength > 10) {
@@ -431,26 +446,24 @@ const Mindmap = () => {
           nodeOpacity={1}
           nodeCanvasObjectMode={() => "replace"}
           nodeCanvasObject={(node, ctx, globalScale) => {
-            const fontSize = node.isRoot ? 14 : 12;
+            // 글자 크기를 2배로 증가
+            const fontSize = node.isRoot ? 32 : 26;  // 기존 16, 13에서 2배로 증가
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
             const isHighlighted = highlightNodes.has(node);
-            const radius = 8;
+            const radius = 16;  // 기존 8에서 2배로 증가
 
             ctx.save();
 
-            // 텍스트 박스 그리기
+            // 노드 배경 그리기
             ctx.beginPath();
-            ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2);
-            ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2);
-            ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius);
-            ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius);
-            ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2);
-            ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2);
-            ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius);
-            ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius);
-            ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2);
-            ctx.closePath();
-
+            ctx.roundRect(
+              node.x - width / 2 - radius,
+              node.y - height / 2 - radius,
+              width + radius * 2,
+              height + radius * 2,
+              radius
+            );
+            
             // 배경색 설정 - 더 선명한 색상으로 수정
             if (node.isPathNode) {
               ctx.fillStyle = isHighlighted ? "rgba(245, 158, 11, 0.9)" : "rgba(245, 158, 11, 0.6)"; // 주황색 더 선명하게
@@ -473,7 +486,7 @@ const Mindmap = () => {
             ctx.font = `${fontSize}px Sans-Serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = isHighlighted ? "#ffffff" : (node.isRoot ? "#1a1a1a" : "#1a365d");
+            ctx.fillStyle = "#ffffff";
             ctx.fillText(node.title, node.x, node.y);
 
             ctx.restore();
@@ -483,7 +496,7 @@ const Mindmap = () => {
             node.width = width
             node.height = height
           }}
-          linkWidth={1}
+          linkWidth={5}
           linkColor={(link) => {
             if (!highlightLinks.has(link)) return "rgba(255, 255, 255, 0.8)"; // 기본 링크는 더 투명하게
             return link.isPathLink ? "rgba(249, 115, 22, 0.9)" : "rgba(20, 221, 37, 0.9)"; // 하이라이트된 링크는 더 선명하게
@@ -531,26 +544,24 @@ const Mindmap = () => {
           nodeOpacity={1}
           nodeCanvasObjectMode={() => "replace"}
           nodeCanvasObject={(node, ctx, globalScale) => {
-            const fontSize = node.isRoot ? 14 : 12;
+            // 글자 크기를 2배로 증가
+            const fontSize = node.isRoot ? 32 : 26;  // 기존 16, 13에서 2배로 증가
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
             const isHighlighted = highlightNodes.has(node);
-            const radius = 8;
+            const radius = 16;  // 기존 8에서 2배로 증가
 
             ctx.save();
 
-            // 텍스트 박스 그리기
+            // 노드 배경 그리기
             ctx.beginPath();
-            ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2);
-            ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2);
-            ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius);
-            ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius);
-            ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2);
-            ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2);
-            ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius);
-            ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius);
-            ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2);
-            ctx.closePath();
-
+            ctx.roundRect(
+              node.x - width / 2 - radius,
+              node.y - height / 2 - radius,
+              width + radius * 2,
+              height + radius * 2,
+              radius
+            );
+            
             // 배경색 설정 - 더 선명한 색상으로 수정
             if (node.isPathNode) {
               ctx.fillStyle = isHighlighted ? "rgba(245, 158, 11, 0.9)" : "rgba(245, 158, 11, 0.6)"; // 주황색 더 선명하게
@@ -572,7 +583,7 @@ const Mindmap = () => {
             ctx.font = `${fontSize}px Sans-Serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = isHighlighted ? "#ffffff" : (node.isRoot ? "#1a1a1a" : "#1a365d");
+            ctx.fillStyle = "#ffffff";
             ctx.fillText(node.title, node.x, node.y);
 
             ctx.restore();
@@ -582,13 +593,13 @@ const Mindmap = () => {
             node.width = width
             node.height = height
           }}
-          linkWidth={1}
+          linkWidth={3}
           linkColor={(link) => {
             if (!highlightLinks.has(link)) return "rgba(255, 255, 255, 0.8)"; // 기본 링크는 더 투명하게
             return link.isPathLink ? "rgba(249, 115, 22, 0.9)" : "rgba(29, 230, 18, 0.9)"; // 하이라이트된 링크는 더 선명하게
           }}
           linkDirectionalParticles={4}
-          linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 2 : 0)}
+          linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 6 : 0)}
           linkDirectionalParticleSpeed={0.005}
           onNodeHover={(node) => {
             setHoverNode(node)
