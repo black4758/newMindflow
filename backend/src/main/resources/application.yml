@@ -1,6 +1,7 @@
 spring:
   profiles:
     include: dotenv
+    active: dev, prod
   mail:
     host: ${SMTP_HOST}
     port: ${SMTP_PORT}
