@@ -4,8 +4,10 @@ from celery import Celery
 celery = Celery('mindflow',
                 broker='redis://localhost:6379/0',
                 backend='redis://localhost:6379/0',
-                include=['tasks'])  # tasks 모듈 명시적으로 포함
-
+                include=['tasks'],
+                task_track_started=True,
+                task_publish_retry=True
+                )  # tasks 모듈 명시적으로 포함
 
 # Celery 설정
 celery.conf.update(

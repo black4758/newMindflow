@@ -163,8 +163,8 @@ def escape_cypher_quotes(text):
 
 @celery.task
 def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences):
+    print(f"Task received with chat_room_id: {chat_room_id}")
     try:
-
         print(f"""
         마인드맵 생성 시작:
         - account_id: {account_id}
@@ -194,7 +194,6 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
             session.run(query)
         print("마인드맵 생성 작업 완료")
         return True
-
     except Exception as e:
         print(f"""마인드맵 생성 오류:
 - Error Type: {type(e).__name__}

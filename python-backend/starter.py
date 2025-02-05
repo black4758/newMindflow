@@ -96,8 +96,17 @@ def run_git_bash_tasks(executor, git_bash_commands):
         if not executor.is_running:
             break
         if cmd not in executor.executed_commands:  # Only execute if not already run
-            print(f"\nStarting Git Bash command: {cmd}")
-            executor.run_command(cmd, shell_type="git-bash")
+            print(f"\n[STARTER] Starting command: {cmd}")
+            process = executor.run_command(cmd, shell_type="git-bash")
+            if process:
+                if "redis" in cmd:
+                    print("[STARTER] Waiting for Redis to start...")
+                    time.sleep(5)
+                elif "celery" in cmd:
+                    print("[STARTER] Waiting for Celery to start...")
+                    time.sleep(10)
+                elif "python ASD.py" in cmd:
+                    print("[STARTER] Starting Flask application...")
             time.sleep(2)  # Brief pause between starting commands
 
 
@@ -127,6 +136,7 @@ def main():
         git_bash_commands = ["docker start redis", "celery -A tasks worker --pool=solo -l info", ]
         git_thread = threading.Thread(target=run_git_bash_tasks, args=(executor, git_bash_commands), daemon=True)
         git_thread.start()
+        time.sleep(10)
 
         # Second set of commands
         git_bash_commands2 = ['python ASD.py']
