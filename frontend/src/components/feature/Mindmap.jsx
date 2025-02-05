@@ -77,11 +77,16 @@ const Mindmap = () => {
 
     // 색상 배열 정의
     const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+    const rootColor = '#FF6B6B'; // 루트 노드용 특별 색상
 
-    const nodes = testdata.nodes.map(node => ({
-      ...node,
-      color: colors[node.level % colors.length]
-    }));
+    const nodes = testdata.nodes.map(node => {
+      const isRoot = !testdata.relationships.some(rel => rel.target === node.id);
+      return {
+        ...node,
+        color: isRoot ? rootColor : colors[node.level % colors.length],
+        isRoot // 루트 노드 여부 저장
+      }
+    });
 
     const links = testdata.relationships.map(rel => ({
       source: rel.source,
@@ -108,19 +113,90 @@ const Mindmap = () => {
     return { nodes, links };
   }, []);
 
-  // updateHighlight를 useCallback으로 감싸고 의존성 추가
+  // 루트 노드까지의 경로를 찾는 함수 추가
+  const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
+    if (visited.has(nodeId)) return null;
+    visited.add(nodeId);
+
+    // 현재 노드가 루트 노드인지 확인
+    const isRoot = !testdata.relationships.some(rel => rel.target === nodeId);
+    if (isRoot) return [nodeId];
+
+    // 부모 노드들 찾기
+    const parentRels = testdata.relationships.filter(rel => rel.target === nodeId);
+    
+    for (const rel of parentRels) {
+      const path = findPathToRoot(rel.source, visited);
+      if (path) {
+        return [...path, nodeId];
+      }
+    }
+    
+    return null;
+  }, []);
+
+  // updateHighlight 함수 수정
   const updateHighlight = useCallback(() => {
     if (!hoverNode) {
-      setHighlightNodes(new Set())
-      setHighlightLinks(new Set())
-      return
+      setHighlightNodes(new Set());
+      setHighlightLinks(new Set());
+      // 모든 노드의 isPathNode 속성 초기화
+      processedData.nodes.forEach(node => {
+        node.isPathNode = false;
+      });
+      // 모든 링크의 isPathLink 속성 초기화
+      processedData.links.forEach(link => {
+        link.isPathLink = false;
+      });
+      return;
     }
 
-    const connectedNodes = processedData.links.filter((link) => link.source === hoverNode || link.target === hoverNode).map((link) => (link.source === hoverNode ? link.target : link.source))
+    // 하이라이트 시작 전에 모든 노드와 링크의 속성 초기화
+    processedData.nodes.forEach(node => {
+      node.isPathNode = false;
+    });
+    processedData.links.forEach(link => {
+      link.isPathLink = false;
+    });
 
-    setHighlightNodes(new Set([hoverNode, ...connectedNodes]))
-    setHighlightLinks(new Set(processedData.links.filter((link) => link.source === hoverNode || link.target === hoverNode)))
-  }, [hoverNode, processedData.links])
+    // 연결된 노드들 찾기 (기존 기능)
+    const connectedNodes = processedData.links
+      .filter(link => link.source === hoverNode || link.target === hoverNode)
+      .map(link => link.source === hoverNode ? link.target : link.source);
+
+    // 루트까지의 경로 찾기 (새로운 기능)
+    const path = findPathToRoot(hoverNode.id);
+    
+    // 모든 하이라이트할 노드들을 하나의 Set으로 합치기
+    const highlightedNodes = new Set([hoverNode, ...connectedNodes]);
+    const highlightedLinks = new Set(
+      processedData.links.filter(link => 
+        link.source === hoverNode || link.target === hoverNode
+      )
+    );
+
+    // 루트까지의 경로를 별도로 저장
+    if (path) {
+      path.forEach(nodeId => {
+        const node = processedData.nodes.find(n => n.id === nodeId);
+        if (node) {
+          node.isPathNode = true;
+          highlightedNodes.add(node);
+        }
+      });
+      
+      processedData.links.forEach(link => {
+        if (path.includes(link.source.id || link.source) && 
+            path.includes(link.target.id || link.target)) {
+          link.isPathLink = true;
+          highlightedLinks.add(link);
+        }
+      });
+    }
+
+    setHighlightNodes(highlightedNodes);
+    setHighlightLinks(highlightedLinks);
+  }, [hoverNode, processedData.links, processedData.nodes, findPathToRoot]);
 
   // useEffect의 의존성 배열 수정
   useEffect(() => {
@@ -132,12 +208,12 @@ const Mindmap = () => {
     if (graphRef.current) {
       if (is3D) {
         // 3D 모드: 집중형 배치
-        graphRef.current.d3Force("charge").strength(-30);  // 반발력 감소
-        graphRef.current.d3Force("link").distance(50);     // 링크 길이 감소
+        graphRef.current.d3Force("charge").strength(-60);  // 반발력 유지
+        graphRef.current.d3Force("link").distance(100);    // 링크 길이 2배로 증가 (50 -> 100)
       } else {
         // 2D 모드: 확산형 배치
-        graphRef.current.d3Force("charge").strength(-200); // 반발력 증가
-        graphRef.current.d3Force("link").distance(200);    // 링크 길이 증가
+        graphRef.current.d3Force("charge").strength(-400); // 반발력 유지
+        graphRef.current.d3Force("link").distance(200);    // 링크 길이 유지
       }
     }
     
@@ -300,10 +376,52 @@ const Mindmap = () => {
           ref={graphRef}
           graphData={processedData}
           nodeThreeObject={node => {
-            const sprite = new SpriteText(node.title)
-            sprite.color = node.color
-            sprite.textHeight = 8
-            return sprite
+            const sprite = new SpriteText(node.title);
+            const isHighlighted = highlightNodes.has(node);
+            
+            // 텍스트 크기 계산
+            const textLength = node.title.length;
+            const baseSize = node.isRoot ? 10 : 8;
+            const textHeight = baseSize;
+            
+            // 원형 모양을 위한 패딩과 반경 계산
+            const padding = textHeight * 0.8; // 패딩을 더 크게 설정
+            const radius = textHeight * 1.43; // 더 큰 반경 설정
+            
+            if (node.isRoot) {
+              sprite.backgroundColor = isHighlighted ? 
+                'rgba(255,107,107,0.9)' : 'rgba(255,107,107,0.6)';
+              sprite.borderColor = isHighlighted ? 
+                'rgba(255,0,0,0.9)' : 'rgba(255,107,107,0.2)';
+              sprite.borderWidth = isHighlighted ? 3 : 2;
+              sprite.borderRadius = radius; // 더 큰 반경 적용
+              sprite.padding = padding;
+              sprite.textHeight = textHeight;
+            } else {
+              sprite.backgroundColor = node.isPathNode ? 
+                (isHighlighted ? 'rgba(245,158,11,0.9)' : 'rgba(245,158,11,0.4)') :
+                (isHighlighted ? 'rgba(66,153,225,0.9)' : 'rgba(66,153,225,0.4)');
+              sprite.borderColor = node === hoverNode ? '#ff4444' :
+                (node.isPathNode ? 
+                  (isHighlighted ? '#f97316' : 'rgba(245,158,11,0.15)') :
+                  (isHighlighted ? '#3b82f6' : 'rgba(66,153,225,0.15)'));
+              sprite.borderWidth = isHighlighted ? 3 : 1;
+              sprite.borderRadius = radius; // 더 큰 반경 적용
+              sprite.padding = padding;
+              sprite.textHeight = textHeight;
+            }
+            
+            // 텍스트 스타일 설정
+            sprite.color = isHighlighted ? '#ffffff' : '#f8fafc';
+            sprite.fontWeight = 'bold';
+            sprite.strokeWidth = 0; // 텍스트 외곽선 제거
+            
+            // 텍스트를 여러 줄로 나누기
+            if (textLength > 10) {
+              sprite.text = node.title.match(/.{1,10}/g).join('\n');
+            }
+            
+            return sprite;
           }}
           width={window.innerWidth - 256}
           height={window.innerHeight - 64}
@@ -313,46 +431,52 @@ const Mindmap = () => {
           nodeOpacity={1}
           nodeCanvasObjectMode={() => "replace"}
           nodeCanvasObject={(node, ctx, globalScale) => {
-            const fontSize = 12
-            const { width, height } = getNodeSize(node.title, ctx, fontSize)
-            const isHighlighted = highlightNodes.has(node)
-            const radius = 8
+            const fontSize = node.isRoot ? 14 : 12;
+            const { width, height } = getNodeSize(node.title, ctx, fontSize);
+            const isHighlighted = highlightNodes.has(node);
+            const radius = 8;
 
-            // 노드를 텍스트 박스로 그리기
-            ctx.save()
+            ctx.save();
 
             // 텍스트 박스 그리기
-            ctx.beginPath()
-            ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2)
-            ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2)
-            ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius)
-            ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius)
-            ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2)
-            ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2)
-            ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius)
-            ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius)
-            ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2)
-            ctx.closePath()
+            ctx.beginPath();
+            ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2);
+            ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2);
+            ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius);
+            ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius);
+            ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2);
+            ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2);
+            ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius);
+            ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius);
+            ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2);
+            ctx.closePath();
 
-            // 배경색 설정
-            ctx.fillStyle = isHighlighted ? "#4299e1" : "rgba(66, 153, 225, 0.2)"
-            ctx.fill()
+            // 배경색 설정 - 더 선명한 색상으로 수정
+            if (node.isPathNode) {
+              ctx.fillStyle = isHighlighted ? "rgba(245, 158, 11, 0.9)" : "rgba(245, 158, 11, 0.6)"; // 주황색 더 선명하게
+            } else if (node.isRoot) {
+              ctx.fillStyle = isHighlighted ? "rgba(255, 107, 107, 1)" : "rgba(255, 107, 107, 0.9)";
+            } else {
+              ctx.fillStyle = isHighlighted ? "rgba(66, 153, 225, 1)" : "rgba(66, 153, 225, 0.8)";
+            }
+            ctx.fill();
 
-            // 테두리 설정
+            // 테두리 설정 - 더 두껍고 선명하게
             if (isHighlighted) {
-              ctx.strokeStyle = node === hoverNode ? "#ef4444" : "#f59e0b"
-              ctx.lineWidth = 2
-              ctx.stroke()
+              ctx.strokeStyle = node === hoverNode ? "#ff4444" : 
+                               node.isPathNode ? "#f97316" : "#3b82f6";
+              ctx.lineWidth = 3; // 테두리 두께 증가
+              ctx.stroke();
             }
 
             // 텍스트 설정
-            ctx.font = `${fontSize}px Sans-Serif`
-            ctx.textAlign = "center"
-            ctx.textBaseline = "middle"
-            ctx.fillStyle = isHighlighted ? "#ffffff" : "#1a365d"
-            ctx.fillText(node.title, node.x, node.y)
+            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = isHighlighted ? "#ffffff" : (node.isRoot ? "#1a1a1a" : "#1a365d");
+            ctx.fillText(node.title, node.x, node.y);
 
-            ctx.restore()
+            ctx.restore();
 
             // 노드의 실제 크기 설정 (충돌 감지 및 호버링에 사용)
             node.size = Math.max(width, height)
@@ -360,7 +484,10 @@ const Mindmap = () => {
             node.height = height
           }}
           linkWidth={1}
-          linkColor={(link) => (highlightLinks.has(link) ? "#94a3b8" : "rgba(226, 232, 240, 0.2)")}
+          linkColor={(link) => {
+            if (!highlightLinks.has(link)) return "rgba(255, 255, 255, 0.8)"; // 기본 링크는 더 투명하게
+            return link.isPathLink ? "rgba(249, 115, 22, 0.9)" : "rgba(20, 221, 37, 0.9)"; // 하이라이트된 링크는 더 선명하게
+          }}
           linkDirectionalParticles={4}
           linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 2 : 0)}
           linkDirectionalParticleSpeed={0.005}
@@ -379,9 +506,9 @@ const Mindmap = () => {
           }}
           d3Force="charge"
           d3ForceStrength={-30}  // 집중형 배치를 위한 약한 반발력
-          linkDistance={50}      // 짧은 링크 거리
+          linkDistance={100}      // 짧은 링크 거리
           nodeLabel={(node) => ""}
-          backgroundColor="#fbfbfb"
+          backgroundColor="#353A3E"
           nodePointerAreaPaint={(node, color, ctx) => {
             const fontSize = 12
             const { width, height } = getNodeSize(node.title, ctx, fontSize)
@@ -404,46 +531,51 @@ const Mindmap = () => {
           nodeOpacity={1}
           nodeCanvasObjectMode={() => "replace"}
           nodeCanvasObject={(node, ctx, globalScale) => {
-            const fontSize = 12
-            const { width, height } = getNodeSize(node.title, ctx, fontSize)
-            const isHighlighted = highlightNodes.has(node)
-            const radius = 8
+            const fontSize = node.isRoot ? 14 : 12;
+            const { width, height } = getNodeSize(node.title, ctx, fontSize);
+            const isHighlighted = highlightNodes.has(node);
+            const radius = 8;
 
-            // 노드를 텍스트 박스로 그리기
-            ctx.save()
+            ctx.save();
 
             // 텍스트 박스 그리기
-            ctx.beginPath()
-            ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2)
-            ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2)
-            ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius)
-            ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius)
-            ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2)
-            ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2)
-            ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius)
-            ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius)
-            ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2)
-            ctx.closePath()
+            ctx.beginPath();
+            ctx.moveTo(node.x - width / 2 + radius, node.y - height / 2);
+            ctx.lineTo(node.x + width / 2 - radius, node.y - height / 2);
+            ctx.quadraticCurveTo(node.x + width / 2, node.y - height / 2, node.x + width / 2, node.y - height / 2 + radius);
+            ctx.lineTo(node.x + width / 2, node.y + height / 2 - radius);
+            ctx.quadraticCurveTo(node.x + width / 2, node.y + height / 2, node.x + width / 2 - radius, node.y + height / 2);
+            ctx.lineTo(node.x - width / 2 + radius, node.y + height / 2);
+            ctx.quadraticCurveTo(node.x - width / 2, node.y + height / 2, node.x - width / 2, node.y + height / 2 - radius);
+            ctx.lineTo(node.x - width / 2, node.y - height / 2 + radius);
+            ctx.quadraticCurveTo(node.x - width / 2, node.y - height / 2, node.x - width / 2 + radius, node.y - height / 2);
+            ctx.closePath();
 
-            // 배경색 설정
-            ctx.fillStyle = isHighlighted ? "#4299e1" : "rgba(66, 153, 225, 0.2)"
-            ctx.fill()
+            // 배경색 설정 - 더 선명한 색상으로 수정
+            if (node.isPathNode) {
+              ctx.fillStyle = isHighlighted ? "rgba(245, 158, 11, 0.9)" : "rgba(245, 158, 11, 0.6)"; // 주황색 더 선명하게
+            } else if (node.isRoot) {
+              ctx.fillStyle = isHighlighted ? "rgba(255, 107, 107, 1)" : "rgba(255, 107, 107, 0.9)";
+            } else {
+              ctx.fillStyle = isHighlighted ? "rgba(66, 153, 225, 1)" : "rgba(66, 153, 225, 0.8)";
+            }
+            ctx.fill();
 
-            // 테두리 설정
+            // 테두리 설정 - 더 두껍고 선명하게
             if (isHighlighted) {
-              ctx.strokeStyle = node === hoverNode ? "#ef4444" : "#f59e0b"
-              ctx.lineWidth = 2
-              ctx.stroke()
+              ctx.strokeStyle = node === hoverNode ? "#ff4444" : "#f59e0b";
+              ctx.lineWidth = 3; // 테두리 두께 증가
+              ctx.stroke();
             }
 
             // 텍스트 설정
-            ctx.font = `${fontSize}px Sans-Serif`
-            ctx.textAlign = "center"
-            ctx.textBaseline = "middle"
-            ctx.fillStyle = isHighlighted ? "#ffffff" : "#1a365d"
-            ctx.fillText(node.title, node.x, node.y)
+            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = isHighlighted ? "#ffffff" : (node.isRoot ? "#1a1a1a" : "#1a365d");
+            ctx.fillText(node.title, node.x, node.y);
 
-            ctx.restore()
+            ctx.restore();
 
             // 노드의 실제 크기 설정 (충돌 감지 및 호버링에 사용)
             node.size = Math.max(width, height)
@@ -451,7 +583,10 @@ const Mindmap = () => {
             node.height = height
           }}
           linkWidth={1}
-          linkColor={(link) => (highlightLinks.has(link) ? "#94a3b8" : "rgba(226, 232, 240, 0.2)")}
+          linkColor={(link) => {
+            if (!highlightLinks.has(link)) return "rgba(255, 255, 255, 0.8)"; // 기본 링크는 더 투명하게
+            return link.isPathLink ? "rgba(249, 115, 22, 0.9)" : "rgba(29, 230, 18, 0.9)"; // 하이라이트된 링크는 더 선명하게
+          }}
           linkDirectionalParticles={4}
           linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 2 : 0)}
           linkDirectionalParticleSpeed={0.005}
@@ -472,7 +607,7 @@ const Mindmap = () => {
           d3ForceStrength={-200} // 확산형 배치를 위한 강한 반발력
           linkDistance={200}     // 긴 링크 거리
           nodeLabel={(node) => ""}
-          backgroundColor="#fbfbfb"
+          backgroundColor="#353A3E"
           nodePointerAreaPaint={(node, color, ctx) => {
             const fontSize = 12
             const { width, height } = getNodeSize(node.title, ctx, fontSize)
