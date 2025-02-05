@@ -4,18 +4,31 @@ import React, { useRef, useEffect, useState } from "react"
 import { ArrowUpCircle, ChevronDown } from "lucide-react"
 import ModelCard from "../components/common/ModelCard.jsx"
 import { NONEXIST_MODEL, EXIST_MODEL } from "../store/dummyData.js"
+import axios from "axios"
 
 const MainPage = () => {
+  // 텍스트 영역의 높이를 동적으로 조절하기 위한 Ref
   const textareaRef = useRef(null)
+  // 메시지 끝으로 스크롤하기 위한 Ref
   const messagesEndRef = useRef(null)
+
+  // 메시지를 저장하는 상태
   const [messages, setMessages] = useState([])
+  // 현재 입력 값을 저장하는 상태
   const [inputValue, setInputValue] = useState("")
+  // 첫 번째 메시지인지 확인하는 상태
   const [isFirstMessage, setIsFirstMessage] = useState(true)
+  // 선택된 모델을 저장하는 상태
   const [selectedModel, setSelectedModel] = useState(null)
+  // 모델 카드를 보여줄지 여부를 저장하는 상태
   const [showModelCards, setShowModelCards] = useState(false)
+  // 모델 드롭다운을 토글하는 상태
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
+
+  // 사용 가능한 모델 목록
   const modelList = ["chatgpt", "claude", "gemini", "clova"]
 
+  // 메시지가 변경될 때마다 텍스트 영역의 높이를 조절
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
@@ -23,26 +36,39 @@ const MainPage = () => {
     }
   }, [messages])
 
+  // 새로운 메시지가 추가될 때 메시지 끝으로 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleModelSelect = (modelName) => {
+  // 모델 선택 처리
+  const handleModelSelect = async (modelName) => {
     setSelectedModel(modelName)
     setIsFirstMessage(false)
     setShowModelCards(false)
 
-    // 선택된 모델의 응답을 첫 번째 메시지 다음에 추가
-    const selectedResponse = {
-      text: NONEXIST_MODEL.responses[modelName].content,
-      isUser: false,
-      model: modelName,
+    // 더미 데이터 --> 첫 번째 메시지 다음에 선택된 모델의 응답 추가
+    // const selectedResponse = {
+    //   text: NONEXIST_MODEL.responses[modelName].content,
+    //   isUser: false,
+    //   model: modelName,
+    // }
+
+    try {
+      const response = await axios.get(`api_url?model=$(modelName)`);
+      const selectedResponse = {
+        text: response.data.content,
+        isUser: false,
+        model: modelName,
+      };
+      // 첫 번째 사용자 메시지와 선택된 모델의 응답만 남김
+      setMessages((prev) => [prev[0], selectedResponse])
+    } catch (error) {
+      console.error(error)
     }
+  };
 
-    // 첫 번째 메시지(사용자 메시지)와 선택된 모델의 응답만 남기고 나머지는 제거
-    setMessages((prev) => [prev[0], selectedResponse])
-  }
-
+  // 폼 제출 처리
   const handleSubmit = (e) => {
     e.preventDefault()
     if (inputValue.trim()) {
@@ -71,37 +97,37 @@ const MainPage = () => {
     }
   }
 
-  // public 폴더 기준으로 경로 수정
+  // 모델 아이콘 경로 가져오기
   const getModelIcon = (modelName) => {
     return `/icons/${modelName}.svg`
   }
 
-  // 드롭다운 토글 함수
+  // 모델 드롭다운 토글
   const toggleModelDropdown = () => {
     setIsModelDropdownOpen(!isModelDropdownOpen)
   }
 
-  // 새로운 모델 선택 함수
+  // 선택된 모델 변경
   const changeModel = (newModel) => {
     setSelectedModel(newModel)
     setIsModelDropdownOpen(false)
   }
 
-  // textarea 높이 자동 조절 함수
+  // 텍스트 영역 높이 동적 조절
   const adjustTextareaHeight = (element) => {
     element.style.height = "auto"
     const newHeight = Math.min(element.scrollHeight, 5 * 24) // 24px은 한 줄의 대략적인 높이
     element.style.height = `${newHeight}px`
   }
 
-  // textarea 변경 핸들러
+  // 입력 변경 처리
   const handleInputChange = (e) => {
     setInputValue(e.target.value)
     adjustTextareaHeight(e.target)
   }
 
   return (
-    <div className="h-full p-4 relative">
+    <div className="h-full p-4 relative" id="modal-root">
       {/* 메시지 표시 영역 */}
       <div className="h-[calc(100%-80px)] overflow-y-auto mb-4">
         {messages.map((message, index) => (
