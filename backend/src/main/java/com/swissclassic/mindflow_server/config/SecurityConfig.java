@@ -48,13 +48,22 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // 기존 허용 경로
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll()
-                        // 채팅 API 경로 추가
                         .requestMatchers("/api/chat/**").permitAll()
-                        // 나머지는 인증 필요
+                        .requestMatchers("/actuator/**").permitAll()
+
+                        // Swagger 관련 경로 허용
+                        .requestMatchers(
+                                "/swagger-ui/**",          // Swagger UI 리소스
+                                "/v3/api-docs/**",         // OpenAPI 문서
+                                "/swagger-resources/**",   // Swagger 리소스
+                                "/swagger-ui.html",        // Swagger UI 메인 페이지
+                                "/webjars/**"              // Swagger 관련 웹 자원
+                        ).permitAll()
+
+                        // 나머지 경로는 인증 필요
                         .anyRequest().authenticated()
                 )
+
                 // JWT 필터 추가
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
