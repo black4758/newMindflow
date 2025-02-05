@@ -9,11 +9,11 @@ from datetime import datetime
 from dotenv import load_dotenv
 from celery_config import celery
 
-
+load_dotenv()
 
 # Neo4j 설정
 try:
-    neo4j_uri = "neo4j://localhost:7687"
+    neo4j_uri = os.getenv('NEO4J_URI')
     neo4j_driver = GraphDatabase.driver(neo4j_uri, 
                                     auth=(os.getenv("NEO4J_USER", "neo4j"), 
                                             os.getenv("NEO4J_PASSWORD", "password")))
