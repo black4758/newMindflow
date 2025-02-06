@@ -1,5 +1,6 @@
 package com.swissclassic.mindflow_server.config;
 
+import com.swissclassic.mindflow_server.account.service.CustomOAuth2UserService;
 import com.swissclassic.mindflow_server.account.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,9 @@ public class SecurityConfig {
     private CustomUserDetailsService userDetailsService;
 
     @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
+
+    @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /**
@@ -41,20 +45,23 @@ public class SecurityConfig {
                 // CSRF 비활성화 (새로운 방식)
                 .csrf(AbstractHttpConfigurer::disable)
                 // 세션 관리 설정 (새로운 방식)
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 요청 인증 규칙 설정
                 .authorizeHttpRequests(authorize -> authorize
                         // 기존 허용 경로
-                        .requestMatchers("/api/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/**")
+                        .permitAll()
+                        .requestMatchers("/swagger-ui/**")
+                        .permitAll()
+                        .requestMatchers("/v3/api-docs/**")
+                        .permitAll()
                         // 나머지는 인증 필요
-                        .anyRequest().authenticated()
-                )
-                // JWT 필터 추가
+                        .anyRequest()
+                        .authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .oauth2Login(
+                        oauth2 -> oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService)))
+                // JWT 필터 추가
                 .build();
     }
 
