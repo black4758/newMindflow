@@ -14,7 +14,7 @@ public class ConversationSummaryServiceImpl implements ConversationSummaryServic
     }
 
     @Override
-    public ConversationSummary saveConversationSummary(ConversationSummary conversationSummary) {
-        return repository.save(conversationSummary);
+    public void saveConversationSummary(ConversationSummary conversationSummary) {
+        repository.save(conversationSummary);
     }
 }

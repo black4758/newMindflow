@@ -1,7 +1,5 @@
 package com.swissclassic.mindflow_server.conversation.controller;
-import com.swissclassic.mindflow_server.conversation.model.dto.ChatRequest;
-import com.swissclassic.mindflow_server.conversation.model.dto.ConversationSummaryRequest;
-import com.swissclassic.mindflow_server.conversation.model.dto.FirstChatRespose;
+import com.swissclassic.mindflow_server.conversation.model.dto.*;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 import com.swissclassic.mindflow_server.conversation.model.entity.ConversationSummary;
 import com.swissclassic.mindflow_server.conversation.service.AiServerService;
@@ -35,35 +33,29 @@ public class ChatController {
     }
 
     @PostMapping("/send")
-    public Mono<String> getChatResponse(@RequestBody ChatRequest chatRequest) {
+    public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
         if (chatRequest.getModel().isEmpty()){
             System.out.println("모델이 비어 있습니다.");
-            return aiServerService.getAllChatResponse(chatRequest);
         }
 //        if (chatRequest.getChatRoomId()==0){
 //            chatRequest.setChatRoomId(roomService.createChatRoom(roomService.getTitle(chatRequest.getUserInput()),chatRequest.getCreatorId()).getId());
 //        }
-        Mono<String> answer =aiServerService.getChatResponse(chatRequest);
-        answer.subscribe(response -> {
-            try {
+        ChatApiResponse answer =aiServerService.getChatResponse(chatRequest);
 
-                JSONObject jsonResponse = new JSONObject(response);
-                String  responseContent = jsonResponse.getString("response");
-
-                chatLogService.saveChatLog(
-                        (chatRequest.getChatRoomId()),
-                        chatRequest.getUserInput(),
-                        responseContent,
-                        (chatRequest.getCreatorId())
-                );
-            } catch (JSONException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        chatLogService.saveChatLog(
+                (chatRequest.getChatRoomId()),
+                chatRequest.getUserInput(),
+                answer.getResponse(),
+                (chatRequest.getCreatorId())
+        );
 
         return answer;
     }
-    @PostMapping("/choosemodel")
+    @PostMapping("/all")
+    public ChatAllResponse getAllResponse(@RequestBody ChatRequest chatRequest) {
+            return aiServerService.getAllChatResponse(chatRequest);
+    }
+    @PostMapping("/choiceModel")
     FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){
         ChatRoom room =roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),conversationSummaryRequest.getCreatorId());
         long RoomId=(room.getId());

@@ -1,8 +1,6 @@
 package com.swissclassic.mindflow_server.conversation.service;
 
-import com.swissclassic.mindflow_server.conversation.model.dto.AiServerResponse;
-import com.swissclassic.mindflow_server.conversation.model.dto.ChatRequest;
-import com.swissclassic.mindflow_server.conversation.model.dto.ChatResponse;
+import com.swissclassic.mindflow_server.conversation.model.dto.*;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.repository.ChatLogRepository;
 import jakarta.transaction.Transactional;
@@ -24,7 +22,7 @@ public class AiServerServiceImpl implements AiServerService {
     private final WebClient aiServerWebClient;
 
     @Override
-    public Mono<String> getChatResponse(ChatRequest chatRequest) {
+    public ChatApiResponse getChatResponse(ChatRequest chatRequest) {
         // 요청 데이터를 생성
         // Flask API 호출 및 응답 처리
         return aiServerWebClient.post()
@@ -32,16 +30,18 @@ public class AiServerServiceImpl implements AiServerService {
                 .header("Content-Type", "application/json")
                 .bodyValue(chatRequest) // JSON 데이터 전송
                 .retrieve()
-                .bodyToMono(String.class); // 응답 데이터를 문자열로 변환
+                .bodyToMono(ChatApiResponse.class) // 응답 데이터를 문자열로 변환
+                .block();
     }
     @Override
-    public Mono<String> getAllChatResponse(ChatRequest chatRequest){
+    public ChatAllResponse getAllChatResponse(ChatRequest chatRequest){
         return aiServerWebClient.post()
                 .uri("/chatbot/all") // Flask 서버의 엔드포인트
                 .header("Content-Type", "application/json")
                 .bodyValue(chatRequest) // JSON 데이터 전송
                 .retrieve()
-                .bodyToMono(String.class); // 응답 데이터를 문자열로 변환
+                .bodyToMono(ChatAllResponse.class)
+                .block();// 응답 데이터를 문자열로 변환
     }
 
 }
