@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
+import PropTypes from "prop-types"
 // import axios from 'axios';
 
 const SearchModal = ({ isOpen, onClose }) => {
@@ -50,24 +51,18 @@ const SearchModal = ({ isOpen, onClose }) => {
 
       {/* 모달 컨테이너 */}
       <div className="absolute inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
-  <div className="bg-gray-100 rounded-lg w-full max-w-2xl mx-auto pointer-events-auto flex-col">
-    <div className="flex justify-between items-center p-4 border-b">
-      <input
-        type="text"
-        value={searchInput}
-        onChange={handleInputChange}
-        placeholder="검색 입력..."
-        className="w-full p-2 rounded-md"
-      />
-      <button onClick={onClose} className="p-1 hover:bg-gray-400 rounded-full">
-        <X className="w-2 p-2 text-black" />
-      </button>
-    </div>
-    <div className="p-4">
-      {SearchResults.map((result, index) => (
-        <button
-          key={index}
-          className="block 
+        <div className="bg-gray-100 rounded-lg w-full max-w-2xl mx-auto pointer-events-auto flex-col">
+          <div className="flex justify-between items-center p-4 border-b">
+            <input type="text" value={searchInput} onChange={handleInputChange} placeholder="검색 입력..." className="w-full p-2 rounded-md" />
+            <button onClick={onClose} className="p-1 hover:bg-gray-400 rounded-full">
+              <X className="w-2 p-2 text-black" />
+            </button>
+          </div>
+          <div className="p-4">
+            {SearchResults.map((result, index) => (
+              <button
+                key={index}
+                className="block 
         w-full 
         text-left 
         p-2 
@@ -81,16 +76,21 @@ const SearchModal = ({ isOpen, onClose }) => {
         shadow-md
         hover:shadow-neon
         animate-neon-shine"
-        >
-          {result}
-        </button>
-      ))}
-    </div>
-  </div>
-</div>
+              >
+                {result}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </>,
     document.getElementById("modal-root")
   )
+}
+
+SearchModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
 }
 
 export default SearchModal

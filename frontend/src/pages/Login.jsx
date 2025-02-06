@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { useDispatch, useSelector } from 'react-redux'
+import { login, logout } from '../store/slices/authSlice'
 import axios from "axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
 

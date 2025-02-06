@@ -1,13 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState } from "react"
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import Navbar from "./components/layout/Navbar"
 import Sidebar from "./components/layout/Sidebar"
-import SearchModal from "./components/common/SearchModal.jsx";
+import SearchModal from "./components/common/SearchModal.jsx"
 import routes from "./routes"
-import './index.css';
+import "./index.css"
 
 function App() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
     <Router>
