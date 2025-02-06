@@ -26,11 +26,11 @@ const MainPage = () => {
   const userId = useSelector((state) => state.auth.user.id)
 
   // 사용 가능한 모델 목록과 세부 모델 목록
-  const modelList = ["chatgpt", "claude", "gemini", "clova"]
+  const modelList = ["chatgpt", "claude", "google", "clova"]
   const detailModelList = {
     chatgpt: ["gpt-4o", "gpi-4o-mini", "gpt-o1"],
     claude: ["claude-3.5-sonnet", "claude-3-opus", "claude-3.5-haiku"],
-    gemini: ["gemini-1.5-flash-8b", "gemini-1.5-pro"],
+    google: ["gemini-1.5-flash-8b", "gemini-1.5-pro"],
     clova: ["clova-studio-exclusive", "clova-studio-basic"],
   }
 
@@ -40,7 +40,7 @@ const MainPage = () => {
     if (textareaRef.current) {
       adjustTextareaHeight(textareaRef.current)
     }
-  }, [messages])
+  }, [userInput])
 
   // 메시지가 추가될 때 메시지 끝으로 자동 스크롤
   useEffect(() => {
@@ -111,8 +111,13 @@ const MainPage = () => {
   }
 
   // **모델 변경 처리**
-  const changeModel = (newModel) => {
-    setModel(newModel)
+  const changeModel = (modelName) => {
+    setModel(modelName)
+    setDetailModel(detailModelList[modelName][0])
+  }
+  // **세부 모델 변경 처리**
+  const changeDetailModel = (detailModelName) => {
+    setDetailModel(detailModelName)
     setIsModelDropdownOpen(false)
   }
 
@@ -189,17 +194,37 @@ const MainPage = () => {
 
             {/* 드롭다운 메뉴 */}
             {isModelDropdownOpen && (
-              <div className="absolute bottom-full mb-2 right-0 w-40 bg-white rounded-lg shadow-lg py-2">
-                {modelList.map((modelName) => (
-                  <button
-                    key={modelName}
-                    onClick={() => changeModel(modelName)}
-                    className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-100 ${modelName === model ? "bg-gray-50" : ""}`}
-                  >
-                    <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
-                    <span className="capitalize">{modelName}</span>
-                  </button>
-                ))}
+              <div className="absolute bottom-full mb-2 right-0 flex gap-2">
+                <div className="w-40 bg-white rounded-lg shadow-lg py-2">
+                  {modelList.map((modelName) => (
+                    <button
+                      key={modelName}
+                      onClick={() => changeModel(modelName)}
+                      className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-100 ${modelName === model ? "bg-gray-50" : ""}`}
+                    >
+                      <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
+                      <span className="capitalize">{modelName}</span>
+                    </button>
+                  ))}
+                </div>
+              {/* 세부 모델 목록 드롭다운 */}
+              {model && (
+                <div className="w-56 bg-white rounded-lg shadow-lg py-2">
+                  <div className="px-4 py-2 text-sm font-medium text-gray-600 border-b border-gray-100">
+                  </div>
+                  {detailModelList[model].map((detailModelName) => (
+                    <button
+                      key={detailModelName}
+                      onClick={() => changeDetailModel(detailModelName)}
+                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
+                        detailModelName === detailModel ? "bg-gray-50" : ""
+                      }`}
+                    >
+                      {detailModelName}
+                    </button>
+                  ))}
+                </div>
+              )}
               </div>
             )}
           </div>
