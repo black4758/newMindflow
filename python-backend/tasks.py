@@ -11,13 +11,26 @@ from celery_config import celery
 
 load_dotenv()
 
-# Neo4j 설정
 try:
-    neo4j_uri = os.getenv('NEO4J_URI')
-    neo4j_driver = GraphDatabase.driver(neo4j_uri, auth=(
-        os.getenv("NEO4J_USER", "neo4j"), os.getenv("NEO4J_PASSWORD", "password")))
+    # bolt:// 프로토콜 사용 및 데이터베이스 이름 지정
+    neo4j_uri = "bolt://localhost:7688/mindmap"  # mindmap은 docker-compose에서 지정한 데이터베이스 이름
+    neo4j_driver = GraphDatabase.driver(
+        neo4j_uri,
+        auth=("neo4j", "REDACTEDREDACTED"),
+        database="mindmap"  # 명시적으로 데이터베이스 지정
+    )
+    
+    # 연결 테스트를 위한 간단한 쿼리 실행
+    with neo4j_driver.session(database="mindmap") as session:
+        result = session.run("RETURN 1 as test")
+        print(result.single()["test"])
+    
+    print("Neo4j 연결 성공")
 except Exception as e:
-    print(f"Neo4j 연결 오류: {e}")
+    print(f"Neo4j 연결 오류 상세: {str(e)}")
+    print(f"오류 타입: {type(e).__name__}")
+
+
 
 # LangChain 설정
 chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
