@@ -4,6 +4,7 @@ import Signup from "../pages/Signup.jsx"
 import Profile from "../pages/Profile.jsx";
 import MindmapPage from "../pages/MindmapPage.jsx";
 import MindmapPagedetail from "../pages/MindmapPagedetail.jsx";
+import Mindmap from "../components/feature/Mindmap.jsx";
 
 const routes = [
     {
@@ -37,7 +38,19 @@ const routes = [
         requireAuth: false
     },
     {
-        path: '/mindmap/detail/',
+        path: '/mindmap/:chatRoomId',
+        element: <MindmapPage />,
+        title: '마인드맵룸상세페이지',
+        requireAuth: false
+    },
+    {
+        path: '/mindmap/:chatRoomId',
+        element: <Mindmap />,
+        title: '마인드맵룸상세페이지',
+        requireAuth: false
+    },
+    {
+        path: '/mindmap/:chatRoomId/detail',
         element: <MindmapPagedetail />,
         title: '마인드맵상세페이지',
         requireAuth: false
