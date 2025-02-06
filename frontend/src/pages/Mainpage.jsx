@@ -4,39 +4,29 @@ import ModelCard from "../components/common/ModelCard.jsx"
 import axios from "axios"
 import { useSelector } from "react-redux"
 
+// 메인 페이지 컴포넌트
 const MainPage = () => {
-  // 텍스트 영역의 높이를 동적으로 조절하기 위한 Ref
+  // **Refs 정의**
+  // 텍스트 영역 높이를 동적으로 조절하기 위한 ref
   const textareaRef = useRef(null)
-  // 메시지 끝으로 스크롤하기 위한 Ref
+  // 메시지 목록이 업데이트될 때 끝으로 자동 스크롤하기 위한 ref
   const messagesEndRef = useRef(null)
 
-  // 메시지를 저장하는 상태
-  const [messages, setMessages] = useState([])
-  // 현재 입력 값을 저장하는 상태
-  const [userInput, setUserInput] = useState("")
-  // 선택된 모델을 저장하는 상태
-  const [model, setModel] = useState("")
-  // 모델 카드를 보여줄지 여부를 저장하는 상태
-  const [showModelCards, setShowModelCards] = useState(false)
-  // 모델 드롭다운을 토글하는 상태
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
-  // 현재 세부 모델
-  const [detailModel, setDetailModel] = useState("")
-  // 현재 채팅 방의 ID
-  const [chatRoomId, setChatRoomId] = useState(0)
+  // **State 정의**
+  const [messages, setMessages] = useState([]) // 채팅 메시지 목록 상태
+  const [userInput, setUserInput] = useState("") // 사용자 입력 상태
+  const [model, setModel] = useState("") // 선택된 모델 상태
+  const [showModelCards, setShowModelCards] = useState(false) // 모델 카드 표시 여부 상태
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false) // 모델 드롭다운 열림 상태
+  const [detailModel, setDetailModel] = useState("") // 선택된 세부 모델 상태
+  const [chatRoomId, setChatRoomId] = useState(0) // 현재 채팅 방 ID 상태
+  const [responses, setResponses] = useState({}) // 모델별 응답 상태
 
-  // response 상태 추가
-  const [responses, setResponses] = useState({})
-
-  // Redux에서 userId 가져오기
+  // Redux에서 현재 로그인한 사용자의 userId 가져오기
   const userId = useSelector((state) => state.auth.user.id)
 
-  // 디버깅용 userId
-  // const userId = 0
-
-  // 사용 가능한 모델 목록
+  // 사용 가능한 모델 목록과 세부 모델 목록
   const modelList = ["chatgpt", "claude", "gemini", "clova"]
-  // 세부 모델 목록
   const detailModelList = {
     chatgpt: ["gpt-4o", "gpi-4o-mini", "gpt-o1"],
     claude: ["claude-3.5-sonnet", "claude-3-opus", "claude-3.5-haiku"],
@@ -44,36 +34,35 @@ const MainPage = () => {
     clova: ["clova-studio-exclusive", "clova-studio-basic"],
   }
 
-  // 메시지가 변경될 때마다 텍스트 영역의 높이를 조절
+  // **useEffect 훅 사용**
+  // 메시지가 업데이트될 때마다 텍스트 영역의 높이를 동적으로 조정
   useEffect(() => {
     if (textareaRef.current) {
       adjustTextareaHeight(textareaRef.current)
     }
   }, [messages])
 
-  // 새로운 메시지가 추가될 때 메시지 끝으로 스크롤
+  // 메시지가 추가될 때 메시지 끝으로 자동 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  //모델 선택
+  // **모델 선택 시 처리**
   const handleModelSelect = (modelName) => {
-    setModel(modelName)
-    setDetailModel(detailModelList[modelName][0])
-    setShowModelCards(false)
+    setModel(modelName) // 선택된 모델 상태 설정
+    setDetailModel(detailModelList[modelName][0]) // 기본 세부 모델 설정
+    setShowModelCards(false) // 모델 카드 숨기기
 
-      // 선택한 모델의 응답을 채팅 메시지로 추가
+    // 선택된 모델의 응답을 메시지로 추가
     const aiMessage = {
       text: responses[modelName].response,
       isUser: false,
       model: modelName,
-      detailModel: responses[modelName].detail_model
-    };
-    
-    setMessages(prev => [...prev, aiMessage]);
+    }
+    setMessages((prev) => [...prev, aiMessage])
   }
 
-  // 메세지 전송 처리
+  // **메시지 전송 처리**
   const handleMessageSend = async (e) => {
     e.preventDefault()
 
@@ -86,16 +75,19 @@ const MainPage = () => {
     }
 
     try {
+      // 서버에 메시지 전송
       const response = await axios.post("http://localhost:5001/api/messages/send", requestData)
 
       if (response.data.models) {
+        // 다수의 모델이 응답을 반환할 때
         const { models, responses } = response.data
-        setResponses(responses)
-        setShowModelCards(true)
+        setResponses(responses) // 응답 상태 설정
+        setShowModelCards(true) // 모델 카드 표시
         console.log("가용한 모델들: ", models)
       } else if (response.data.data) {
+        // 단일 모델 응답일 때
         const { chat_room_id, model, detail_model, response: aiResponse } = response.data.data
-        setChatRoomId(chat_room_id)
+        setChatRoomId(chat_room_id) // 채팅 방 ID 업데이트
 
         const aiMessage = {
           text: aiResponse,
@@ -103,7 +95,6 @@ const MainPage = () => {
           model,
           detailModel: detail_model,
         }
-
         setMessages((prev) => [...prev, aiMessage])
       }
     } catch (error) {
@@ -111,35 +102,34 @@ const MainPage = () => {
     }
   }
 
-  // 모델 아이콘 경로 가져오기
-  const getModelIcon = (modelName) => {
-    return `/icons/${modelName}.svg`
-  }
+  // **모델 아이콘 경로 반환**
+  const getModelIcon = (modelName) => `/icons/${modelName}.svg`
 
-  // 모델 드롭다운 토글
+  // **모델 드롭다운 토글**
   const toggleModelDropdown = () => {
     setIsModelDropdownOpen(!isModelDropdownOpen)
   }
 
-  // 선택된 모델 변경
+  // **모델 변경 처리**
   const changeModel = (newModel) => {
     setModel(newModel)
     setIsModelDropdownOpen(false)
   }
 
-  // 텍스트 영역 높이 동적 조절
+  // **텍스트 영역 높이 조절**
   const adjustTextareaHeight = (element) => {
     element.style.height = "auto"
-    const newHeight = Math.min(element.scrollHeight, 5 * 24) // 24px은 한 줄의 대략적인 높이
+    const newHeight = Math.min(element.scrollHeight, 5 * 24) // 최대 5줄까지만 확장
     element.style.height = `${newHeight}px`
   }
 
-  // 입력 변경 처리
+  // **입력 변경 처리**
   const handleInputChange = (e) => {
     setUserInput(e.target.value)
     adjustTextareaHeight(e.target)
   }
 
+  // **렌더링**
   return (
     <div className="h-full p-4 relative" id="modal-root">
       {/* 메시지 표시 영역 */}
@@ -151,8 +141,8 @@ const MainPage = () => {
         {/* 모델 선택 카드 영역 */}
         {showModelCards && (
           <div className="grid grid-cols-2 gap-4 mt-4 max-w-[calc(100%-10rem)] mx-auto">
-            {Object.entries(responses).map(([modelName, { response, detail_model }]) => (
-              <div key={modelName} className="bg-[#e0e0e0] p-3 rounded-lg cursor-pointer hover:bg-[#EFEFEF] transition-colors" onClick={() => handleModelSelect(modelName, detail_model)}>
+            {Object.entries(responses).map(([modelName, { response }]) => (
+              <div key={modelName} className="bg-[#e0e0e0] p-3 rounded-lg cursor-pointer hover:bg-[#EFEFEF] transition-colors" onClick={() => handleModelSelect(modelName)}>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-5 h-5">
                     <img src={getModelIcon(modelName)} alt={`${modelName} icon`} className="w-full h-full object-contain" />
@@ -175,11 +165,7 @@ const MainPage = () => {
             onChange={handleInputChange}
             rows={1}
             className="w-full px-4 py-2 pr-12 rounded-lg bg-[#e0e0e0] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FFD26F] resize-none overflow-y-auto"
-            style={{
-              minHeight: "40px",
-              maxHeight: "120px", // 5줄 정도의 높이
-              lineHeight: "24px",
-            }}
+            style={{ minHeight: "40px", maxHeight: "120px", lineHeight: "24px" }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
@@ -208,8 +194,7 @@ const MainPage = () => {
                   <button
                     key={modelName}
                     onClick={() => changeModel(modelName)}
-                    className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-100
-                      ${modelName === model ? "bg-gray-50" : ""}`}
+                    className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-100 ${modelName === model ? "bg-gray-50" : ""}`}
                   >
                     <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
                     <span className="capitalize">{modelName}</span>
