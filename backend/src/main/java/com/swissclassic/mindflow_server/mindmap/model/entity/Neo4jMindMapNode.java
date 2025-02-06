@@ -24,6 +24,12 @@ public class Neo4jMindMapNode {
     // Define relationships to subtopics
     @Relationship(type = "HAS_SUBTOPIC", direction = Relationship.Direction.OUTGOING)
     private Set<Neo4jMindMapNode> subTopics = new HashSet<>();
+    // Define relationships to related topics
+    @Relationship(type = "RELATED_TO", direction = Relationship.Direction.OUTGOING)
+    private Set<Neo4jMindMapNode> relatedTopics = new HashSet<>();
+    // Define relationships to comparing topics
+    @Relationship(type = "COMPARED_TO", direction = Relationship.Direction.OUTGOING)
+    private Set<Neo4jMindMapNode> comparingTopics = new HashSet<>();
 
     // Constructors
     public Neo4jMindMapNode() {

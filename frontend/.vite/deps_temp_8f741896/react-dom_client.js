@@ -5952,7 +5952,7 @@ var require_react_dom_client_development = __commonJS({
           "function" !== typeof getDerivedStateFromError && (null === legacyErrorBoundariesThatAlreadyFailed ? legacyErrorBoundariesThatAlreadyFailed = /* @__PURE__ */ new Set([this]) : legacyErrorBoundariesThatAlreadyFailed.add(this));
           callComponentDidCatchInDEV(this, errorInfo);
           "function" === typeof getDerivedStateFromError || 0 === (fiber.lanes & 2) && console.error(
-            "%s: Error boundaries should implement getDerivedStateFromError(). In that method, return a state update to display an error message or fallback UI.",
+            "%s: Error boundaries should implement getDerivedStateFromError(). In that method, return a state update to display an error user_message or fallback UI.",
             getComponentNameFromFiber(fiber) || "Unknown"
           );
         });
@@ -11439,7 +11439,7 @@ var require_react_dom_client_development = __commonJS({
             nearestMountedAncestor = nearestMountedAncestor.return;
           }
           console.error(
-            "Internal React error: Attempted to capture a commit phase error inside a detached tree. This indicates a bug in React. Potential causes include deleting the same fiber more than once, committing an already-finished tree, or an inconsistent return pointer.\n\nError message:\n\n%s",
+            "Internal React error: Attempted to capture a commit phase error inside a detached tree. This indicates a bug in React. Potential causes include deleting the same fiber more than once, committing an already-finished tree, or an inconsistent return pointer.\n\nError user_message:\n\n%s",
             error
           );
         }
@@ -17612,7 +17612,7 @@ var require_react_dom_client_development = __commonJS({
           var event = new window.ErrorEvent("error", {
             bubbles: true,
             cancelable: true,
-            message: "object" === typeof error && null !== error && "string" === typeof error.message ? String(error.message) : String(error),
+            user_message: "object" === typeof error && null !== error && "string" === typeof error.message ? String(error.message) : String(error),
             error
           });
           if (!window.dispatchEvent(event)) return;
