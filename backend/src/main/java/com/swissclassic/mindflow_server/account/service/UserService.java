@@ -1,13 +1,15 @@
 package com.swissclassic.mindflow_server.account.service;
 
+import com.swissclassic.mindflow_server.account.model.dto.RegisterRequest;
 import com.swissclassic.mindflow_server.account.model.entity.OAuth2UserWrapper;
 import com.swissclassic.mindflow_server.account.model.entity.User;
-import com.swissclassic.mindflow_server.account.model.dto.RegisterRequest;
 import com.swissclassic.mindflow_server.account.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -17,6 +19,7 @@ import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -84,7 +87,8 @@ public class UserService {
         Map<String, Object> tokenResponse = getTokenFromCode(provider, code);
         Map<String, Object> userInfo = getUserInfo(
                 provider, tokenResponse.get("access_token")
-                                       .toString());
+                                       .toString()
+        );
 
         OAuth2UserRequest userRequest = createOAuth2UserRequest(provider, tokenResponse);
         return (OAuth2UserWrapper) oAuth2UserService.loadUser(userRequest);
@@ -103,15 +107,28 @@ public class UserService {
             case "google" -> webClient.post()
                                       .uri("https://oauth2.googleapis.com/token")
                                       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-                                      .body(BodyInserters
-                                                    .fromFormData("client_id", googleClientId)
-                                                    .with("client_secret", googleClientSecret)
-                                                    .with("code", code)
-                                                    .with("grant_type", "authorization_code")
-                                                    .with("redirect_uri", googleCallbackUri))
+                                      .body(BodyInserters.fromFormData("client_id", googleClientId)
+                                                         .with("client_secret", googleClientSecret)
+                                                         .with("code", code)
+                                                         .with("grant_type", "authorization_code")
+                                                         .with("redirect_uri", googleCallbackUri))
                                       .retrieve()
+                                      .onStatus(
+                                              HttpStatusCode::is4xxClientError,  // Lambda version of the predicate
+                                              response -> response.bodyToMono(String.class)
+                                                                  .flatMap(errorBody -> {
+                                                                      log.error(
+                                                                              "Error response from token endpoint: {}",
+                                                                              errorBody
+                                                                      );
+                                                                      return Mono.error(new RuntimeException(
+                                                                              "Token endpoint error: " + errorBody));
+                                                                  })
+                                      )
                                       .bodyToMono(Map.class)
-                                      .block();
+                                      .doOnError(throwable -> log.error(throwable.getMessage(), throwable))
+                                      .block()
+            ;
             // Add other providers...
             default -> throw new IllegalArgumentException("Unsupported provider");
         };
@@ -126,14 +143,16 @@ public class UserService {
                                       .header("Authorization", "Bearer " + accessToken)
                                       .retrieve()
                                       .bodyToMono(Map.class)
-                                      .block();
+                                      .block()
+            ;
 
             case "kakao" -> webClient.get()
                                      .uri("https://kapi.kakao.com/v2/user/me")
                                      .header("Authorization", "Bearer " + accessToken)
                                      .retrieve()
                                      .bodyToMono(Map.class)
-                                     .block();
+                                     .block()
+            ;
 
             default -> throw new IllegalArgumentException("Unsupported provider");
         };
@@ -143,13 +162,13 @@ public class UserService {
         ClientRegistration registration = getClientRegistration(provider);
 
         OAuth2AccessToken accessToken = new OAuth2AccessToken(
-                OAuth2AccessToken.TokenType.BEARER,
-                tokenResponse.get("access_token")
-                             .toString(),
-                Instant.now(),
-                Instant.now()
-                       .plusSeconds(Long.parseLong(tokenResponse.get("expires_in")
-                                                                .toString()))
+                OAuth2AccessToken.TokenType.BEARER, tokenResponse.get("access_token")
+                                                                 .toString(), Instant.now(), Instant.now()
+                                                                                                    .plusSeconds(
+                                                                                                            Long.parseLong(
+                                                                                                                    tokenResponse.get(
+                                                                                                                                         "expires_in")
+                                                                                                                                 .toString()))
         );
 
         return new OAuth2UserRequest(registration, accessToken);
@@ -168,7 +187,8 @@ public class UserService {
                                                .userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
                                                .userNameAttributeName("sub")
                                                .clientName("Google")
-                                               .build();
+                                               .build()
+            ;
 
             case "kakao" -> ClientRegistration.withRegistrationId("kakao")
                                               .clientId(kakaoClientId)
@@ -181,7 +201,8 @@ public class UserService {
                                               .userInfoUri("https://kapi.kakao.com/v2/user/me")
                                               .userNameAttributeName("id")
                                               .clientName("Kakao")
-                                              .build();
+                                              .build()
+            ;
 
             default -> throw new IllegalArgumentException("Unsupported provider: " + provider);
         };
