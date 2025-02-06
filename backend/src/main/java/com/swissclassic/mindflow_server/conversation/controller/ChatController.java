@@ -2,6 +2,7 @@ package com.swissclassic.mindflow_server.conversation.controller;
 import com.swissclassic.mindflow_server.conversation.model.dto.ChatRequest;
 import com.swissclassic.mindflow_server.conversation.model.dto.ConversationSummaryRequest;
 import com.swissclassic.mindflow_server.conversation.model.dto.FirstChatRespose;
+import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 import com.swissclassic.mindflow_server.conversation.model.entity.ConversationSummary;
 import com.swissclassic.mindflow_server.conversation.service.AiServerService;
 import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
@@ -19,9 +20,8 @@ import java.time.Instant;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/chat")
-@Tag(name = "Chat", description = "채팅 관련 API")
-@Controller
+@RequestMapping("/api/messages")
+@Tag(name = "send", description = "채팅 관련 API")
 public class ChatController {
     private final AiServerService aiServerService;
     private final ChatRoomService roomService;
@@ -34,10 +34,10 @@ public class ChatController {
         this.conversationSummaryService = conversationSummaryService;
     }
 
-    @PostMapping("/chat")
+    @PostMapping("/send")
     public Mono<String> getChatResponse(@RequestBody ChatRequest chatRequest) {
         if (chatRequest.getModel().isEmpty()){
-           System.out.println("모델이 비어 있습니다.");
+            System.out.println("모델이 비어 있습니다.");
             return aiServerService.getAllChatResponse(chatRequest);
         }
 //        if (chatRequest.getChatRoomId()==0){
@@ -49,11 +49,11 @@ public class ChatController {
             try {
                 System.out.println(chatRequest.getUserInput());
                 JSONObject jsonResponse = new JSONObject(response);
-                String content = jsonResponse.getJSONObject("response").getString("content");
+                String  responseContent = jsonResponse.getString("response");
                 chatLogService.saveChatLog(
                         String.valueOf(chatRequest.getChatRoomId()),
                         chatRequest.getUserInput(),
-                        content,
+                        responseContent,
                         String.valueOf(chatRequest.getCreatorId())
                 );
             } catch (JSONException e) {
@@ -65,8 +65,8 @@ public class ChatController {
     }
     @PostMapping("/choosemodel")
     FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){
-
-        Long RoomId=(roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),conversationSummaryRequest.getCreatorId()).getId());
+        ChatRoom room =roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),conversationSummaryRequest.getCreatorId());
+        long RoomId=(room.getId());
         chatLogService.saveChatLog(
                 String.valueOf(RoomId),
                 conversationSummaryRequest.getUserInput(),
@@ -75,12 +75,12 @@ public class ChatController {
         );
         ConversationSummary  conversationSummary=new ConversationSummary();
         conversationSummary.setTimestamp(String.valueOf(Instant.now()));
-        conversationSummary.setChatRoomId(String.valueOf(conversationSummaryRequest.getCreatorId()));
+        conversationSummary.setChatRoomId(RoomId);
         conversationSummary.setSummaryContent("User:"+conversationSummaryRequest.getUserInput()+"\nAI"+ conversationSummaryRequest.getAnswer());
         conversationSummaryService.saveConversationSummary(conversationSummary);
         FirstChatRespose firstChatRespose = new FirstChatRespose();
-        firstChatRespose.setChatRoomId(String.valueOf(conversationSummary.getChatRoomId()));
-
+        firstChatRespose.setChatRoomId((RoomId));
+        System.out.println(RoomId);
         return firstChatRespose;
     }
 
