@@ -27,7 +27,7 @@ public class ChatController {
     private final ChatRoomService roomService;
     private final ChatLogService chatLogService;
     private final ConversationSummaryService conversationSummaryService;
-    public ChatController(AiServerService aiServerService, ChatRoomService roomService, ChatLogService chatLogService, ConversationSummaryService conversationSummary, ConversationSummaryService conversationSummaryService) {
+    public ChatController(AiServerService aiServerService, ChatRoomService roomService, ChatLogService chatLogService, ConversationSummaryService conversationSummaryService) {
         this.aiServerService = aiServerService;
         this.roomService = roomService;
         this.chatLogService = chatLogService;
@@ -45,16 +45,16 @@ public class ChatController {
 //        }
         Mono<String> answer =aiServerService.getChatResponse(chatRequest);
         answer.subscribe(response -> {
-
             try {
-                System.out.println(chatRequest.getUserInput());
+
                 JSONObject jsonResponse = new JSONObject(response);
                 String  responseContent = jsonResponse.getString("response");
+
                 chatLogService.saveChatLog(
-                        String.valueOf(chatRequest.getChatRoomId()),
+                        (chatRequest.getChatRoomId()),
                         chatRequest.getUserInput(),
                         responseContent,
-                        String.valueOf(chatRequest.getCreatorId())
+                        (chatRequest.getCreatorId())
                 );
             } catch (JSONException e) {
                 throw new RuntimeException(e);
@@ -68,10 +68,10 @@ public class ChatController {
         ChatRoom room =roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),conversationSummaryRequest.getCreatorId());
         long RoomId=(room.getId());
         chatLogService.saveChatLog(
-                String.valueOf(RoomId),
+                (RoomId),
                 conversationSummaryRequest.getUserInput(),
                 conversationSummaryRequest.getAnswer(),
-                String.valueOf(conversationSummaryRequest.getCreatorId())
+                (conversationSummaryRequest.getCreatorId())
         );
         ConversationSummary  conversationSummary=new ConversationSummary();
         conversationSummary.setTimestamp(String.valueOf(Instant.now()));

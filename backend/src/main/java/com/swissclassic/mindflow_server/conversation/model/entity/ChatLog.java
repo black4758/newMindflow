@@ -19,20 +19,21 @@ import java.util.UUID;
 public class ChatLog {
     @Id
     private String id;
-    @Column(name = "chatRoom_id")
-    private String chatRoomId;
+    @Field(name = "chatRoom_id")
+    private long chatRoomId;
 
     private String question;
-    @Column(name = "user_Id")
-    private String userId;
+    @Field(name = "user_Id")
+    private long userId;
     private List<AnswerSentence> answerSentences;
-    @Column(name = "create_at")
+    @Field(name = "create_at")
     private LocalDateTime createAT;
     private boolean processed;
 
     // Getters and Setters
     @Data
     public static class AnswerSentence {
+        @Field(name = "sentence_Id")
         private String sentenceId;
         private String content;
         private boolean isDeleted;
