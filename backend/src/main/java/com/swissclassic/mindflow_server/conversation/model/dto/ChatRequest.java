@@ -9,10 +9,11 @@ import lombok.*;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
+
 public class ChatRequest {
-    private String accountId;
-    private Long chatRoomId;
-    private String question;
+    private long chatRoomId;
+    private String model;      // 사용할 모델 (예: google, clova)
+    private String userInput;  // 사용자 입력 메시지
+    private long creatorId;
+    private String detailModel; // 세부 모델 (예: gemini-2.0-flash-exp)
 }
