@@ -21,6 +21,7 @@ public class ChatLog {
     private String id;
     @Column(name = "chatRoom_id")
     private String chatRoomId;
+
     private String question;
     @Column(name = "user_Id")
     private String userId;

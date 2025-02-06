@@ -12,5 +12,5 @@ public class ConversationSummary {
     private String id;
     private String chatRoomId;
     private String summaryContent;
-    private Instant timestamp;
+    private String timestamp;
 }
