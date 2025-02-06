@@ -31,6 +31,8 @@ const Mindmap = () => {
   const [selectedNode, setSelectedNode] = useState(null)
   const [isNodeFocused, setIsNodeFocused] = useState(false)
   const [isRootFixed, setIsRootFixed] = useState(false); // 초기값을 false로 변경
+  const [showLegend, setShowLegend] = useState(false); // 클릭 시 표시 상태
+  const [hoverLegend, setHoverLegend] = useState(false); // 호버 시 표시 상태
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -147,11 +149,12 @@ const Mindmap = () => {
     if (!hoverNode) {
       setHighlightNodes(new Set());
       setHighlightLinks(new Set());
-      // 모든 노드의 isPathNode 속성 초기화
+      // 모든 노드의 속성 초기화
       processedData.nodes.forEach(node => {
         node.isPathNode = false;
+        node.relationType = null; // 관계 타입 초기화 추가
       });
-      // 모든 링크의 isPathLink 속성 초기화
+      // 모든 링크의 속성 초기화
       processedData.links.forEach(link => {
         link.isPathLink = false;
       });
@@ -161,26 +164,45 @@ const Mindmap = () => {
     // 하이라이트 시작 전에 모든 노드와 링크의 속성 초기화
     processedData.nodes.forEach(node => {
       node.isPathNode = false;
+      node.relationType = null;
     });
     processedData.links.forEach(link => {
       link.isPathLink = false;
     });
 
-    // 연결된 노드들 찾기 (기존 기능)
-    const connectedNodes = processedData.links
+    // 연결된 노드들과 관계 타입 찾기
+    const connectedNodesWithTypes = processedData.links
       .filter(link => link.source === hoverNode || link.target === hoverNode)
-      .map(link => link.source === hoverNode ? link.target : link.source);
+      .map(link => {
+        const connectedNode = link.source === hoverNode ? link.target : link.source;
+        return {
+          node: connectedNode,
+          type: link.type,
+          isSource: link.source === hoverNode
+        };
+      });
 
-    // 루트까지의 경로 찾기 (새로운 기능)
+    // 루트까지의 경로 찾기
     const path = findPathToRoot(hoverNode.id);
     
     // 모든 하이라이트할 노드들을 하나의 Set으로 합치기
-    const highlightedNodes = new Set([hoverNode, ...connectedNodes]);
-    const highlightedLinks = new Set(
-      processedData.links.filter(link => 
-        link.source === hoverNode || link.target === hoverNode
-      )
-    );
+    const highlightedNodes = new Set([hoverNode]);
+    const highlightedLinks = new Set();
+
+    // 연결된 노드들의 관계 타입 설정
+    connectedNodesWithTypes.forEach(({ node, type, isSource }) => {
+      highlightedNodes.add(node);
+      node.relationType = type; // 관계 타입 저장
+      
+      // 해당 링크 찾기
+      const link = processedData.links.find(l => 
+        (l.source === hoverNode && l.target === node) ||
+        (l.source === node && l.target === hoverNode)
+      );
+      if (link) {
+        highlightedLinks.add(link);
+      }
+    });
 
     // 루트까지의 경로를 별도로 저장
     if (path) {
@@ -328,6 +350,50 @@ const Mindmap = () => {
     }
   }, [isNodeFocused, selectedNode, handleNodeSelect, navigate]);
 
+  // 노드 색상을 원래대로 되돌리기
+  const getNodeColor = (node, isHighlighted) => {
+    if (!isHighlighted) {
+      return node.isRoot ? "rgba(255,107,107,0.6)" : "rgba(66,153,225,0.4)";
+    }
+    
+    if (node.isPathNode) {
+      return "rgba(245,158,11,0.9)"; // 루트까지의 경로는 주황색 유지
+    }
+    
+    return node.isRoot ? "rgba(255,107,107,0.9)" : "rgba(66,153,225,0.9)";
+  };
+
+  // 링크 색상을 관계 타입에 따라 설정
+  const getLinkColor = (link, isHighlighted) => {
+    if (!isHighlighted) {
+      return "#ffffff"; // 하이라이트되지 않은 링크는 원래 설정 유지
+    }
+    
+    if (link.isPathLink) {
+      return "rgba(245,158,11,0.9)"; // 루트까지의 경로
+    }
+    
+    // 관계 타입에 따른 색상
+    switch (link.type) {
+      case "RELATED_TO":
+        return "rgba(52,211,153,0.9)"; // 초록색
+      case "HAS_SUBTOPIC":
+        return "rgba(99,102,241,0.9)"; // 인디고색
+      case "COMPARE_TO":
+        return "rgba(236,72,153,0.9)"; // 핑크색
+      default:
+        return "rgba(255,255,255,0.8)";
+    }
+  };
+
+  // 링크 두께 설정 함수 추가
+  const getLinkWidth = (link, isHighlighted) => {
+    if (!isHighlighted) {
+      return 1; // 하이라이트되지 않은 링크는 기본 두께
+    }
+    return 3; // 하이라이트된 링크는 두껍게
+  };
+
   return (
     <div className="relative w-full h-full">
       {/* 검색창과 체크박스를 포함하는 컨테이너 */}
@@ -383,6 +449,52 @@ const Mindmap = () => {
         </div>
       </div>
 
+      {/* ? 버튼과 설명창 컨테이너 */}
+      <div className="absolute right-4 top-4 z-50">
+        {/* ? 버튼 */}
+        <button
+          className="w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center text-gray-700 hover:bg-opacity-100 shadow-lg font-bold"
+          onMouseEnter={() => setHoverLegend(true)}
+          onMouseLeave={() => setHoverLegend(false)}
+          onClick={() => setShowLegend(!showLegend)}
+        >
+          ?
+        </button>
+
+        {/* 색상 범례 - 호버 또는 클릭 시 표시 */}
+        {(hoverLegend || showLegend) && (
+          <div 
+            className="absolute right-10 top-0 bg-white rounded-lg shadow-lg"
+            style={{ 
+              backgroundColor: showLegend ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)',
+              minWidth: 'max-content'
+            }}
+          >
+            <div className="p-4">
+              <h3 className="text-gray-800 font-bold mb-2">연결선 관계 색상 설명</h3>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(245,158,11,0.9)" }}></div>
+                  <span className="text-sm text-gray-700 whitespace-nowrap">루트까지의 경로</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(52,211,153,0.9)" }}></div>
+                  <span className="text-sm text-gray-700 whitespace-nowrap">관련 관계</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(99,102,241,0.9)" }}></div>
+                  <span className="text-sm text-gray-700 whitespace-nowrap">하위 주제</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(236,72,153,0.9)" }}></div>
+                  <span className="text-sm text-gray-700 whitespace-nowrap">비교 관계</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* 2D/3D 전환 버튼 */}
       <button
         className="absolute bottom-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg"
@@ -409,22 +521,11 @@ const Mindmap = () => {
             const padding = textHeight * 0.8;
             const radius = textHeight * 1.43;
             
-            if (node.isRoot) {
-              sprite.backgroundColor = isHighlighted ? 
-                'rgba(255,107,107,0.9)' : 'rgba(255,107,107,0.6)';
-              sprite.borderWidth = 0; // 테두리 제거
-              sprite.borderRadius = radius;
-              sprite.padding = padding;
-              sprite.textHeight = textHeight;
-            } else {
-              sprite.backgroundColor = node.isPathNode ? 
-                (isHighlighted ? 'rgba(245,158,11,0.9)' : 'rgba(245,158,11,0.4)') :
-                (isHighlighted ? 'rgba(66,153,225,0.9)' : 'rgba(66,153,225,0.4)');
-              sprite.borderWidth = 0; // 테두리 제거
-              sprite.borderRadius = radius;
-              sprite.padding = padding;
-              sprite.textHeight = textHeight;
-            }
+            sprite.backgroundColor = getNodeColor(node, isHighlighted);
+            sprite.borderWidth = 0;
+            sprite.borderRadius = radius;
+            sprite.padding = padding;
+            sprite.textHeight = textHeight;
             
             // 텍스트 스타일 설정
             sprite.color = isHighlighted ? '#ffffff' : '#f8fafc';
@@ -446,11 +547,10 @@ const Mindmap = () => {
           nodeOpacity={1}
           nodeCanvasObjectMode={() => "replace"}
           nodeCanvasObject={(node, ctx, globalScale) => {
-            // 글자 크기를 2배로 증가
-            const fontSize = node.isRoot ? 32 : 26;  // 기존 16, 13에서 2배로 증가
+            const fontSize = node.isRoot ? 32 : 26;
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
             const isHighlighted = highlightNodes.has(node);
-            const radius = 16;  // 기존 8에서 2배로 증가
+            const radius = 16;
 
             ctx.save();
 
@@ -464,21 +564,14 @@ const Mindmap = () => {
               radius
             );
             
-            // 배경색 설정 - 더 선명한 색상으로 수정
-            if (node.isPathNode) {
-              ctx.fillStyle = isHighlighted ? "rgba(245, 158, 11, 0.9)" : "rgba(245, 158, 11, 0.6)"; // 주황색 더 선명하게
-            } else if (node.isRoot) {
-              ctx.fillStyle = isHighlighted ? "rgba(255, 107, 107, 1)" : "rgba(255, 107, 107, 0.9)";
-            } else {
-              ctx.fillStyle = isHighlighted ? "rgba(66, 153, 225, 1)" : "rgba(66, 153, 225, 0.8)";
-            }
+            // 배경색 설정
+            ctx.fillStyle = getNodeColor(node, isHighlighted);
             ctx.fill();
 
-            // 테두리 설정 - 더 두껍고 선명하게
+            // 테두리 설정
             if (isHighlighted) {
-              ctx.strokeStyle = node === hoverNode ? "#ff4444" : 
-                               node.isPathNode ? "#f97316" : "#3b82f6";
-              ctx.lineWidth = 3; // 테두리 두께 증가
+              ctx.strokeStyle = node === hoverNode ? "#ff4444" : "#ffffff";
+              ctx.lineWidth = 3;
               ctx.stroke();
             }
 
@@ -491,18 +584,15 @@ const Mindmap = () => {
 
             ctx.restore();
 
-            // 노드의 실제 크기 설정 (충돌 감지 및 호버링에 사용)
-            node.size = Math.max(width, height)
-            node.width = width
-            node.height = height
+            node.size = Math.max(width, height);
+            node.width = width;
+            node.height = height;
           }}
-          linkWidth={5}
-          linkColor={(link) => {
-            if (!highlightLinks.has(link)) return "rgba(255, 255, 255, 0.8)"; // 기본 링크는 더 투명하게
-            return link.isPathLink ? "rgba(249, 115, 22, 0.9)" : "rgba(20, 221, 37, 0.9)"; // 하이라이트된 링크는 더 선명하게
-          }}
+          linkWidth={(link) => getLinkWidth(link, highlightLinks.has(link))}
+          linkColor={(link) => getLinkColor(link, highlightLinks.has(link))}
+          linkOpacity={0.5} // 링크 불투명도를 최대로 설정
           linkDirectionalParticles={4}
-          linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 2 : 0)}
+          linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 4 : 0)}
           linkDirectionalParticleSpeed={0.005}
           onNodeHover={(node) => {
             setHoverNode(node)
@@ -544,11 +634,10 @@ const Mindmap = () => {
           nodeOpacity={1}
           nodeCanvasObjectMode={() => "replace"}
           nodeCanvasObject={(node, ctx, globalScale) => {
-            // 글자 크기를 2배로 증가
-            const fontSize = node.isRoot ? 32 : 26;  // 기존 16, 13에서 2배로 증가
+            const fontSize = node.isRoot ? 32 : 26;
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
             const isHighlighted = highlightNodes.has(node);
-            const radius = 16;  // 기존 8에서 2배로 증가
+            const radius = 16;
 
             ctx.save();
 
@@ -562,20 +651,14 @@ const Mindmap = () => {
               radius
             );
             
-            // 배경색 설정 - 더 선명한 색상으로 수정
-            if (node.isPathNode) {
-              ctx.fillStyle = isHighlighted ? "rgba(245, 158, 11, 0.9)" : "rgba(245, 158, 11, 0.6)"; // 주황색 더 선명하게
-            } else if (node.isRoot) {
-              ctx.fillStyle = isHighlighted ? "rgba(255, 107, 107, 1)" : "rgba(255, 107, 107, 0.9)";
-            } else {
-              ctx.fillStyle = isHighlighted ? "rgba(66, 153, 225, 1)" : "rgba(66, 153, 225, 0.8)";
-            }
+            // 배경색 설정
+            ctx.fillStyle = getNodeColor(node, isHighlighted);
             ctx.fill();
 
-            // 테두리 설정 - 더 두껍고 선명하게
+            // 테두리 설정
             if (isHighlighted) {
-              ctx.strokeStyle = node === hoverNode ? "#ff4444" : "#f59e0b";
-              ctx.lineWidth = 3; // 테두리 두께 증가
+              ctx.strokeStyle = node === hoverNode ? "#ff4444" : "#ffffff";
+              ctx.lineWidth = 3;
               ctx.stroke();
             }
 
@@ -588,16 +671,12 @@ const Mindmap = () => {
 
             ctx.restore();
 
-            // 노드의 실제 크기 설정 (충돌 감지 및 호버링에 사용)
-            node.size = Math.max(width, height)
-            node.width = width
-            node.height = height
+            node.size = Math.max(width, height);
+            node.width = width;
+            node.height = height;
           }}
-          linkWidth={3}
-          linkColor={(link) => {
-            if (!highlightLinks.has(link)) return "rgba(255, 255, 255, 0.8)"; // 기본 링크는 더 투명하게
-            return link.isPathLink ? "rgba(249, 115, 22, 0.9)" : "rgba(29, 230, 18, 0.9)"; // 하이라이트된 링크는 더 선명하게
-          }}
+          linkWidth={(link) => getLinkWidth(link, highlightLinks.has(link))}
+          linkColor={(link) => getLinkColor(link, highlightLinks.has(link))}
           linkDirectionalParticles={4}
           linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 6 : 0)}
           linkDirectionalParticleSpeed={0.005}

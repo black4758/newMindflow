@@ -262,13 +262,19 @@
       "content": "딸기는 실제로는 과일이 아닌 열매채소로 분류됩니다.",
       "id": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:43",
       "mongo_ref": "nREDACTED567-89ab-cdef-0123-456789abcdef",
-      "title": "분류학적 특징"
+      "title": "RELATED_TO"
     },
     {
       "content": "딸기는 수정 후 꽃받침이 비대해져 생기는 과육에 열매가 박혀있는 구조입니다.",
       "id": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:44",
       "mongo_ref": "oREDACTED567-89ab-cdef-0123-456789abcdef",
-      "title": "구조"
+      "title": "COMPARE_TO"
+    },
+    {
+      "content": "실험용 추가 데이터 입니다다",
+      "id": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:45",
+      "mongo_ref": "mREDACTED567-89ab-cdef-0123-456789abcdef",
+      "title": "HAS_SUBTOPIC"
     }
   ],
   "relationships": [
@@ -463,13 +469,18 @@
       "type": "HAS_SUBTOPIC"
     },
     {
-      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:0",
+      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:42",
       "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:43",
-      "type": "HAS_SUBTOPIC"
+      "type": "RELATED_TO"
     },
     {
-      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:0",
+      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:42",
       "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:44",
+      "type": "COMPARE_TO"
+    },
+    {
+      "source": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:42",
+      "target": "4:3dc81756-7c5c-4e89-a3b8-02ee1431516d:45",
       "type": "HAS_SUBTOPIC"
     }
   ]
