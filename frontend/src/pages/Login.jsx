@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { useDispatch, useSelector } from 'react-redux'
-import { login, logout } from '../store/slices/authSlice'
+import { useDispatch } from 'react-redux'
+import { login } from '../store/slices/authSlice'
+import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
 
@@ -10,8 +11,11 @@ const Login = () => {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("") // 로그인 실패 시 에러 메시지를 저장할 state
 
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
   // 로그인 버튼 클릭 시 실행되는 함수
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault() // 기본 폼 제출 동작(페이지 새로고침) 방지
     setError("") // 에러 메시지 초기화
 
@@ -22,7 +26,10 @@ const Login = () => {
         password, // 사용자가 입력한 비밀번호
       })
 
-      console.log("로그인 성공:", response.data) // 성공 시 응답 데이터 출력
+      if (response.status === 200) {
+        dispatch(login(response.data))
+        navigate('/')
+      }
     } catch (error) {
       setError("로그인 실패: 아이디 또는 비밀번호가 올바르지 않습니다.")
       console.error("로그인 실패", error)
@@ -34,7 +41,7 @@ const Login = () => {
       <div className="max-w-md w-full space-y-8">
         <h2 className="text-center text-3xl font-extrabold text-white">환영합니다</h2>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form onSubmit={handleLogin} className="mt-8 space-y-6">
           <div className="rounded-md shadow-sm space-y-4">
             <input
               type="email"
