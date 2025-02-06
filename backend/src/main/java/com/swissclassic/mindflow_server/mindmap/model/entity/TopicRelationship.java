@@ -7,34 +7,23 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
-@Node("Topic")
+@RelationshipProperties
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Topic {
+public class TopicRelationship {
     @Id
     @GeneratedValue
     private Long id;
 
-    @Property("title")
-    private String title;
+    @Property("type")
+    private String type;  // HAS_SUBTOPIC, RELATED_TO, COMPARED_TO
 
-    @Property("content")
-    private String content;
-
-    @Property("account_id")
-    private String accountId;
-
-    @Property("chat_room_id")
-    private String chatRoomId;
+    private Topic source;
+    private Topic target;
 
     @Property("created_at")
     private LocalDateTime createdAt;
-
-    @Property("mongo_ref")
-    private String mongoRef;
 }
