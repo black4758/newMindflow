@@ -30,6 +30,8 @@ jwt:
   expiration: 3600000 # 1시간 (밀리초 단위)
   refresh:
     expiration: 1296000000 # 15일 (밀리초 단위)
-
+logging:
+  level:
+    com.swissclassic.mindflow_server: DEBUG
 # 15? ??
 

@@ -36,12 +36,16 @@ public class OAuth2Controller {
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
+    @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
+    private String kakaoClientId;
 
     @Value("${spring.security.oauth2.client.registration.google.client-secret}")
     private String googleClientSecret;
 
     @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
     private String googleRedirectUri;
+    @Value("${spring.security.oauth2.client.registration.kakao.redirect-uri}")
+    private String kakaoRedirectUri;
 
     @GetMapping("/oauth2/login/{provider}")
     @Operation(summary = "소셜 로그인 URL 반환", description = "지정된 제공자(Google, Kakao 등)의 OAuth2 로그인 URL을 반환합니다.")
@@ -51,6 +55,7 @@ public class OAuth2Controller {
         try {
             String redirectUri = switch (provider) {
                 case "google" -> googleRedirectUri;
+                case "kakao" -> kakaoRedirectUri;
                 default -> throw new IllegalArgumentException("Unsupported social provider.");
             };
             String authUrl = getAuthorizationUrl(provider, redirectUri);
@@ -107,11 +112,11 @@ public class OAuth2Controller {
                     // Note: URL encoded space
                     googleClientId, redirectUri
             );
-//            case "kakao" -> String.format(
-//                    "https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code",
-//                    kakaoClientId,
-//                    redirectUri
-//            );
+            case "kakao" -> String.format(
+                    "https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code",
+                    kakaoClientId,
+                    redirectUri
+            );
             default -> throw new IllegalArgumentException("Unsupported provider: " + provider);
         };
     }

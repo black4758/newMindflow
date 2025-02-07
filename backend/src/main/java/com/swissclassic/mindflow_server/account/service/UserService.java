@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,11 +41,13 @@ public class UserService {
     @Value("${spring.security.oauth2.client.registration.google.client-secret}")
     private String googleClientSecret;
     @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
-    private String googleCallbackUri;
+    private String googleRedirectUri;
     @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
     private String kakaoClientId;
     @Value("${spring.security.oauth2.client.registration.kakao.client-secret}")
     private String kakaoClientSecret;
+    @Value("${spring.security.oauth2.client.registration.kakao.redirect-uri}")
+    private String kakaoRedirectUri;
 
     @Autowired
     private CustomOAuth2UserService oAuth2UserService;
@@ -85,26 +86,42 @@ public class UserService {
 
     public OAuth2UserWrapper processOAuthLogin(String provider, String code) {
         Map<String, Object> tokenResponse = getTokenFromCode(provider, code);
-        log.debug(tokenResponse.toString());
+        log.debug("processOAuthLogin: tokenResponse="+tokenResponse.toString());
         Map<String, Object> userInfo = getUserInfo(
                 provider, tokenResponse.get("access_token")
                                        .toString()
         );
-        log.debug(userInfo.toString());
+        log.debug("processOAuthLogin: userInfo="+userInfo.toString());
         OAuth2UserRequest userRequest = createOAuth2UserRequest(provider, tokenResponse);
         OAuth2UserWrapper asdf = (OAuth2UserWrapper) oAuth2UserService.loadUser(userRequest);
-        log.debug(asdf.toString());
+        log.debug("processOAuthLogin: "+asdf.toString());
         return asdf;
     }
 
     private Map<String, Object> getTokenFromCode(String provider, String code) {
         WebClient webClient = WebClient.create();
 
-        String redirectUri = googleCallbackUri;
+        String redirectUri = switch(provider){
+            case "google" -> googleRedirectUri;
+            case "kakao" -> kakaoRedirectUri;
+            default -> throw new IllegalStateException("Unexpected value: " + provider);
+        };
+
+        String clientId = switch(provider){
+            case "google" -> googleClientId;
+            case "kakao" -> kakaoClientId;
+            default -> throw new IllegalStateException("Unexpected value: " + provider);
+        };
+
+        String clientSecret = switch(provider){
+            case "google" -> googleClientSecret;
+            case "kakao" -> kakaoClientId;
+            default -> throw new IllegalStateException("Unexpected value: " + provider);
+        };
 
         log.info("getTokenFromCode: Sending token request with parameters:");
         log.info("getTokenFromCode: code: {}", code);
-        log.info("getTokenFromCode: client_id: {}", googleClientId);
+        log.info("getTokenFromCode: client_id: {}", clientId);
         log.info("getTokenFromCode: redirect_uri: {}", redirectUri);
         return switch (provider.toLowerCase()) {
             case "google" -> webClient.post()
@@ -114,7 +131,7 @@ public class UserService {
                                                          .with("client_secret", googleClientSecret)
                                                          .with("code", code)
                                                          .with("grant_type", "authorization_code")
-                                                         .with("redirect_uri", googleCallbackUri))
+                                                         .with("redirect_uri", googleRedirectUri))
                                       .retrieve()
                                       .onStatus(
                                               HttpStatusCode::is4xxClientError,  // Lambda version of the predicate
@@ -132,6 +149,24 @@ public class UserService {
                                       .doOnError(throwable -> log.error(throwable.getMessage(), throwable))
                                       .block()
             ;
+            case "kakao" -> webClient.post()
+                                     .uri("https://kauth.kakao.com/oauth/token")
+                                     .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                                     .body(BodyInserters.fromFormData("client_id", kakaoClientId)
+                                                        .with("client_secret", kakaoClientSecret)
+                                                        .with("code", code)
+                                                        .with("grant_type", "authorization_code")
+                                                        .with("redirect_uri", kakaoRedirectUri))
+                                     .retrieve()
+                                     .onStatus(
+                                             HttpStatusCode::is4xxClientError,
+                                             response -> response.bodyToMono(String.class).flatMap(errorBody -> {
+                                                 log.error("Kakao token exchange error: {}", errorBody);
+                                                 return Mono.error(new RuntimeException("Kakao token endpoint error: " + errorBody));
+                                             })
+                                     )
+                                     .bodyToMono(Map.class)
+                                     .block();
             // Add other providers...
             default -> throw new IllegalArgumentException("getTokenFromCode: Unsupported provider");
         };
