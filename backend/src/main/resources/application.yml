@@ -31,8 +31,6 @@ jwt:
   refresh:
     expiration: 1296000000 # 15일 (밀리초 단위)
 
-# 15? ??
-
 logging:
   level:
     root: INFO
