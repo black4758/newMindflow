@@ -4,7 +4,7 @@ server:
 
 spring:
     datasource:
-        url: jdbc:mysql://localhost:3306/mindflow_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul&zeroDateTimeBehavior=convertToNull&rewriteBatchedStatements=true
+        url: jdbc:mysql://mysql_container:3306/mindflow_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul&zeroDateTimeBehavior=convertToNull&rewriteBatchedStatements=true
         driver-class-name: com.mysql.cj.jdbc.Driver
         hikari:
             username: REDACTED
@@ -12,7 +12,7 @@ spring:
 
     data:
         mongodb:
-           uri: mongodb://localhost:27017/mindflow_db
+           uri: mongodb://mongo_container:27017/mindflow_db
 
     neo4j:
         uri: bolt://neo4j:7687
@@ -22,4 +22,4 @@ spring:
 
 python:
     server:
-       url: http://localhost:5000
+       url: http://flask_container:5000
