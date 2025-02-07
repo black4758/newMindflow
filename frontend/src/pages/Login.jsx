@@ -1,4 +1,7 @@
 import { useState } from "react"
+import { useDispatch } from 'react-redux'
+import { login } from '../store/slices/authSlice'
+import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
 
@@ -8,31 +11,48 @@ const Login = () => {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("") // 로그인 실패 시 에러 메시지를 저장할 state
 
-  // 로그인 버튼 클릭 시 실행되는 함수
-  const handleSubmit = async (e) => {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  // Mindflow 자체 로그인
+  const handleLogin = async (e) => {
     e.preventDefault() // 기본 폼 제출 동작(페이지 새로고침) 방지
     setError("") // 에러 메시지 초기화
 
     try {
-      // 백엔드 API로 로그인 요청을 보냄
+      // 백엔드 API로 로그인 요청
       const response = await axios.post("http://localhost:8000/api/login", {
         email, // 사용자가 입력한 이메일
         password, // 사용자가 입력한 비밀번호
       })
 
-      console.log("로그인 성공:", response.data) // 성공 시 응답 데이터 출력
+      // 로그인 성공
+      if (response.status === 200) {
+        dispatch(login(response.data))
+        navigate('/')
+      }
     } catch (error) {
       setError("로그인 실패: 아이디 또는 비밀번호가 올바르지 않습니다.")
       console.error("로그인 실패", error)
     }
   }
 
+  // google 소셜 로그인
+  // const handleGoogle = async (e) => {
+  //   e.preventDeault()
+  //   setError("")
+  //
+  //   try {
+  //     // 구글 API로 로그인 요청
+  //   }
+  // }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#353a3e] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <h2 className="text-center text-3xl font-extrabold text-white">환영합니다</h2>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form onSubmit={handleLogin} className="mt-8 space-y-6">
           <div className="rounded-md shadow-sm space-y-4">
             <input
               type="email"
@@ -79,9 +99,49 @@ const Login = () => {
           </div>
         </div>
 
-        <button className="w-full flex items-center justify-center px-4 py-2 bg-[#FEE500] rounded-md text-sm font-medium text-black hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors duration-200">
+        <button className="
+          w-full
+          flex
+          items-center
+          justify-center
+          px-4
+          py-2
+          bg-[#FEE500]
+          rounded-md
+          text-sm
+          font-medium
+          text-black
+          hover:bg-yellow-500
+          focus:outline-none
+          focus:ring-2
+          focus:ring-offset-2
+          focus:ring-yellow-500
+          transition-colors
+          duration-200"
+        >
           <img src={kakaoIcon} alt="카카오 아이콘" className="w-5 h-5 mr-2" /> 카카오 로그인
         </button>
+        {/*<button className="*/}
+        {/*w-full*/}
+        {/*flex*/}
+        {/*items-center*/}
+        {/*px-4*/}
+        {/*py-2*/}
+        {/*bg-white*/}
+        {/*rounded-md*/}
+        {/*text-sm*/}
+        {/*font-medium*/}
+        {/*text-black*/}
+        {/*hover:bg-gray-100*/}
+        {/*focus:outline-none*/}
+        {/*focus:ring-2*/}
+        {/*focus:ring-offset-2*/}
+        {/*focus:ring-gray-100*/}
+        {/*transition-colors*/}
+        {/*duration-200*/}
+        {/*">*/}
+
+        {/*</button>*/}
 
         <div className="flex justify-center space-x-4 text-sm text-[#0eacf9]">
           <a href="#" className="hover:text-gray-300">

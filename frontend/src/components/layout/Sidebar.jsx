@@ -1,8 +1,10 @@
 import { useState } from "react"
 import { Menu, Search, ExternalLink, Network } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
-const Sidebar = () => {
+const Sidebar = ({onOpenModal}) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
@@ -13,13 +15,22 @@ const Sidebar = () => {
         </button>
         {!isCollapsed && (
           <>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors">
+            <button
+              className="p-1 rounded hover:bg-gray-200 transition-colors"
+              onClick={onOpenModal}
+            >
               <Search className="w-6 h-6 text-[#ffffff]" />
             </button>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors">
+            <button 
+              className="p-1 rounded hover:bg-gray-200 transition-colors"
+              onClick={() => navigate('/')}
+            >
               <ExternalLink className="w-6 h-6 text-[#ffffff]" />
             </button>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors">
+            <button 
+              className="p-1 rounded hover:bg-gray-200 transition-colors"
+              onClick={() => navigate('/mindmap')}
+            >
               <Network className="w-6 h-6 text-[#ffffff]" />
             </button>
           </>

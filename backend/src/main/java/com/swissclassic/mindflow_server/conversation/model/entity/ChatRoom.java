@@ -27,7 +27,7 @@ public class ChatRoom {
     private String title;
 
     @Column(name = "creator_id", nullable = false)
-    private Long creatorId;
+    private long creatorId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp // Hibernate가 자동으로 현재 시간 할당 (필요 시 대체 가능)
