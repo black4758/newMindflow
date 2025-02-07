@@ -4,7 +4,7 @@ import api from "../api/axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
 
 const Signup = () => {
-  // 이메일과 비밀번호 입력값을 저장할 state
+  // state 선언
   const [accountId, setAccountId] = useState("")
   const [email, setEmail] = useState("")
   const [username, setUsername] = useState("")
@@ -40,7 +40,7 @@ const Signup = () => {
     // }
 
     try {
-      const response = await api.post("/api/signup", {
+      const response = await api.post("/api/auth/register", {
         accountId,
         username,
         password,
