@@ -23,19 +23,20 @@ public class ChatLog {
     private long chatRoomId;
 
     private String question;
-    @Field(name = "user_Id")
+    @Field(name = "user_id")
     private long userId;
     private List<AnswerSentence> answerSentences;
-    @Field(name = "create_at")
+    @Field(name = "created_at")
     private LocalDateTime createAT;
     private boolean processed;
 
     // Getters and Setters
     @Data
     public static class AnswerSentence {
-        @Field(name = "sentence_Id")
+        @Field(name = "sentence_id")
         private String sentenceId;
         private String content;
+        @Field(name = "is_deleted")
         private boolean isDeleted;
         public AnswerSentence(String content) {
             this.sentenceId = UUID.randomUUID().toString();
