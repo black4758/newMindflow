@@ -2,12 +2,12 @@ import { useState } from "react"
 import { useDispatch } from "react-redux"
 import { login } from "../store/slices/authSlice"
 import { useNavigate } from "react-router-dom"
-import axios from "axios"
+import api from "../api/axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
 
 const Login = () => {
-  // 이메일과 비밀번호 입력값을 저장할 state
-  const [email, setEmail] = useState("")
+  // email -> accountId로 변경
+  const [accountId, setAccountId] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("") // 로그인 실패 시 에러 메시지를 저장할 state
 
@@ -21,9 +21,9 @@ const Login = () => {
 
     try {
       // 백엔드 API로 로그인 요청
-      const response = await axios.post("http://localhost:8453/api/login", {
-        email, // 사용자가 입력한 이메일
-        password, // 사용자가 입력한 비밀번호
+      const response = await api.post("/api/login", {
+        accountId, // 직접 accountId 사용
+        password,
       })
 
       // 로그인 성공
@@ -55,11 +55,11 @@ const Login = () => {
         <form onSubmit={handleLogin} className="mt-8 space-y-6">
           <div className="rounded-md shadow-sm space-y-4">
             <input
-              type="email"
-              placeholder="이메일 주소"
+              type="text" // email -> text로 변경
+              placeholder="아이디" // 이메일 주소 -> 아이디로 변경
               className="appearance-none relative block w-full px-3 py-2 bg-gray-700 border border-gray-600 placeholder-gray-400 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
               required
             />
 
