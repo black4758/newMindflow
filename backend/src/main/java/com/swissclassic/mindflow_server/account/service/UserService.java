@@ -85,13 +85,16 @@ public class UserService {
 
     public OAuth2UserWrapper processOAuthLogin(String provider, String code) {
         Map<String, Object> tokenResponse = getTokenFromCode(provider, code);
+        log.debug(tokenResponse.toString());
         Map<String, Object> userInfo = getUserInfo(
                 provider, tokenResponse.get("access_token")
                                        .toString()
         );
-
+        log.debug(userInfo.toString());
         OAuth2UserRequest userRequest = createOAuth2UserRequest(provider, tokenResponse);
-        return (OAuth2UserWrapper) oAuth2UserService.loadUser(userRequest);
+        OAuth2UserWrapper asdf = (OAuth2UserWrapper) oAuth2UserService.loadUser(userRequest);
+        log.debug(asdf.toString());
+        return asdf;
     }
 
     private Map<String, Object> getTokenFromCode(String provider, String code) {
@@ -99,10 +102,10 @@ public class UserService {
 
         String redirectUri = googleCallbackUri;
 
-        log.debug("Sending token request with parameters:");
-        log.debug("code: {}", code);
-        log.debug("client_id: {}", googleClientId);
-        log.debug("redirect_uri: {}", redirectUri);
+        log.info("getTokenFromCode: Sending token request with parameters:");
+        log.info("getTokenFromCode: code: {}", code);
+        log.info("getTokenFromCode: client_id: {}", googleClientId);
+        log.info("getTokenFromCode: redirect_uri: {}", redirectUri);
         return switch (provider.toLowerCase()) {
             case "google" -> webClient.post()
                                       .uri("https://oauth2.googleapis.com/token")
@@ -118,11 +121,11 @@ public class UserService {
                                               response -> response.bodyToMono(String.class)
                                                                   .flatMap(errorBody -> {
                                                                       log.error(
-                                                                              "Error response from token endpoint: {}",
+                                                                              "getTokenFromCode: Error response from token endpoint: {}",
                                                                               errorBody
                                                                       );
                                                                       return Mono.error(new RuntimeException(
-                                                                              "Token endpoint error: " + errorBody));
+                                                                              "getTokenFromCode: Token endpoint error: " + errorBody));
                                                                   })
                                       )
                                       .bodyToMono(Map.class)
@@ -130,7 +133,7 @@ public class UserService {
                                       .block()
             ;
             // Add other providers...
-            default -> throw new IllegalArgumentException("Unsupported provider");
+            default -> throw new IllegalArgumentException("getTokenFromCode: Unsupported provider");
         };
     }
 

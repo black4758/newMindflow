@@ -1,5 +1,6 @@
 package com.swissclassic.mindflow_server.account.controller;
 
+import com.swissclassic.mindflow_server.account.model.dto.AuthResponse;
 import com.swissclassic.mindflow_server.account.model.dto.OAuthProviderInfo;
 import com.swissclassic.mindflow_server.account.model.dto.RegisterRequest;
 import com.swissclassic.mindflow_server.account.model.entity.OAuth2UserWrapper;
@@ -36,32 +37,32 @@ public class OAuth2Controller {
     private String googleClientSecret;
 
     @GetMapping("/oauth2/login/{provider}")
-    @Operation(
-            summary = "소셜 로그인 URL 반환",
-            description = "지정된 제공자(Google, Kakao 등)의 OAuth2 로그인 URL을 반환합니다."
-    )
+    @Operation(summary = "소셜 로그인 URL 반환", description = "지정된 제공자(Google, Kakao 등)의 OAuth2 로그인 URL을 반환합니다.")
     public ResponseEntity<String> getOAuthLoginUrl(
-            @PathVariable String provider,
-            @RequestParam String redirectUri
+            @PathVariable String provider, @RequestParam String redirectUri
     ) {
         String authUrl = getAuthorizationUrl(provider, redirectUri);
         return ResponseEntity.ok(authUrl);
     }
 
     @GetMapping("/oauth2/callback/{provider}")
-    @Operation(
-            summary = "OAuth2 콜백 처리",
-            description = "소셜 로그인 후 콜백을 처리하고 JWT 토큰을 발급합니다."
-    )
+    @Operation(summary = "OAuth2 콜백 처리", description = "소셜 로그인 후 콜백을 처리하고 JWT 토큰을 발급합니다.")
     public ResponseEntity<?> handleOAuthCallback(
-            @PathVariable String provider,
-            @RequestParam String code
+            @PathVariable String provider, @RequestParam String code
     ) {
         try {
             OAuth2UserWrapper oAuth2User = userService.processOAuthLogin(provider, code);
-            String token = jwtUtils.generateJwtToken(oAuth2User.getUser().getUsername());
+            String accessToken = jwtUtils.generateJwtToken(oAuth2User.getUser()
+                                                                     .getAccountId());
+            String refreshToken = jwtUtils.generateRefreshToken(oAuth2User.getUser()
+                                                                          .getId()
+                                                                          .toString());
             log.debug("Successfully generated JWT token");
-            return ResponseEntity.ok(new RegisterRequest.JwtResponse(token));
+            return ResponseEntity.ok(new AuthResponse(oAuth2User.getUser()
+                                                                .getId(), oAuth2User.getUser()
+                                                                                    .getDisplayName(), accessToken,
+                                                      refreshToken
+            ));
         } catch (Exception e) {
             log.error("OAuth2 authentication failed", e);
             return ResponseEntity.badRequest()
@@ -70,10 +71,7 @@ public class OAuth2Controller {
     }
 
     @GetMapping("/oauth2/providers")
-    @Operation(
-            summary = "지원하는 소셜 로그인 제공자 목록",
-            description = "현재 지원하는 모든 소셜 로그인 제공자 목록을 반환합니다."
-    )
+    @Operation(summary = "지원하는 소셜 로그인 제공자 목록", description = "현재 지원하는 모든 소셜 로그인 제공자 목록을 반환합니다.")
     public ResponseEntity<List<OAuthProviderInfo>> getProviders() {
         List<OAuthProviderInfo> providers = Arrays.stream(OAuthProvider.values())
                                                   .filter(p -> p != OAuthProvider.NONE)
@@ -86,13 +84,9 @@ public class OAuth2Controller {
     private String getAuthorizationUrl(String provider, String redirectUri) {
         return switch (provider.toLowerCase()) {
             case "google" -> String.format(
-                    "https://accounts.google.com/o/oauth2/v2/auth" +
-                            "?client_id=%s" +
-                            "&redirect_uri=%s" +
-                            "&response_type=code" +
-                            "&scope=email%%20profile",  // Note: URL encoded space
-                    googleClientId,
-                    redirectUri
+                    "https://accounts.google.com/o/oauth2/v2/auth" + "?client_id=%s" + "&redirect_uri=%s" + "&response_type=code" + "&scope=email%%20profile",
+                    // Note: URL encoded space
+                    googleClientId, redirectUri
             );
 //            case "kakao" -> String.format(
 //                    "https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code",
