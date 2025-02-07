@@ -3,12 +3,12 @@ import axios from 'axios';
 
 // 개발 환경에서는 mock 서버 URL 사용
 const BASE_URL = process.env.NODE_ENV === 'development' 
-  ? 'http://localhost:3001'
+  ? 'http://localhost:8453/api/mindmaps/REDACTED123'
   : 'http://your-backend-url/api';
 
 export const fetchMindmapData = async (chatRoomId = null) => {
   try {
-    const endpoint = '/mindmap';
+    const endpoint = '';
     console.log(`Fetching from: ${BASE_URL}${endpoint}`);
     
     const response = await axios.get(`${BASE_URL}${endpoint}`);
