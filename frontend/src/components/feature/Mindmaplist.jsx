@@ -3,8 +3,7 @@ import { ForceGraph2D } from "react-force-graph"
 import ForceGraph3D from "react-force-graph-3d"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
-// import testdata from "../store/mindmap/testdata.json"
-import testdata from './testchatroom.json';
+import { fetchMindmapData } from '../../api/mindmap'
 import PropTypes from "prop-types"
 import { useNavigate } from "react-router-dom"
 import * as d3 from "d3"
@@ -34,11 +33,25 @@ const Mindmap = () => {
   const [isNodeFocused, setIsNodeFocused] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
+  const [mindmapdata, setMindmapdata] = useState({ nodes: [], relationships: [] });
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
     setViewMode(is3D);
   }, [is3D]);
+
+  useEffect(() => {
+    const loadMindmapData = async () => {
+      try {
+        const data = await fetchMindmapData();
+        setMindmapdata(data);
+      } catch (error) {
+        console.error('Error loading mindmap data:', error);
+      }
+    };
+    
+    loadMindmapData();
+  }, []);
 
   const processedData = useMemo(() => {
     // 노드의 깊이(depth) 계산 함수
@@ -46,7 +59,7 @@ const Mindmap = () => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
 
-      const relationships = testdata.relationships.filter(rel => rel.source === nodeId);
+      const relationships = mindmapdata.relationships.filter(rel => rel.source === nodeId);
       if (relationships.length === 0) return 0;
 
       const childDepths = relationships.map(rel => calculateDepth(rel.target, visited));
@@ -58,12 +71,12 @@ const Mindmap = () => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = testdata.nodes.find(n => n.id === nodeId);
+      const node = mindmapdata.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = testdata.relationships
+      const children = mindmapdata.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -73,8 +86,8 @@ const Mindmap = () => {
     };
 
     // 기존 루트 노드 찾기
-    const originalRootNodes = testdata.nodes
-      .filter(node => !testdata.relationships.some(rel => rel.target === node.id));
+    const originalRootNodes = mindmapdata.nodes
+      .filter(node => !mindmapdata.relationships.some(rel => rel.target === node.id));
 
     // chatRoomId별로 루트 노드 그룹화
     const rootNodeGroups = originalRootNodes.reduce((groups, node) => {
@@ -87,8 +100,8 @@ const Mindmap = () => {
     }, {});
 
     // 새로운 노드와 관계 배열 생성
-    let newNodes = [...testdata.nodes];
-    let newRelationships = [...testdata.relationships];
+    let newNodes = [...mindmapdata.nodes];
+    let newRelationships = [...mindmapdata.relationships];
 
     // 각 chatRoom 그룹별로 새로운 루트 노드 생성
     Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
@@ -157,7 +170,8 @@ const Mindmap = () => {
     });
 
     return { nodes, links };
-  }, [is3D]);
+  }, [mindmapdata.relationships, mindmapdata.nodes, is3D]);
+  //}, [is3D]); // 노드의 멀어짐 해결책책
 
   // 루트 노드까지의 경로를 찾는 함수 추가
   const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
@@ -165,11 +179,11 @@ const Mindmap = () => {
     visited.add(nodeId);
 
     // 현재 노드가 루트 노드인지 확인
-    const isRoot = !testdata.relationships.some(rel => rel.target === nodeId);
+    const isRoot = !mindmapdata.relationships.some(rel => rel.target === nodeId);
     if (isRoot) return [nodeId];
 
     // 부모 노드들 찾기
-    const parentRels = testdata.relationships.filter(rel => rel.target === nodeId);
+    const parentRels = mindmapdata.relationships.filter(rel => rel.target === nodeId);
     
     for (const rel of parentRels) {
       const path = findPathToRoot(rel.source, visited);
@@ -179,7 +193,7 @@ const Mindmap = () => {
     }
     
     return null;
-  }, []);
+  }, [mindmapdata.relationships]);
 
   // updateHighlight 함수 수정
   const updateHighlight = useCallback(() => {
@@ -366,19 +380,32 @@ const Mindmap = () => {
     // chatroom 루트 노드인 경우
     if (node.id.startsWith('root_')) {
       const chatRoomId = node.id.replace('root_', '');
-      // chatroom에 속한 노드들만 필터링
-      const chatRoomNodes = processedData.nodes.filter(n => 
-        n.chatRoomId === node.chatRoomId && !n.id.startsWith('root_')
-      );
+      // chatroom에 속한 노드들만 필터링하고 필요한 속성만 추출
+      const chatRoomNodes = processedData.nodes
+        .filter(n => n.chatRoomId === node.chatRoomId && !n.id.startsWith('root_'))
+        .map(n => ({
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          chatRoomId: n.chatRoomId
+          // 필요한 다른 기본 속성들만 포함
+        }));
+      
       const chatRoomNodeIds = new Set(chatRoomNodes.map(n => n.id));
       
-      // chatroom에 속한 노드들 간의 관계만 필터링
-      const chatRoomRelationships = processedData.links.filter(rel =>
-        chatRoomNodeIds.has(rel.source.id || rel.source) && 
-        chatRoomNodeIds.has(rel.target.id || rel.target)
-      );
+      // 관계도 기본 속성만 추출
+      const chatRoomRelationships = processedData.links
+        .filter(rel =>
+          chatRoomNodeIds.has(rel.source.id || rel.source) && 
+          chatRoomNodeIds.has(rel.target.id || rel.target)
+        )
+        .map(rel => ({
+          source: rel.source.id || rel.source,
+          target: rel.target.id || rel.target,
+          type: rel.type
+        }));
 
-      // 필터링된 데이터로 새 페이지로 이동
+      // 직렬화 가능한 데이터만 전달
       navigate(`/mindmap/${chatRoomId}`, {
         state: { 
           graphData: {
@@ -401,7 +428,7 @@ const Mindmap = () => {
       initialVisibleNodes.add(node.id);
 
       // 직접 연결된 노드들 찾기 (초기에 보여질 노드들)
-      testdata.relationships.forEach(rel => {
+      mindmapdata.relationships.forEach(rel => {
         if (rel.source === node.id) {
           allConnectedNodes.add(rel.target);
           initialVisibleNodes.add(rel.target);
@@ -414,7 +441,7 @@ const Mindmap = () => {
 
       // 연결된 노드들의 모든 하위 노드들 찾기 (재귀적으로)
       const findAllConnectedNodes = (nodeId) => {
-        testdata.relationships.forEach(rel => {
+        mindmapdata.relationships.forEach(rel => {
           if (rel.source === nodeId && !allConnectedNodes.has(rel.target)) {
             allConnectedNodes.add(rel.target);
             findAllConnectedNodes(rel.target);
@@ -431,8 +458,8 @@ const Mindmap = () => {
 
       // 필터링된 데이터 생성
       const filteredData = {
-        nodes: testdata.nodes.filter(n => allConnectedNodes.has(n.id)),
-        relationships: testdata.relationships.filter(rel =>
+        nodes: mindmapdata.nodes.filter(n => allConnectedNodes.has(n.id)),
+        relationships: mindmapdata.relationships.filter(rel =>
           allConnectedNodes.has(rel.source) && allConnectedNodes.has(rel.target)
         ),
         initialVisibleNodes: Array.from(initialVisibleNodes),
@@ -453,35 +480,67 @@ const Mindmap = () => {
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node, isHighlighted) => {
+    // chatroom 루트 노드와 직접 연결된 노드인지 확인
+    const isDirectlyConnectedToChatRoom = processedData.links.some(link => {
+      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+      const isChatRoomNode = sourceId.startsWith('root_') || targetId.startsWith('root_');
+      return isChatRoomNode && (sourceId === node.id || targetId === node.id);
+    });
+
     if (!isHighlighted) {
-      return node.isRoot ? "rgba(255,107,107,0.6)" : "rgba(66,153,225,0.4)";
+      if (node.isRoot) {
+        return "rgba(255,107,107,0.6)";  // 루트 노드 색상
+      }
+      if (isDirectlyConnectedToChatRoom) {
+        return "rgba(147,51,234,0.4)";   // chatroom 노드와 연결된 노드 색상
+      }
+      return "rgba(66,153,225,0.4)";     // 일반 노드 색상
     }
     
     if (node.isPathNode) {
-      return "rgba(245,158,11,0.9)"; // 루트까지의 경로는 주황색 유지
+      return "rgba(245,158,11,0.9)";     // 루트까지의 경로 색상
     }
     
-    return node.isRoot ? "rgba(255,107,107,0.9)" : "rgba(66,153,225,0.9)";
+    if (node.isRoot) {
+      return "rgba(255,107,107,0.9)";    // 하이라이트된 루트 노드 색상
+    }
+    
+    if (isDirectlyConnectedToChatRoom) {
+      return "rgba(147,51,234,0.9)";     // 하이라이트된 chatroom 연결 노드 색상
+    }
+    
+    return "rgba(66,153,225,0.9)";       // 하이라이트된 일반 노드 색상
   };
 
   // 링크 색상을 관계 타입에 따라 설정
   const getLinkColor = (link, isHighlighted) => {
+    // chatroom 루트 노드와 연결된 링크 확인
+    const isChatRoomLink = 
+      (typeof link.source === 'object' && link.source.id.startsWith('root_')) ||
+      (typeof link.target === 'object' && link.target.id.startsWith('root_')) ||
+      (typeof link.source === 'string' && link.source.startsWith('root_')) ||
+      (typeof link.target === 'string' && link.target.startsWith('root_'));
+
+    if (isChatRoomLink) {
+      return isHighlighted ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)";
+    }
+
     if (!isHighlighted) {
-      return "#ffffff"; // 하이라이트되지 않은 링크는 원래 설정 유지
+      return "#ffffff";
     }
     
     if (link.isPathLink) {
-      return "rgba(245,158,11,0.9)"; // 루트까지의 경로
+      return "rgba(245,158,11,0.9)";
     }
     
-    // 관계 타입에 따른 색상
     switch (link.type) {
       case "RELATED_TO":
-        return "rgba(52,211,153,0.9)"; // 초록색
+        return "rgba(52,211,153,0.9)";
       case "HAS_SUBTOPIC":
-        return "rgba(99,102,241,0.9)"; // 인디고색
+        return "rgba(99,102,241,0.9)";
       case "COMPARE_TO":
-        return "rgba(236,72,153,0.9)"; // 핑크색
+        return "rgba(236,72,153,0.9)";
       default:
         return "rgba(255,255,255,0.8)";
     }

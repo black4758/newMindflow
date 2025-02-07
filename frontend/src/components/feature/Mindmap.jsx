@@ -3,8 +3,7 @@ import { ForceGraph2D } from "react-force-graph"
 import ForceGraph3D from "react-force-graph-3d"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
-// import testdata from "../store/mindmap/testdata.json"
-import testdata from './testchatroom.json';
+import { fetchMindmapData } from '../../api/mindmap'
 import PropTypes from "prop-types"
 import { useNavigate, useLocation, useParams } from "react-router-dom"
 
@@ -35,18 +34,33 @@ const Mindmap = () => {
   const [isNodeFocused, setIsNodeFocused] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
+  const [mindmapdata, setMindmapdata] = useState({ nodes: [], relationships: [] });
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
     setViewMode(is3D);
   }, [is3D]);
 
+  // mindmapdata를 가져오는 useEffect 추가
+  useEffect(() => {
+    const loadMindmapData = async () => {
+      try {
+        const data = await fetchMindmapData(params.chatRoomId);
+        setMindmapdata(data);
+      } catch (error) {
+        console.error('마인드맵 데이터 가져오기 실패:', error);
+      }
+    };
+    
+    loadMindmapData();
+  }, [params.chatRoomId]);
+
   const processedData = useMemo(() => {
     // chatRoomId 가져오기
     const chatRoomId = params.chatRoomId;
 
     // 해당 chatRoomId의 노드만 필터링
-    const filteredNodes = testdata.nodes.filter(node => 
+    const filteredNodes = mindmapdata.nodes.filter(node => 
       node.chatRoomId === chatRoomId
     );
 
@@ -54,7 +68,7 @@ const Mindmap = () => {
     const filteredNodeIds = new Set(filteredNodes.map(node => node.id));
 
     // 필터링된 노드들 간의 관계만 추출
-    const filteredRelationships = testdata.relationships.filter(rel =>
+    const filteredRelationships = mindmapdata.relationships.filter(rel =>
       filteredNodeIds.has(rel.source) && filteredNodeIds.has(rel.target)
     );
 
@@ -63,7 +77,7 @@ const Mindmap = () => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
 
-      const relationships = testdata.relationships.filter(rel => rel.source === nodeId);
+      const relationships = mindmapdata.relationships.filter(rel => rel.source === nodeId);
       if (relationships.length === 0) return 0;
 
       const childDepths = relationships.map(rel => calculateDepth(rel.target, visited));
@@ -75,12 +89,12 @@ const Mindmap = () => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = testdata.nodes.find(n => n.id === nodeId);
+      const node = mindmapdata.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = testdata.relationships
+      const children = mindmapdata.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -132,19 +146,20 @@ const Mindmap = () => {
     });
 
     return { nodes, links };
-  }, [params.chatRoomId]);
+  }, [params.chatRoomId, is3D, mindmapdata.nodes, mindmapdata.relationships]);
 
   // 루트 노드까지의 경로를 찾는 함수 추가
+  // findPathToRoot 함수 수정 (mindmapdata를 의존성으로 추가)
   const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
     if (visited.has(nodeId)) return null;
     visited.add(nodeId);
 
     // 현재 노드가 루트 노드인지 확인
-    const isRoot = !testdata.relationships.some(rel => rel.target === nodeId);
+    const isRoot = !mindmapdata.relationships.some(rel => rel.target === nodeId);
     if (isRoot) return [nodeId];
 
     // 부모 노드들 찾기
-    const parentRels = testdata.relationships.filter(rel => rel.target === nodeId);
+    const parentRels = mindmapdata.relationships.filter(rel => rel.target === nodeId);
     
     for (const rel of parentRels) {
       const path = findPathToRoot(rel.source, visited);
@@ -154,7 +169,7 @@ const Mindmap = () => {
     }
     
     return null;
-  }, []);
+  }, [mindmapdata.relationships]);  // mindmapdata.relationships 의존성 추가
 
   // updateHighlight 함수 수정
   const updateHighlight = useCallback(() => {
@@ -341,7 +356,7 @@ const Mindmap = () => {
       initialVisibleNodes.add(node.id);
 
       // 직접 연결된 노드들 찾기 (초기에 보여질 노드들)
-      testdata.relationships.forEach(rel => {
+      mindmapdata.relationships.forEach(rel => {
         if (rel.source === node.id) {
           allConnectedNodes.add(rel.target);
           initialVisibleNodes.add(rel.target);
@@ -354,7 +369,7 @@ const Mindmap = () => {
 
       // 연결된 노드들의 모든 하위 노드들 찾기 (재귀적으로)
       const findAllConnectedNodes = (nodeId) => {
-        testdata.relationships.forEach(rel => {
+        mindmapdata.relationships.forEach(rel => {
           if (rel.source === nodeId && !allConnectedNodes.has(rel.target)) {
             allConnectedNodes.add(rel.target);
             findAllConnectedNodes(rel.target);
@@ -371,8 +386,8 @@ const Mindmap = () => {
 
       // 필터링된 데이터 생성
       const filteredData = {
-        nodes: testdata.nodes.filter(n => allConnectedNodes.has(n.id)),
-        relationships: testdata.relationships.filter(rel =>
+        nodes: mindmapdata.nodes.filter(n => allConnectedNodes.has(n.id)),
+        relationships: mindmapdata.relationships.filter(rel =>
           allConnectedNodes.has(rel.source) && allConnectedNodes.has(rel.target)
         ),
         initialVisibleNodes: Array.from(initialVisibleNodes), // 초기에 보여질 노드들

@@ -3,8 +3,6 @@ import Login from "../pages/Login.jsx";
 import Signup from "../pages/Signup.jsx"
 import Profile from "../pages/Profile.jsx";
 import MindmapPage from "../pages/MindmapPage.jsx";
-import MindmapPagedetail from "../pages/MindmapPagedetail.jsx";
-import Mindmap from "../components/feature/Mindmap.jsx";
 
 const routes = [
     {
@@ -20,16 +18,16 @@ const routes = [
         requireAuth: false
     },
     {
-        path: "/signup/",
+        path: '/signup/',
         element: <Signup />,
-        title: "회원가입페이지",
-        requireAuth: false,
+        title: '회원가입페이지',
+        requireAuth: false
     },
     {
         path: '/profile/',
         element: <Profile />,
         title: '프로필페이지',
-        requireAuth: false
+        requireAuth: true
     },
     {
         path: '/mindmap/',
@@ -44,17 +42,11 @@ const routes = [
         requireAuth: false
     },
     {
-        path: '/mindmap/:chatRoomId',
-        element: <Mindmap />,
-        title: '마인드맵룸상세페이지',
-        requireAuth: false
-    },
-    {
         path: '/mindmap/:chatRoomId/detail',
-        element: <MindmapPagedetail />,
+        element: <MindmapPage />,
         title: '마인드맵상세페이지',
         requireAuth: false
-    },
+    }
 ];
 
 export default routes
