@@ -55,6 +55,10 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/v3/api-docs/**")
                         .permitAll()
+                        .requestMatchers("/swagger-resources/**")
+                        .permitAll()
+                        .requestMatchers("/webjars/**")
+                        .permitAll()
                         // 나머지는 인증 필요
                         .anyRequest()
                         .authenticated())

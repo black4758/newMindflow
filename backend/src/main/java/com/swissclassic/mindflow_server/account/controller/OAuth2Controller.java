@@ -2,7 +2,6 @@ package com.swissclassic.mindflow_server.account.controller;
 
 import com.swissclassic.mindflow_server.account.model.dto.AuthResponse;
 import com.swissclassic.mindflow_server.account.model.dto.OAuthProviderInfo;
-import com.swissclassic.mindflow_server.account.model.dto.RegisterRequest;
 import com.swissclassic.mindflow_server.account.model.entity.OAuth2UserWrapper;
 import com.swissclassic.mindflow_server.account.model.entity.OAuthProvider;
 import com.swissclassic.mindflow_server.account.service.UserService;
@@ -36,13 +35,25 @@ public class OAuth2Controller {
     @Value("${spring.security.oauth2.client.registration.google.client-secret}")
     private String googleClientSecret;
 
+    @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
+    private String googleRedirectUri;
+
     @GetMapping("/oauth2/login/{provider}")
     @Operation(summary = "소셜 로그인 URL 반환", description = "지정된 제공자(Google, Kakao 등)의 OAuth2 로그인 URL을 반환합니다.")
     public ResponseEntity<String> getOAuthLoginUrl(
-            @PathVariable String provider, @RequestParam String redirectUri
+            @PathVariable String provider
     ) {
-        String authUrl = getAuthorizationUrl(provider, redirectUri);
-        return ResponseEntity.ok(authUrl);
+        try {
+            String redirectUri = switch (provider) {
+                case "google" -> googleRedirectUri;
+                default -> throw new IllegalArgumentException("Unsupported social provider.");
+            };
+            String authUrl = getAuthorizationUrl(provider, redirectUri);
+            return ResponseEntity.ok(authUrl);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                                 .body(e.getMessage());
+        }
     }
 
     @GetMapping("/oauth2/callback/{provider}")
