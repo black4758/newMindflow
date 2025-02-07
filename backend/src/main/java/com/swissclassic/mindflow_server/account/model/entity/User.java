@@ -69,7 +69,7 @@ public class User implements OAuth2User, UserDetails {
 
     @Column(length = 50)
     @Enumerated(EnumType.STRING)
-    private OAuthProvider socialProvider;  // Add this field
+    private OAuthProvider socialProvider = OAuthProvider.NONE;  // Add this field
 
     @Column(length = 255)
     private String socialId;              // Add this field
