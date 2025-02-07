@@ -277,8 +277,7 @@ class MassageAPI(Resource):
 
             # 메모리 초기화
             # global memory
-            if memory is None:
-                memory = initialize_memory(chat_room_id)
+            memory = initialize_memory(chat_room_id)
             print(f"Initialized memory: {memory}")  # 메모리 초기화 결과 출력
 
             if not user_input:
@@ -292,7 +291,7 @@ class MassageAPI(Resource):
             response_content_serialized = serialize_message(response_obj)
             print(f"Serialized response content: {response_content_serialized}")  # 직렬화된 응답 내용 출력
 
-            answer_sentences = [line.strip() for line in response_content_serialized['content'].split('\n') if
+            answer_sentences = [line.strip() for line in response_content_serialized.split('\n') if
                                 line.strip()]
             print(f"Answer sentences: {answer_sentences}")  # 응답 문장 출력
 
