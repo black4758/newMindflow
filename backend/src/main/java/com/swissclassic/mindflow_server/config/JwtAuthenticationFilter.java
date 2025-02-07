@@ -2,6 +2,7 @@ package com.swissclassic.mindflow_server.config;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.swissclassic.mindflow_server.account.service.CustomUserDetailsService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +25,7 @@ import java.io.IOException;
  * Filter for JWT authentication.
  */
 @Component
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
@@ -48,13 +50,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // Extract JWT token from the Authorization header
             String jwt = parseJwt(request);
+            log.debug("1. JWT token: " + jwt);  // Check if token exists
             if (jwt != null) {
                 // Validate the token
                 DecodedJWT decodedJWT = jwtUtils.validateJwtToken(jwt);
                 String accountId = decodedJWT.getSubject();
+                log.debug("2. Decoded accountId: " + accountId);  // Check subject
+
 
                 // Load user details from the database
                 UserDetails userDetails = userDetailsService.loadUserByUsername(accountId);
+                log.debug("3. Loaded userDetails username: " + userDetails.getUsername());  // Check loaded user
 
                 // Create authentication token
                 UsernamePasswordAuthenticationToken authentication =
@@ -62,15 +68,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 userDetails,
                                 null,
                                 userDetails.getAuthorities());
+                log.debug("4. Created authentication token");  // Check authentication creation
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 // Set the authentication in the security context
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("5. Set authentication in SecurityContext");  // Check security context
+
             }
         } catch (Exception e) {
             // Logging can be added here for debugging
-            System.out.println("Cannot set user authentication: " + e.getMessage());
+            log.error("Cannot set user authentication: " + e.getMessage());
         }
 
         // Proceed with the next filter in the chain

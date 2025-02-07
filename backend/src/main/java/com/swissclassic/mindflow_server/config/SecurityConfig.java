@@ -47,10 +47,8 @@ public class SecurityConfig {
                 // 요청 인증 규칙 설정
                 .authorizeHttpRequests(authorize -> authorize
                         // 기존 허용 경로
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers("/api/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-
                         // Swagger 관련 경로 허용
                         .requestMatchers(
                                 "/swagger-ui/**",          // Swagger UI 리소스
@@ -59,8 +57,10 @@ public class SecurityConfig {
                                 "/swagger-ui.html",        // Swagger UI 메인 페이지
                                 "/webjars/**"              // Swagger 관련 웹 자원
                         ).permitAll()
-
-                        // 나머지 경로는 인증 필요
+                        // 채팅 API 경로 추가
+                        .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers("/api/messages/**").permitAll()
+                        // 나머지는 인증 필요
                         .anyRequest().authenticated()
                 )
 
