@@ -47,28 +47,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String requestURI = request.getRequestURI();
-        if (requestURI.startsWith("/swagger-ui") ||
-                requestURI.startsWith("/v3/api-docs") ||
-                requestURI.startsWith("/swagger-resources") ||
-                requestURI.startsWith("/webjars")) {
+        if (shouldNotFilter(request)) {
             filterChain.doFilter(request, response);
             return;
         }
         try {
             // Extract JWT token from the Authorization header
             String jwt = parseJwt(request);
-            log.debug("1. JWT token: " + jwt);  // Check if token exists
+            log.debug("doFilterInternal: 1. JWT token: " + jwt);  // Check if token exists
             if (jwt != null) {
                 // Validate the token
                 DecodedJWT decodedJWT = jwtUtils.validateJwtToken(jwt);
                 String accountId = decodedJWT.getSubject();
-                log.debug("2. Decoded accountId: " + accountId);  // Check subject
+                log.debug("doFilterInternal: 2. Decoded accountId: " + accountId);  // Check subject
 
 
                 // Load user details from the database
                 UserDetails userDetails = userDetailsService.loadUserByUsername(accountId);
-                log.debug("3. Loaded userDetails username: " + userDetails.getUsername());  // Check loaded user
+                log.debug("doFilterInternal: 3. Loaded userDetails username: " + userDetails.getUsername());  // Check loaded user
 
                 // Create authentication token
                 UsernamePasswordAuthenticationToken authentication =
@@ -77,19 +73,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 null,
                                 userDetails.getAuthorities()
                         );
-                log.debug("4. Created authentication token");  // Check authentication creation
+                log.debug("doFilterInternal: 4. Created authentication token");  // Check authentication creation
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 // Set the authentication in the security context
                 SecurityContextHolder.getContext()
                                      .setAuthentication(authentication);
-                log.debug("5. Set authentication in SecurityContext");  // Check security context
+                log.debug("doFilterInternal: 5. Set authentication in SecurityContext");  // Check security context
 
             }
         } catch (Exception e) {
             // Logging can be added here for debugging
-            log.error("Cannot set user authentication: " + e.getMessage());
+            log.error("doFilterInternal: Cannot set user authentication: " + e.getMessage());
         }
 
         // Proceed with the next filter in the chain
@@ -112,9 +108,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         return null;
     }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
-        return path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs");
+        return path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/api-docs") ||
+                path.startsWith("/swagger-resources") ||
+                path.startsWith("/webjars");
     }
 }
