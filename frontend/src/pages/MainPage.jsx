@@ -76,7 +76,7 @@ const MainPage = () => {
 
     try {
       // 서버에 메시지 전송
-      const response = await axios.post("http://localhost:5001/api/messages/send", requestData)
+      const response = await axios.post("http://localhost:8453/api/messages/send", requestData)
 
       if (response.data.models) {
         // 다수의 모델이 응답을 반환할 때
