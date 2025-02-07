@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from "react"
 import { ArrowUpCircle, ChevronDown } from "lucide-react"
 import ModelCard from "../components/common/ModelCard.jsx"
-import axios from "axios"
+import api from "../api/axios.js"
 import { useSelector } from "react-redux"
 
 // 메인 페이지 컴포넌트
@@ -76,7 +76,7 @@ const MainPage = () => {
 
     try {
       // 서버에 메시지 전송
-      const response = await axios.post("http://localhost:8453/api/messages/send", requestData)
+      const response = await api.post("/api/messages/send", requestData)
 
       if (response.data.models) {
         // 다수의 모델이 응답을 반환할 때
