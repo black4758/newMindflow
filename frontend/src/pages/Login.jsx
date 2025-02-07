@@ -1,6 +1,6 @@
 import { useState } from "react"
-import { useDispatch } from 'react-redux'
-import { login } from '../store/slices/authSlice'
+import { useDispatch } from "react-redux"
+import { login } from "../store/slices/authSlice"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
@@ -21,7 +21,7 @@ const Login = () => {
 
     try {
       // 백엔드 API로 로그인 요청
-      const response = await axios.post("http://localhost:8000/api/login", {
+      const response = await axios.post("http://localhost:8453/api/login", {
         email, // 사용자가 입력한 이메일
         password, // 사용자가 입력한 비밀번호
       })
@@ -29,7 +29,7 @@ const Login = () => {
       // 로그인 성공
       if (response.status === 200) {
         dispatch(login(response.data))
-        navigate('/')
+        navigate("/")
       }
     } catch (error) {
       setError("로그인 실패: 아이디 또는 비밀번호가 올바르지 않습니다.")
@@ -99,7 +99,8 @@ const Login = () => {
           </div>
         </div>
 
-        <button className="
+        <button
+          className="
           w-full
           flex
           items-center
