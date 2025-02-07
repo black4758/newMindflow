@@ -21,7 +21,7 @@ public class ChatLogServiceImpl implements ChatLogService{
     }
 
     @Override
-    public void saveChatLog(String chatRoomId, String userInput, String responseSentences, String modelName) {
+    public void saveChatLog(long chatRoomId, String userInput, String responseSentences, long userId) {
         // 응답 문장을 AnswerSentence 객체 리스트로 변환
         String[] lines = responseSentences.split("\n");
         List<ChatLog.AnswerSentence> answerSentences = new ArrayList<>();
@@ -36,6 +36,7 @@ public class ChatLogServiceImpl implements ChatLogService{
         // 대화 로그 Document 생성
         ChatLog chatLog = new ChatLog();
         chatLog.setChatRoomId(chatRoomId);
+        chatLog.setUserId(userId);
         chatLog.setQuestion(userInput);
         chatLog.setAnswerSentences(answerSentences);
         chatLog.setCreateAT(LocalDateTime.now());

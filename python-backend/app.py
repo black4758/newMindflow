@@ -1,3 +1,4 @@
+
 import json
 import os
 import uuid
@@ -16,6 +17,8 @@ from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from mysql.connector import Error
+
+
 from pymongo import MongoClient
 
 from tasks import create_mindmap
@@ -28,19 +31,22 @@ for key in ['MONGODB_URI', 'GOOGLE_API_KEY', 'NCP_CLOVASTUDIO_API_KEY', 'NCP_API
     value = os.getenv(key)
     print(f"{key}: {'설정됨' if value else '설정되지 않음'}")
 
-os.environ["GOOGLE_API_KEY"] = os.getenv('GOOGLE_API_KEY')
-os.environ["NCP_CLOVASTUDIO_API_KEY"] = os.getenv('NCP_CLOVASTUDIO_API_KEY')
-os.environ["NCP_APIGW_API_KEY"] = os.getenv('NCP_APIGW_API_KEY')
-os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
-os.environ["ANTHROPIC_API_KEY"] = os.getenv('ANTHROPIC_API_KEY')
 
+# 환경 변수로 API 키 설정 (Google, CLOVA Studio, OpenAI, Anthropic)
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+NCP_CLOVASTUDIO_API_KEY = os.getenv("NCP_CLOVASTUDIO_API_KEY")
+NCP_APIGW_API_KEY = os.getenv("NCP_APIGW_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 # MongoDB 클라이언트 초기화
+
 client = MongoClient(
     os.getenv('MONGODB_URI'),
     username=os.getenv('MONGODB_USERNAME'),
     password=os.getenv('MONGODB_PASSWORD'),
     authSource='admin'  # 인증 데이터베이스 지정
 )
+
 db = client['mindflow_db']
 
 # 컬렉션 정의
@@ -53,16 +59,6 @@ clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5)
 chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096)
 claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096)
 memory = None
-
-
-def create_mysql_connection():
-    try:
-        connection = mysql.connector.connect(host='localhost', database='chat_database', user='root', password='REDACTED')
-        if connection.is_connected():
-            return connection
-    except Error as e:
-        print(f"MySQL 연결 중 오류 발생: {e}")
-    return None
 
 
 # 첫 입력 여부를 추적하는 변수
@@ -96,11 +92,13 @@ def initialize_memory(chat_room_id):
     return memory
 
 
+
 def generate_response_for_model(user_input, model_class, detail_model):
     prompt = ChatPromptTemplate.from_messages(
         [("system", "다음 질문에 대해 최대 10줄 정도로 답변해주세요. 간단하게 요청한 경우 5줄 정도로 답변"), ("human", "{history}\n{input}")])
     model = model_class(model=detail_model, temperature=0.5, max_tokens=4096)
     conversation_chain = ConversationChain(llm=model, memory=memory, prompt=prompt)
+
     return conversation_chain.invoke({"input": user_input})["response"]
 
 
@@ -140,14 +138,32 @@ def generate_model_responses(user_input):
     chatgpt_response = (prompt | chatgpt_llm).invoke({"input": user_input})
     claude_response = (prompt | claude_llm).invoke({"input": user_input})
 
-    return {'google': serialize_message(google_response), 'clova': serialize_message(clova_response),
-            'chatgpt': serialize_message(chatgpt_response), 'claude': serialize_message(claude_response)}
-
+    return {
+        'google':{
+            'response': serialize_message(google_response),
+            'detail_model':"gemini-2.0-flash-exp"
+        } ,
+        'clova': {
+            'response': serialize_message(clova_response),
+            'detail_model':"HCX-003"
+        },
+        'chatgpt':{
+            'response': serialize_message(chatgpt_response),
+            'detail_model':"gpt-3.5-turbo"
+        },
+        'claude': {
+           'response':  serialize_message(claude_response),
+            'detail_model':"claude-3-5-sonnet-latest"
+        }
+    }
 
 def serialize_message(message):
-    if hasattr(message, 'to_dict'):
-        return message.to_dict()
-    return {"content": message.content if hasattr(message, 'content') else str(message)}
+    if hasattr(message, 'to_dict'):  # 객체에 to_dict 메서드가 있는 경우
+        message_dict = message.to_dict()
+        # 'content' 키만 반환
+        return message_dict.get('content', '')
+    # 'to_dict' 메서드가 없을 경우, 'content' 속성을 직접 반환
+    return getattr(message, 'content', '') if hasattr(message, 'content') else str(message)
 
 
 app = Flask(__name__)
@@ -174,7 +190,6 @@ class AlleAPI(Resource):
     def post(self):
 
         try:
-            print("sss")
             data = request.get_json()
             print(data)
 
@@ -262,8 +277,7 @@ class MassageAPI(Resource):
 
             # 메모리 초기화
             # global memory
-            if memory is None:
-                memory = initialize_memory(chat_room_id)
+            memory = initialize_memory(chat_room_id)
             print(f"Initialized memory: {memory}")  # 메모리 초기화 결과 출력
 
             if not user_input:
@@ -277,7 +291,7 @@ class MassageAPI(Resource):
             response_content_serialized = serialize_message(response_obj)
             print(f"Serialized response content: {response_content_serialized}")  # 직렬화된 응답 내용 출력
 
-            answer_sentences = [line.strip() for line in response_content_serialized['content'].split('\n') if
+            answer_sentences = [line.strip() for line in response_content_serialized.split('\n') if
                                 line.strip()]
             print(f"Answer sentences: {answer_sentences}")  # 응답 문장 출력
 
@@ -301,7 +315,13 @@ class MassageAPI(Resource):
             # 대화 로그를 MongoDB에 저장
             # save_chat_log(str(chat_room_id), user_input, answer_sentences, model)
 
-            response_data = {'chat_room_id': chat_room_id, 'model': model, 'response': response_content_serialized, }
+            response_data = {
+                'chat_room_id': chat_room_id,
+                'model': model,
+                'detail_model':detail_model,
+                'response': response_content_serialized,
+            }
+
             response_json = json.dumps(response_data, ensure_ascii=False)
             print(f"Response JSON: {response_json}")  # 최종 응답 JSON 출력
             return make_response(response_json, 200, {"Content-Type": "application/json"})

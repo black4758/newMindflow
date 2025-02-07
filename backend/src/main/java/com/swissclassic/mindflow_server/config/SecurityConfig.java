@@ -50,6 +50,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
+                        // 채팅 API 경로 추가
+                        .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers("/api/messages/**").permitAll()
                         // 나머지는 인증 필요
                         .anyRequest().authenticated()
                 )
