@@ -2,6 +2,11 @@ package com.swissclassic.mindflow_server.config;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.swissclassic.mindflow_server.account.service.CustomUserDetailsService;
+import com.swissclassic.mindflow_server.util.JwtUtils;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -10,13 +15,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import com.swissclassic.mindflow_server.util.JwtUtils;
-
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -44,9 +42,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * @throws IOException      in case of I/O errors
      */
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+        String requestURI = request.getRequestURI();
+        if (requestURI.startsWith("/swagger-ui") ||
+                requestURI.startsWith("/v3/api-docs") ||
+                requestURI.startsWith("/swagger-resources") ||
+                requestURI.startsWith("/webjars")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         try {
             // Extract JWT token from the Authorization header
             String jwt = parseJwt(request);
@@ -67,13 +75,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
                                 null,
-                                userDetails.getAuthorities());
+                                userDetails.getAuthorities()
+                        );
                 log.debug("4. Created authentication token");  // Check authentication creation
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 // Set the authentication in the security context
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext()
+                                     .setAuthentication(authentication);
                 log.debug("5. Set authentication in SecurityContext");  // Check security context
 
             }

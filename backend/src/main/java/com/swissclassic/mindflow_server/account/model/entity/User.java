@@ -1,14 +1,18 @@
 package com.swissclassic.mindflow_server.account.model.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 유저 모델 정의.
@@ -35,7 +39,9 @@ import java.util.List;
 @Getter
 @Setter
 @Table(name = "users")
-public class User implements UserDetails {
+@NoArgsConstructor
+@AllArgsConstructor
+public class User implements OAuth2User, UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -61,22 +67,12 @@ public class User implements UserDetails {
     @Column(length = 255)
     private String refreshToken;
 
-    public User() {
-    }
+    @Column(length = 50)
+    @Enumerated(EnumType.STRING)
+    private OAuthProvider socialProvider;  // Add this field
 
-    public User(
-            Long id, String accountId, String username, String password, String displayName, String email,
-            LocalDateTime createdAt, String refreshToken
-    ) {
-        this.id = id;
-        this.accountId = accountId;
-        this.username = username;
-        this.password = password;
-        this.displayName = displayName;
-        this.email = email;
-        this.createdAt = createdAt;
-        this.refreshToken = refreshToken;
-    }
+    @Column(length = 255)
+    private String socialId;              // Add this field
 
     @Override
     public String toString() {
@@ -88,10 +84,21 @@ public class User implements UserDetails {
                 ", displayName='" + displayName + '\'' +
                 ", email='" + email + '\'' +
                 ", createdAt=" + createdAt +
-                ", refreshToken='" + refreshToken +
+                ", refreshToken='" + refreshToken + '\'' +
+                ", socialProvider=" + socialProvider +
+                ", socialId='" + socialId + '\'' +
                 '}';
     }
 
+    @Override
+    public <A> A getAttribute(String name) {
+        return OAuth2User.super.getAttribute(name);
+    }
+
+    @Override
+    public Map<String, Object> getAttributes() {
+        return null;
+    }
 
     @Override
     public List<? extends GrantedAuthority> getAuthorities() {
@@ -130,5 +137,11 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return true;
+    }
+
+
+    @Override
+    public String getName() {
+        return null;
     }
 }

@@ -5,7 +5,9 @@ import com.swissclassic.mindflow_server.conversation.model.entity.ConversationSu
 import com.swissclassic.mindflow_server.conversation.service.AiServerService;
 import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
 import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
+
 import com.swissclassic.mindflow_server.conversation.service.ConversationSummaryService;
+
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
@@ -32,8 +34,10 @@ public class ChatController {
         this.conversationSummaryService = conversationSummaryService;
     }
 
+
     @PostMapping("/send")
     public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
+
         if (chatRequest.getModel().isEmpty()){
             System.out.println("모델이 비어 있습니다.");
         }
@@ -76,23 +80,4 @@ public class ChatController {
         return firstChatRespose;
     }
 
-//    @Operation(
-//            summary = "채팅방 대화 내역 조회",
-//            description = "특정 채팅방의 모든 대화 내역을 조회합니다."
-//    )
-//    @GetMapping("/room/{accountId}/{roomId}")
-//    public ResponseEntity<List<ChatResponse>> getChatsByRoom(
-//            @PathVariable String accountId,
-//            @PathVariable Long roomId) {
-//        return ResponseEntity.ok(chatService.getChatsByRoom(accountId, roomId));
-//    }
-//    @Operation(
-//            summary = "사용자 대화 내역 조회",
-//            description = "특정 사용자의 모든 대화 내역을 조회합니다."
-//    )
-//    @GetMapping("/account/{accountId}")
-//    public ResponseEntity<List<ChatResponse>> getChatsByAccount(
-//            @PathVariable String accountId) {
-//        return ResponseEntity.ok(chatService.getChatsByAccount(accountId));
-//    }
 }
