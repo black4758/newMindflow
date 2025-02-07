@@ -4,6 +4,8 @@ import com.swissclassic.mindflow_server.account.model.dto.AuthResponse;
 import com.swissclassic.mindflow_server.account.model.dto.OAuthProviderInfo;
 import com.swissclassic.mindflow_server.account.model.entity.OAuth2UserWrapper;
 import com.swissclassic.mindflow_server.account.model.entity.OAuthProvider;
+import com.swissclassic.mindflow_server.account.model.entity.User;
+import com.swissclassic.mindflow_server.account.repository.UserRepository;
 import com.swissclassic.mindflow_server.account.service.UserService;
 import com.swissclassic.mindflow_server.util.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,6 +30,9 @@ public class OAuth2Controller {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
@@ -68,6 +73,9 @@ public class OAuth2Controller {
             String refreshToken = jwtUtils.generateRefreshToken(oAuth2User.getUser()
                                                                           .getId()
                                                                           .toString());
+            User user = oAuth2User.getUser();
+            user.setRefreshToken(refreshToken);
+            userRepository.save(user);
             log.debug("Successfully generated JWT token");
             return ResponseEntity.ok(new AuthResponse(oAuth2User.getUser()
                                                                 .getId(), oAuth2User.getUser()
