@@ -12,29 +12,22 @@ import java.util.Set;
 
 @Node("Topic")
 @Data
-@Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class Topic {
     @Id
-    @GeneratedValue
-    private Long id;
-
-    @Property("title")
+    private String id;
     private String title;
-
-    @Property("content")
     private String content;
+
+    @Property("mongo_ref")
+    private String mongoRef;
 
     @Property("account_id")
     private String accountId;
 
     @Property("chat_room_id")
-    private String chatRoomId;
+    private String chatroomId;
 
     @Property("created_at")
     private LocalDateTime createdAt;
-
-    @Property("mongo_ref")
-    private String mongoRef;
 }

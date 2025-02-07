@@ -33,3 +33,7 @@ jwt:
 
 # 15? ??
 
+logging:
+  level:
+    root: INFO
+    com.swissclassic.mindflow_server: DEBUG

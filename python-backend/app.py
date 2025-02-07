@@ -272,23 +272,23 @@ class MassageAPI(Resource):
 
             # 챗봇 응답 생성
             response_obj = chatbot_response(user_input, model=model, detail_model=detail_model)
-            print(f"Response object: {response_obj}")  # 챗봇 응답 출력
+            # print(f"Response object: {response_obj}")  # 챗봇 응답 출력
 
             response_content_serialized = serialize_message(response_obj)
-            print(f"Serialized response content: {response_content_serialized}")  # 직렬화된 응답 내용 출력
+            # print(f"Serialized response content: {response_content_serialized}")  # 직렬화된 응답 내용 출력
 
             answer_sentences = [line.strip() for line in response_content_serialized['content'].split('\n') if
                                 line.strip()]
-            print(f"Answer sentences: {answer_sentences}")  # 응답 문장 출력
+            # print(f"Answer sentences: {answer_sentences}")  # 응답 문장 출력
 
             memory_content = memory.load_memory_variables({})["history"]
-            print(f"Memory content: {memory_content}")  # 메모리 내용 출력
+            # print(f"Memory content: {memory_content}")  # 메모리 내용 출력
 
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
             sentences_with_ids = [
                 {'sentenceId': str(uuid.uuid4()), 'content': escape_cypher_quotes(sentence)  # Cypher 이스케이프 처리
                  } for sentence in answer_sentences]
-            print(f"Sentences with IDs: {sentences_with_ids}")  # 문장에 ID와 Cypher 이스케이프 적용된 결과 출력
+            # print(f"Sentences with IDs: {sentences_with_ids}")  # 문장에 ID와 Cypher 이스케이프 적용된 결과 출력
 
             task = create_mindmap.delay(  # account_id=data.get('accountId'),
                 account_id="REDACTED123", chat_room_id=data.get('chatRoomId'), chat_id="chat_id", question=user_input,

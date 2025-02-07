@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TopicRelationship {
+public class Relationship {
     @Id
     @GeneratedValue
     private Long id;
@@ -22,6 +22,8 @@ public class TopicRelationship {
     private String type;  // HAS_SUBTOPIC, RELATED_TO, COMPARED_TO
 
     private Topic source;
+
+    @TargetNode
     private Topic target;
 
     @Property("created_at")

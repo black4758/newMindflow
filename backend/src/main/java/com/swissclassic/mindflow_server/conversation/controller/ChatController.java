@@ -3,6 +3,7 @@ import com.swissclassic.mindflow_server.conversation.model.dto.ChatRequest;
 import com.swissclassic.mindflow_server.conversation.service.AiServerService;
 import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
 import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
@@ -28,6 +29,10 @@ public class ChatController {
     }
 
     @PostMapping("/chat")
+    @Operation(summary = "ai한테 질문", description = "gemini-2.0-flash-exp\n" +
+            "HCX-003\n" +
+            "gpt-3.5-turbo\n" +
+            "claude-3-5-sonnet-latest")
     public Mono<String> getChatResponse(@RequestBody ChatRequest chatRequest) {
         if (chatRequest.getModel().isEmpty()){
             System.out.println("모델이 비어 있습니다.");
