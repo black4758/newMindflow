@@ -7,5 +7,5 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class FirstChatRespose {
-    private String chatRoomId;
+    private long chatRoomId;
 }
