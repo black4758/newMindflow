@@ -21,7 +21,7 @@ const Login = () => {
 
     try {
       // 백엔드 API로 로그인 요청
-      const response = await api.post("/api/login", {
+      const response = await api.post("/api/auth/login", {
         accountId, // 직접 accountId 사용
         password,
       })
