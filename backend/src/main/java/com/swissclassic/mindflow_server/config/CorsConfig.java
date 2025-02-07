@@ -31,10 +31,7 @@ public class CorsConfig {
         config.addAllowedMethod("DELETE");
         config.addAllowedMethod("OPTIONS");
 
-        source.registerCorsConfiguration("/api/**", config);
-        source.registerCorsConfiguration("/v3/api-docs", config);  // 추가
-        source.registerCorsConfiguration("/swagger-ui/**", config);   // 추가
-
+        source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);
     }
 }

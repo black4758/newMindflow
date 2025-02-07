@@ -42,6 +42,8 @@ create table if not exists users
     email         varchar(255)                        not null,
     created_at    timestamp default CURRENT_TIMESTAMP null,
     refresh_token varchar(255)                        null,
+    social_id     varchar(255)                        null,
+    social_provider enum ('NONE', 'GOOGLE', 'GITHUB', 'KAKAO') default 'NONE' not null,
     constraint account_id
         unique (account_id),
     constraint email
@@ -63,3 +65,4 @@ create table if not exists chat_rooms
         foreign key (creator_id) references users (id)
             on delete cascade
 );
+
