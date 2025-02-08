@@ -18,7 +18,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-from mysql.connector import Error
+from mysql.connector import Error 
 
 
 from pymongo import MongoClient
