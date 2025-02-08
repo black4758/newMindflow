@@ -110,7 +110,7 @@ def generate_response_for_model(user_input, model_class, detail_model):
         print(chunk.content, end="", flush=True)
         seen_chunks.add(chunk.content)  # 새로운 청크 저장
         full_response += chunk.content  # 전체 응답에 추가
-        socketio.emit('response', {
+        socketio.emit('stream', {
                     'content': chunk.content
                 })
     memory.save_context(
@@ -158,7 +158,7 @@ def all_re(model=google_llm,user_input="input",model_name="name"):
             print(chunk.content, end="", flush=True)
             seen_chunks.add(chunk.content)  # 새로운 청크 저장
             full_response += chunk.content  # 전체 응답에 추가
-            socketio.emit('response', {
+            socketio.emit('all_stream', {
                         'content': chunk.content,
                         'model_name':model_name
                     })
