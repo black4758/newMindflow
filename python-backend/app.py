@@ -3,6 +3,8 @@ import json
 import os
 import uuid
 from datetime import datetime
+from flask import Flask, request, jsonify
+from flask_socketio import SocketIO, emit
 
 import mysql.connector
 from dotenv import load_dotenv
@@ -54,10 +56,11 @@ chat_rooms = db['chat_rooms']
 chat_logs = db['chat_logs']
 conversation_summaries = db['conversation_summaries']
 
-google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096)
-clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5)
-chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096)
-claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096)
+google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
+clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
+chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
+claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
+
 memory = None
 
 
@@ -94,12 +97,28 @@ def initialize_memory(chat_room_id):
 
 
 def generate_response_for_model(user_input, model_class, detail_model):
-    prompt = ChatPromptTemplate.from_messages(
-        [("system", "다음 질문에 대해 최대 10줄 정도로 답변해주세요. 간단하게 요청한 경우 5줄 정도로 답변"), ("human", "{history}\n{input}")])
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096)
-    conversation_chain = ConversationChain(llm=model, memory=memory, prompt=prompt)
+    history = memory.load_memory_variables({}).get("history", "")
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "너는 한국말로 짧게말하는 챗봇이야. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("human", "{user_input}")])
 
-    return conversation_chain.invoke({"input": user_input})["response"]
+    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
+    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096)
+    seen_chunks = set()
+    full_response = "" 
+    for chunk in model.stream(formatted_prompt):  # 실시간으로 청크 단위 출력
+        print(chunk.content, end="", flush=True)
+        seen_chunks.add(chunk.content)  # 새로운 청크 저장
+        full_response += chunk.content  # 전체 응답에 추가
+        socketio.emit('response', {
+                    'content': chunk.content
+                })
+    memory.save_context(
+        {"input": user_input},  # 사용자 입력 저장
+        {"output": full_response}  # 모델 응답 저장
+        )
+    return full_response
+
 
 
 def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
@@ -130,29 +149,44 @@ def generate_room_title(user_input):
     return response.content.strip()
 
 
+def all_re(model=google_llm,user_input="input",model_name="name"):
+    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고  간단하게 말해"), ("human", "{user_input}")])
+    formatted_prompt = prompt.format_messages(user_input=user_input)
+    seen_chunks = set()
+    full_response = "" 
+    for chunk in model.stream(formatted_prompt):  # 실시간으로 청크 단위 출력
+            print(chunk.content, end="", flush=True)
+            seen_chunks.add(chunk.content)  # 새로운 청크 저장
+            full_response += chunk.content  # 전체 응답에 추가
+            socketio.emit('response', {
+                        'content': chunk.content,
+                        'model_name':model_name
+                    })
+    return full_response
+
+
 # 모델이 지정되지 않은 경우의 응답 생성 함수
 def generate_model_responses(user_input):
-    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고  간단하게 말해"), ("human", "{input}")])
-    google_response = (prompt | google_llm).invoke({"input": user_input})
-    clova_response = (prompt | clova_llm).invoke({"input": user_input})
-    chatgpt_response = (prompt | chatgpt_llm).invoke({"input": user_input})
-    claude_response = (prompt | claude_llm).invoke({"input": user_input})
+    google_response = all_re(google_llm,user_input,"google")
+    clova_response = all_re(clova_llm,user_input,"clova")
+    chatgpt_response = all_re(chatgpt_llm,user_input,"chatgpt")
+    claude_response = all_re(claude_llm,user_input,"claude")
 
     return {
         'google':{
-            'response': serialize_message(google_response),
+            'response':google_response,
             'detail_model':"gemini-2.0-flash-exp"
         } ,
         'clova': {
-            'response': serialize_message(clova_response),
+            'response':clova_response,
             'detail_model':"HCX-003"
         },
         'chatgpt':{
-            'response': serialize_message(chatgpt_response),
+            'response': chatgpt_response,
             'detail_model':"gpt-3.5-turbo"
         },
         'claude': {
-           'response':  serialize_message(claude_response),
+           'response': claude_response,
             'detail_model':"claude-3-5-sonnet-latest"
         }
     }
@@ -167,6 +201,9 @@ def serialize_message(message):
 
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'REDACTED'
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 api = Api(app, version='1.0', title='다중 AI 챗봇 API', description='다양한 AI 모델을 활용한 챗봇 API')
 
 ns_chatbot = api.namespace('chatbot', description='Chatbot 관련 API')
@@ -198,7 +235,7 @@ class AlleAPI(Resource):
             response_data = {'models': ['google', 'clova', 'chatgpt', 'claude'], 'user_input': user_input,
                              'responses': responses, }
             response_json = json.dumps(response_data, ensure_ascii=False)
-            return make_response(response_json, 200, {"Content-Type": "application/json"})
+            return response_data
 
         except Exception as e:
             error_response = {'error': str(e)}
@@ -288,7 +325,7 @@ class MassageAPI(Resource):
             response_obj = chatbot_response(user_input, model=model, detail_model=detail_model)
             # print(f"Response object: {response_obj}")  # 챗봇 응답 출력
 
-            response_content_serialized = serialize_message(response_obj)
+            response_content_serialized = (response_obj)
             # print(f"Serialized response content: {response_content_serialized}")  # 직렬화된 응답 내용 출력
 
             answer_sentences = [line.strip() for line in response_content_serialized.split('\n') if
@@ -311,9 +348,6 @@ class MassageAPI(Resource):
 
             save_conversation_summary(chat_room_id, memory_content)
             print("Conversation summary saved.")  # 대화 요약 저장 완료 출력
-
-            # 대화 로그를 MongoDB에 저장
-            # save_chat_log(str(chat_room_id), user_input, answer_sentences, model)
 
             response_data = {
                 'chat_room_id': chat_room_id,
