@@ -34,6 +34,9 @@ const Mindmap = () => {
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
   const [mindmapdata, setMindmapdata] = useState({ nodes: [], relationships: [] });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showNodeModal, setShowNodeModal] = useState(false);
+  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -105,7 +108,7 @@ const Mindmap = () => {
 
     // 각 chatRoom 그룹별로 새로운 루트 노드 생성
     Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
-      if (groupNodes.length > 1) {
+      if (groupNodes.length >= 1) {
         // 새로운 루트 노드 생성
         const newRootNode = {
           id: `root_${chatRoomId}`,
@@ -377,6 +380,12 @@ const Mindmap = () => {
 
   // 노드 클릭/선택 핸들러 수정
   const handleNodeFocus = useCallback((node) => {
+    if (isEditMode) {
+      setSelectedNodeForEdit(node);
+      setShowNodeModal(true);
+      return;
+    }
+
     // chatroom 루트 노드인 경우
     if (node.id.startsWith('root_')) {
       const chatRoomId = node.id.replace('root_', '');
@@ -476,7 +485,33 @@ const Mindmap = () => {
       setSelectedNode(node);
       handleNodeSelect(node);
     }
-  }, [isNodeFocused, selectedNode, handleNodeSelect, navigate, processedData]);
+  }, [isEditMode, isNodeFocused, selectedNode, handleNodeSelect, navigate, processedData]);
+
+  // 노드 분리 핸들러
+  const handleNodeSplit = useCallback(async () => {
+    try {
+      // await splitNode(selectedNodeForEdit.id);
+      // 성공 시 마인드맵 데이터 새로고침
+      // await refreshMindmapData();
+      setShowNodeModal(false);
+    } catch (error) {
+      // console.error('노드 분리 중 오류 발생:', error);
+      // alert('노드 분리에 실패했습니다.');
+    }
+  }, [selectedNodeForEdit]);
+
+  // 노드 삭제 핸들러
+  const handleNodeDelete = useCallback(async () => {
+    try {
+      // await deleteNode(selectedNodeForEdit.id);
+      // 성공 시 마인드맵 데이터 새로고침
+      // await refreshMindmapData();
+      setShowNodeModal(false);
+    } catch (error) {
+      // console.error('노드 삭제 중 오류 발생:', error);
+      // alert('노드 삭제에 실패했습니다.');
+    }
+  }, [selectedNodeForEdit]);
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node, isHighlighted) => {
@@ -592,6 +627,20 @@ const Mindmap = () => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* 편집 모드 체크박스 추가 */}
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="editMode"
+            checked={isEditMode}
+            onChange={(e) => setIsEditMode(e.target.checked)}
+            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+          />
+          <label htmlFor="editMode" className="text-white">
+            편집 모드
+          </label>
         </div>
       </div>
 
@@ -759,12 +808,21 @@ const Mindmap = () => {
           nodeLabel={(node) => ""}
           backgroundColor="#353A3E"
           nodePointerAreaPaint={(node, color, ctx) => {
-            const fontSize = 12
-            const { width, height } = getNodeSize(node.title, ctx, fontSize)
+            const fontSize = node.isRoot ? 32 : 26;
+            const { width, height } = getNodeSize(node.title, ctx, fontSize);
+            const radius = 16;
 
-            // 호버 영역을 노드의 실제 크기로 설정
-            ctx.fillStyle = color
-            ctx.fillRect(node.x - width / 2, node.y - height / 2, width, height)
+            ctx.beginPath();
+            // 노드의 전체 영역(배경 포함)을 포인터 영역으로 설정
+            ctx.roundRect(
+              node.x - width / 2 - radius,
+              node.y - height / 2 - radius,
+              width + radius * 2,
+              height + radius * 2,
+              radius
+            );
+            ctx.fillStyle = color;
+            ctx.fill();
           }}
           onNodeClick={handleNodeFocus}
         />
@@ -845,12 +903,21 @@ const Mindmap = () => {
           nodeLabel={(node) => ""}
           backgroundColor="#353A3E"
           nodePointerAreaPaint={(node, color, ctx) => {
-            const fontSize = 12
-            const { width, height } = getNodeSize(node.title, ctx, fontSize)
+            const fontSize = node.isRoot ? 32 : 26;
+            const { width, height } = getNodeSize(node.title, ctx, fontSize);
+            const radius = 16;
 
-            // 호버 영역을 노드의 실제 크기로 설정
-            ctx.fillStyle = color
-            ctx.fillRect(node.x - width / 2, node.y - height / 2, width, height)
+            ctx.beginPath();
+            // 노드의 전체 영역(배경 포함)을 포인터 영역으로 설정
+            ctx.roundRect(
+              node.x - width / 2 - radius,
+              node.y - height / 2 - radius,
+              width + radius * 2,
+              height + radius * 2,
+              radius
+            );
+            ctx.fillStyle = color;
+            ctx.fill();
           }}
           onNodeClick={handleNodeFocus}
         />
@@ -868,6 +935,36 @@ const Mindmap = () => {
         >
           <h3 className="font-bold text-lg mb-2">{hoverNode.title}</h3>
           <p className="text-gray-600">{hoverNode.content}</p>
+        </div>
+      )}
+
+      {/* 노드 편집 모달 */}
+      {showNodeModal && selectedNodeForEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-xl font-bold mb-4">{selectedNodeForEdit.title}</h3>
+            <p className="text-gray-600 mb-6">{selectedNodeForEdit.content}</p>
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={handleNodeSplit}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                분리
+              </button>
+              <button
+                onClick={handleNodeDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+              >
+                삭제
+              </button>
+              <button
+                onClick={() => setShowNodeModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              >
+                취소
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

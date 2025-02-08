@@ -17,7 +17,7 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
         OPTIONAL MATCH (n)-[r]->(m:Topic)
         RETURN {
             accountId: $accountId, 
-            nodes: collect({
+            nodes: collect(DISTINCT {
                 id: elementId(n),
                 title: n.title,
                 content: n.content,
@@ -48,7 +48,7 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
     RETURN {
         accountId: $accountId, 
         chatRoomId: $chatRoomId,
-        nodes: collect({
+        nodes: collect(DISTINCT {
             id: elementId(n),
             title: n.title,
             content: n.content,

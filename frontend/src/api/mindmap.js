@@ -35,4 +35,28 @@ export const fetchMindmapData = async (chatRoomId = null) => {
     console.log('Fallback to test data');
     return testchatroomData;
   }
+};
+
+// 노드 분리 API
+export const splitNode = async (nodeId) => {
+  try {
+    // POST /api/mindmaps/nodes/{nodeId}/split
+    // const response = await axios.post(`${BASE_URL}/nodes/${nodeId}/split`);
+    // return response.data;
+  } catch (error) {
+    console.error('노드 분리 실패:', error);
+    throw error;
+  }
+};
+
+// 노드 삭제 API
+export const deleteNode = async (nodeId) => {
+  try {
+    // DELETE /api/mindmaps/nodes/{nodeId}
+    // const response = await axios.delete(`${BASE_URL}/nodes/${nodeId}`);
+    // return response.data;
+  } catch (error) {
+    console.error('노드 삭제 실패:', error);
+    throw error;
+  }
 }; 
