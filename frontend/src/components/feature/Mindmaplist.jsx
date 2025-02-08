@@ -3,7 +3,7 @@ import { ForceGraph2D } from "react-force-graph"
 import ForceGraph3D from "react-force-graph-3d"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
-import { fetchMindmapData } from '../../api/mindmap'
+import { fetchMindmapData, deleteNode } from '../../api/mindmap'
 import PropTypes from "prop-types"
 import { useNavigate } from "react-router-dom"
 import * as d3 from "d3"
@@ -503,13 +503,16 @@ const Mindmap = () => {
   // 노드 삭제 핸들러
   const handleNodeDelete = useCallback(async () => {
     try {
-      // await deleteNode(selectedNodeForEdit.id);
+      await deleteNode(selectedNodeForEdit.id);
+      
       // 성공 시 마인드맵 데이터 새로고침
-      // await refreshMindmapData();
+      const updatedData = await fetchMindmapData();
+      setMindmapdata(updatedData);
+      
       setShowNodeModal(false);
     } catch (error) {
-      // console.error('노드 삭제 중 오류 발생:', error);
-      // alert('노드 삭제에 실패했습니다.');
+      console.error('노드 삭제 중 오류 발생:', error);
+      alert('노드 삭제에 실패했습니다.');
     }
   }, [selectedNodeForEdit]);
 

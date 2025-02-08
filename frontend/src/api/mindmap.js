@@ -3,12 +3,12 @@ import axios from 'axios';
 
 // 개발 환경에서는 mock 서버 URL 사용
 const BASE_URL = process.env.NODE_ENV === 'development' 
-  ? 'http://localhost:8453/api/mindmaps/REDACTED123'
+  ? 'http://localhost:8453'
   : 'http://your-backend-url/api';
 
 export const fetchMindmapData = async (chatRoomId = null) => {
   try {
-    const endpoint = '';
+    const endpoint = '/api/mindmaps/REDACTED123';
     console.log(`Fetching from: ${BASE_URL}${endpoint}`);
     
     const response = await axios.get(`${BASE_URL}${endpoint}`);
@@ -52,11 +52,12 @@ export const splitNode = async (nodeId) => {
 // 노드 삭제 API
 export const deleteNode = async (nodeId) => {
   try {
-    DELETE /api/mindmaps/nodes/{nodeId}
-    const response = await axios.delete(`${BASE_URL}/nodes/${nodeId}`);
+    // DELETE /api/mindmaps/nodes/{nodeId}
+    const response = await axios.delete(`${BASE_URL}/api/mindmaps/deleteSubTopic/${nodeId}`);
     return response.data;
   } catch (error) {
     console.error('노드 삭제 실패:', error);
     throw error;
   }
+
 }; 
