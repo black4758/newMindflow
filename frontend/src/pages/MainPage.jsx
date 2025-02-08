@@ -23,15 +23,15 @@ const MainPage = () => {
   const [responses, setResponses] = useState({}) // 모델별 응답 상태
 
   // Redux에서 현재 로그인한 사용자의 userId 가져오기
-  const userId = useSelector((state) => state.auth.user.id)
+  const userId = useSelector((state) => state.auth.user.userId)
 
   // 사용 가능한 모델 목록과 세부 모델 목록
   const modelList = ["chatgpt", "claude", "google", "clova"]
   const detailModelList = {
-    chatgpt: ["gpt-4o", "gpi-4o-mini", "gpt-o1"],
-    claude: ["claude-3.5-sonnet", "claude-3-opus", "claude-3.5-haiku"],
-    google: ["gemini-1.5-flash-8b", "gemini-1.5-pro"],
-    clova: ["clova-studio-exclusive", "clova-studio-basic"],
+    chatgpt: ["gpt-3.5-turbo","gpt-4o", "gpi-4o-mini", "gpt-o1"],
+    claude: ["claude-3-5-sonnet-latest", "claude-3-opus", "claude-3.5-haiku"],
+    google: ["gemini-2.0-flash-exp", "gemini-1.5-pro"],
+    clova: ["HCX-003", "clova-studio-basic"],
   }
 
   // **useEffect 훅 사용**
@@ -70,21 +70,22 @@ const MainPage = () => {
       chatRoomId,
       model,
       userInput,
-      userId,
+      "creatorId" : userId,
       detailModel,
     }
-
-    try {
-      // 서버에 메시지 전송
-      const response = await api.post("/api/messages/send", requestData)
-
-      if (response.data.models) {
+    
+    if (!model) {
+      // 처음 대화 시도 시 모든 모델의 대화목록을 받아오는 api로 시도
+      try {
+        // 서버에 메시지 전송
+        const response = await api.post("/api/messages/all", requestData)
+  
         // 다수의 모델이 응답을 반환할 때
         const { models, responses } = response.data
         setResponses(responses) // 응답 상태 설정
-        setShowModelCards(true) // 모델 카드 표시
+        setShowModelCards(true) // 4개 응답 선택 창 띄우기기
         console.log("가용한 모델들: ", models)
-      } else if (response.data.data) {
+      
         // 단일 모델 응답일 때
         const { chat_room_id, model, detail_model, response: aiResponse } = response.data.data
         setChatRoomId(chat_room_id) // 채팅 방 ID 업데이트
@@ -96,9 +97,24 @@ const MainPage = () => {
           detailModel: detail_model,
         }
         setMessages((prev) => [...prev, aiMessage])
+        
+      } catch (error) {
+        console.error("메세지 전송 오류: ", {
+          message: error.message,
+          response: error.response?.data, // axios 에러의 경우 서버 응답 데이터
+          status: error.response?.status, // HTTP 상태 코드
+          stack: error.stack, // 에러 발생 위치 추적
+        })
       }
-    } catch (error) {
-      console.error("메세지 전송 오류: ", error)
+    }
+
+    else if (model) {
+      // 대화가 첫 시도가 아니면(모델이 선택되었으면) 그 모델로 대화 시도
+      try {
+        const response = await api.post("/api/messages/send", requestData)
+      } catch (error) {
+        console.error(error)
+      }
     }
   }
 
@@ -207,24 +223,21 @@ const MainPage = () => {
                     </button>
                   ))}
                 </div>
-              {/* 세부 모델 목록 드롭다운 */}
-              {model && (
-                <div className="w-56 bg-white rounded-lg shadow-lg py-2">
-                  <div className="px-4 py-2 text-sm font-medium text-gray-600 border-b border-gray-100">
+                {/* 세부 모델 목록 드롭다운 */}
+                {model && (
+                  <div className="w-56 bg-white rounded-lg shadow-lg py-2">
+                    <div className="px-4 py-2 text-sm font-medium text-gray-600 border-b border-gray-100"></div>
+                    {detailModelList[model].map((detailModelName) => (
+                      <button
+                        key={detailModelName}
+                        onClick={() => changeDetailModel(detailModelName)}
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${detailModelName === detailModel ? "bg-gray-50" : ""}`}
+                      >
+                        {detailModelName}
+                      </button>
+                    ))}
                   </div>
-                  {detailModelList[model].map((detailModelName) => (
-                    <button
-                      key={detailModelName}
-                      onClick={() => changeDetailModel(detailModelName)}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
-                        detailModelName === detailModel ? "bg-gray-50" : ""
-                      }`}
-                    >
-                      {detailModelName}
-                    </button>
-                  ))}
-                </div>
-              )}
+                )}
               </div>
             )}
           </div>
