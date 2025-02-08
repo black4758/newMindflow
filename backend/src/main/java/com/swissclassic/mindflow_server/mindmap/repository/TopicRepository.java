@@ -73,5 +73,11 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
     List<Map<String, Object>> getMindMapByUserAndChatRoom(String accountId, String chatRoomId);
 
 
+    @Query("""
+            MATCH (n)-[r:HAS_SUBTOPIC*0..]->(m) 
+            WHERE elementId(n) = $elementId 
+            DETACH DELETE m
+            """)
+    void deleteSubtopicsByElementId(String elementId);
 
 }

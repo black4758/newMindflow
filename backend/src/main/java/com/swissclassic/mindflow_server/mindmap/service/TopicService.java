@@ -48,4 +48,9 @@ public class TopicService {
 
         return dto;
     }
+
+    public void deleteSubtopics(String elementId) {
+        topicRepository.deleteSubtopicsByElementId(elementId);
+    }
+
 }

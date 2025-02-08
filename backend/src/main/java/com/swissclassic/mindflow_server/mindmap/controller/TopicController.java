@@ -29,4 +29,10 @@ public class TopicController {
 
         return topicService.getMindMapByUserAndChatRoom(userId, chatRoomId);
     }
+
+    @DeleteMapping("/deleteSubTopic/{elementId}")
+    @Operation(summary = "해당 노드와 하위 노드 삭제", description = "노드의 id 를 받아서 해당 branch 삭제")
+    public void deleteSubtopics(@PathVariable String elementId) {
+        topicService.deleteSubtopics(elementId);
+    }
 }
