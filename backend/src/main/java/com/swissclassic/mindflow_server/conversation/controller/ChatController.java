@@ -56,8 +56,8 @@ public class ChatController {
         return answer;
     }
     @PostMapping("/all")
-    public ChatAllResponse getAllResponse(@RequestBody ChatRequest chatRequest) {
-            return aiServerService.getAllChatResponse(chatRequest);
+    public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
+        return aiServerService.getAllChatResponse(chatRequest);
     }
     @PostMapping("/choiceModel")
     FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){
