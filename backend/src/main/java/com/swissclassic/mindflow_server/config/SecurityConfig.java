@@ -2,9 +2,11 @@ package com.swissclassic.mindflow_server.config;
 
 import com.swissclassic.mindflow_server.account.service.CustomOAuth2UserService;
 import com.swissclassic.mindflow_server.account.service.CustomUserDetailsService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -49,26 +51,21 @@ public class SecurityConfig {
                 // 요청 인증 규칙 설정
                 .authorizeHttpRequests(authorize -> authorize
                         // 기존 허용 경로
-                        .requestMatchers("/api/**").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
-                        // Swagger 관련 경로 허용
-                        .requestMatchers(
-                                "/swagger-ui/**",          // Swagger UI 리소스
-                                "/v3/api-docs/**",         // OpenAPI 문서
-                                "/swagger-resources/**",   // Swagger 리소스
-                                "/swagger-ui.html",        // Swagger UI 메인 페이지
-                                "/webjars/**"              // Swagger 관련 웹 자원
-                        ).permitAll()
-                        // 채팅 API 경로 추가
-                        .requestMatchers("/api/chat/**").permitAll()
-                        .requestMatchers("/api/messages/**").permitAll()
+                        .requestMatchers("/api/**", "/swagger-ui/**", "/v3/api-docs/**",
+                                         "/swagger-resources/**", "/webjars/**", "/login/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/**")
+                        .permitAll()
                         // 나머지는 인증 필요
                         .anyRequest()
                         .authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+//                .exceptionHandling(
+//                        exception -> exception.authenticationEntryPoint((request, response, authException) -> {
+//                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
+//                        }))
                 .oauth2Login(
                         oauth2 -> oauth2.userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService)))
-                // JWT 필터 추가
                 .build();
     }
 

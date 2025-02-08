@@ -1,13 +1,19 @@
 import { useState } from "react"
-import axios from "axios"
+import { useNavigate } from "react-router-dom"
+import api from "../api/axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
 
 const Signup = () => {
-  // 이메일과 비밀번호 입력값을 저장할 state
+  // state 선언
+  const [accountId, setAccountId] = useState("")
   const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [passwordCheck, setPasswordCheck] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [error, setError] = useState("") // 회원가입 실패 시 에러 메시지를 저장할 state
+
+  const navigate = useNavigate()
 
   // 회원가입 버튼 클릭 시 실행되는 함수
   const handleSubmit = async (e) => {
@@ -21,31 +27,34 @@ const Signup = () => {
     }
 
     // 비밀번호 유효성 검사
-    if (password.length < 8) {
-      setError("비밀번호는 8자리 이상이어야 합니다.")
-      return
-    }
+    // if (password.length < 8) {
+    //   setError("비밀번호는 8자리 이상이어야 합니다.")
+    //   return
+    // }
 
-    // 비밀번호 복잡성 검사 (특수문자, 숫자, 영문자 포함)
-    const passwordRegex = /^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,25}$/
-    if (!passwordRegex.test(password)) {
-      setError("비밀번호는 영문자, 숫자, 특수문자를 모두 포함해야 합니다.")
-      return
-    }
+    // // 비밀번호 복잡성 검사 (특수문자, 숫자, 영문자 포함)
+    // const passwordRegex = /^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,25}$/
+    // if (!passwordRegex.test(password)) {
+    //   setError("비밀번호는 영문자, 숫자, 특수문자를 모두 포함해야 합니다.")
+    //   return
+    // }
 
     try {
-      // 백엔드 API로 회원가입 요청을 보냄
-      const response = await axios.post("http://localhost:8000/api/Signup", {
-        email,
+      const response = await api.post("/api/auth/register", {
+        accountId,
+        username,
         password,
+        email,
+        displayName,
       })
 
-      console.log("회원가입 성공:", response.data)
-      // 회원가입 성공 시 로그인 페이지로 이동
-      window.location.href = "/login"
+      if (response.status === 200) {
+        alert("회원가입이 완료되었습니다. 로그인해주세요.")
+        navigate("/login")
+      }
     } catch (error) {
       if (error.response?.status === 409) {
-        setError("이미 존재하는 이메일입니다.")
+        setError("이미 존재하는 아이디입니다.")
       } else {
         setError("회원가입에 실패했습니다. 다시 시도해주세요.")
       }
@@ -61,11 +70,38 @@ const Signup = () => {
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div className="rounded-md shadow-sm space-y-4">
             <input
+              type="text"
+              placeholder="아이디"
+              className="appearance-none relative block w-full px-3 py-2 bg-gray-700 border border-gray-600 placeholder-gray-400 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              required
+            />
+
+            <input
               type="email"
               placeholder="이메일 주소"
               className="appearance-none relative block w-full px-3 py-2 bg-gray-700 border border-gray-600 placeholder-gray-400 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+
+            <input
+              type="text"
+              placeholder="사용자 이름"
+              className="appearance-none relative block w-full px-3 py-2 bg-gray-700 border border-gray-600 placeholder-gray-400 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+
+            <input
+              type="text"
+              placeholder="표시 이름"
+              className="appearance-none relative block w-full px-3 py-2 bg-gray-700 border border-gray-600 placeholder-gray-400 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               required
             />
 

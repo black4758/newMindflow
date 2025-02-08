@@ -8,6 +8,7 @@ import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
 
 import com.swissclassic.mindflow_server.conversation.service.ConversationSummaryService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
@@ -36,6 +37,7 @@ public class ChatController {
 
 
     @PostMapping("/send")
+    @Operation(description = "gemini-2.0-flash-exp")
     public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
 
         if (chatRequest.getModel().isEmpty()){
