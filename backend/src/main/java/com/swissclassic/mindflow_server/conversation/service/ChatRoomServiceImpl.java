@@ -2,6 +2,7 @@
 package com.swissclassic.mindflow_server.conversation.service;
 
 
+import com.swissclassic.mindflow_server.conversation.model.dto.ChatRoomResponse;
 import com.swissclassic.mindflow_server.conversation.model.dto.TitleRequest;
 import com.swissclassic.mindflow_server.conversation.model.dto.TitleResponse;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
@@ -12,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatRoomServiceImpl implements ChatRoomService {
@@ -43,6 +46,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     public ChatRoom getChatRoomById(Long id) {
         return chatRoomRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Chat room not found with ID: " + id));
+    }
+    @Override
+    public List<ChatRoomResponse> findAllByCreatorId(long creatorId) {
+        return chatRoomRepository.findAllByCreatorId(creatorId).stream()
+                .map(chatRoom -> new ChatRoomResponse(chatRoom.getId(), chatRoom.getTitle(),chatRoom.getCreatedAt(),chatRoom.getStarred()))
+                .collect(Collectors.toList());
     }
 
     @Override

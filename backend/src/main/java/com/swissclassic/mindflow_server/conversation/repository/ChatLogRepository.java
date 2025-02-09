@@ -10,5 +10,5 @@ import java.util.Optional;
 
 @Repository
 public interface ChatLogRepository extends MongoRepository<ChatLog, ObjectId> {
-    List<ChatLog> findByChatRoomId(String chatRoomId);
+    List<ChatLog> findByChatRoomId(long chatRoomId);
 }
