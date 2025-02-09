@@ -33,7 +33,14 @@ const MainPage = () => {
     google: ["gemini-2.0-flash-exp", "gemini-1.5-pro"],
     clova: ["HCX-003", "clova-studio-basic"],
   }
-
+  const requestData = {
+    chatRoomId,
+    model,
+    userInput,
+    "creatorId" : userId,
+    detailModel,
+    answer,
+  }
   // **useEffect 훅 사용**
   // 메시지가 업데이트될 때마다 텍스트 영역의 높이를 동적으로 조정
   useEffect(() => {
@@ -48,7 +55,7 @@ const MainPage = () => {
   }, [messages])
 
   // **모델 선택 시 처리**
-  const handleModelSelect = (modelName) => {
+  const handleModelSelect = async (modelName) => {
     setModel(modelName) // 선택된 모델 상태 설정
     setDetailModel(detailModelList[modelName][0]) // 기본 세부 모델 설정
     setShowModelCards(false) // 모델 카드 숨기기
@@ -60,43 +67,39 @@ const MainPage = () => {
       model: modelName,
     }
     setMessages((prev) => [...prev, aiMessage])
+
+    try {
+      const response = await api.post("/api/messages/choosemodel", {
+        userInput,
+        "answer": aiMessage.text,
+        "creatorId": userId
+      })
+
+      setChatRoomId(response.data.chatRoomId)
+      
+
+    } catch (error) {
+      console.log(error)
+    }
   }
 
   // **메시지 전송 처리**
   const handleMessageSend = async (e) => {
     e.preventDefault()
 
-    const requestData = {
-      chatRoomId,
-      model,
-      userInput,
-      "creatorId" : userId,
-      detailModel,
-    }
+    const { model, userInput } = requestData
     
     if (!model) {
       // 처음 대화 시도 시 모든 모델의 대화목록을 받아오는 api로 시도
       try {
         // 서버에 메시지 전송
-        const response = await api.post("/api/messages/all", requestData)
-  
+        const response = await api.post("/api/messages/all", { userInput })
+        
         // 다수의 모델이 응답을 반환할 때
         const { models, responses } = response.data
         setResponses(responses) // 응답 상태 설정
-        setShowModelCards(true) // 4개 응답 선택 창 띄우기기
+        setShowModelCards(true) // 4개 응답 선택 창 띄우기
         console.log("가용한 모델들: ", models)
-      
-        // 단일 모델 응답일 때
-        const { chat_room_id, model, detail_model, response: aiResponse } = response.data.data
-        setChatRoomId(chat_room_id) // 채팅 방 ID 업데이트
-
-        const aiMessage = {
-          text: aiResponse,
-          isUser: false,
-          model,
-          detailModel: detail_model,
-        }
-        setMessages((prev) => [...prev, aiMessage])
         
       } catch (error) {
         console.error("메세지 전송 오류: ", {
@@ -112,6 +115,11 @@ const MainPage = () => {
       // 대화가 첫 시도가 아니면(모델이 선택되었으면) 그 모델로 대화 시도
       try {
         const response = await api.post("/api/messages/send", requestData)
+
+        // 단일 모델 응답일 때
+        const { chat_room_id, model, detail_model, response: aiResponse } = response.data.data
+        setChatRoomId(chat_room_id) // 채팅 방 ID 업데이트
+
       } catch (error) {
         console.error(error)
       }
