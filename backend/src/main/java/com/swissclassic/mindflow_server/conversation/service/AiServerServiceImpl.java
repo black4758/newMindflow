@@ -34,7 +34,7 @@ public class AiServerServiceImpl implements AiServerService {
                 .block();
     }
     @Override
-    public ChatAllResponse getAllChatResponse(ChatRequest chatRequest){
+    public ChatAllResponse getAllChatResponse(ChatAllRequest chatRequest){
         return aiServerWebClient.post()
                 .uri("/chatbot/all") // Flask 서버의 엔드포인트
                 .header("Content-Type", "application/json")

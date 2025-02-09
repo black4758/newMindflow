@@ -1,6 +1,7 @@
 package com.swissclassic.mindflow_server.conversation.service;
 
 
+import com.swissclassic.mindflow_server.conversation.model.dto.ChatRoomResponse;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 
 import java.util.List;
@@ -10,4 +11,5 @@ public interface ChatRoomService {
     List<ChatRoom> getAllChatRooms();
     ChatRoom getChatRoomById(Long id);
     String getTitle(String input);
+    List<ChatRoomResponse> findAllByCreatorId(long creatorId);
 }
