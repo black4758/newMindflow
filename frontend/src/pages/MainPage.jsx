@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
 import { ArrowUpCircle, ChevronDown } from "lucide-react"
 import ModelCard from "../components/common/ModelCard.jsx"
 import api from "../api/axios.js"
 import { useSelector } from "react-redux"
+import { io } from "socket.io-client"
 
 // 메인 페이지 컴포넌트
 const MainPage = () => {
@@ -21,6 +22,8 @@ const MainPage = () => {
   const [detailModel, setDetailModel] = useState("") // 선택된 세부 모델 상태
   const [chatRoomId, setChatRoomId] = useState(0) // 현재 채팅 방 ID 상태
   const [responses, setResponses] = useState({}) // 모델별 응답 상태
+  const [firstUserInput, setFirstUserInput] = useState("") // 첫 메시지를 위한 state 추가
+  const [streamingText, setStreamingText] = useState("") // streaming 상태 제거
 
   // Redux에서 현재 로그인한 사용자의 userId 가져오기
   const userId = useSelector((state) => state.auth.user.userId)
@@ -28,19 +31,12 @@ const MainPage = () => {
   // 사용 가능한 모델 목록과 세부 모델 목록
   const modelList = ["chatgpt", "claude", "google", "clova"]
   const detailModelList = {
-    chatgpt: ["gpt-3.5-turbo","gpt-4o", "gpi-4o-mini", "gpt-o1"],
+    chatgpt: ["gpt-3.5-turbo", "gpt-4o", "gpi-4o-mini", "gpt-o1"],
     claude: ["claude-3-5-sonnet-latest", "claude-3-opus", "claude-3.5-haiku"],
     google: ["gemini-2.0-flash-exp", "gemini-1.5-pro"],
     clova: ["HCX-003", "clova-studio-basic"],
   }
-  const requestData = {
-    chatRoomId,
-    model,
-    userInput,
-    "creatorId" : userId,
-    detailModel,
-    answer,
-  }
+
   // **useEffect 훅 사용**
   // 메시지가 업데이트될 때마다 텍스트 영역의 높이를 동적으로 조정
   useEffect(() => {
@@ -54,13 +50,81 @@ const MainPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  // 메시지 처리 함수를 useCallback으로 분리
+  const handleStreamEnd = useCallback(() => {
+    setMessages((prev) => {
+      const lastMessage = {
+        text: streamingText,
+        isUser: false,
+        model: model,
+      }
+      return [...prev, lastMessage]
+    })
+    setStreamingText("")
+  }, [model, streamingText])
+
+  useEffect(() => {
+    // 웹소켓 서버에 연결 (포트 5001)
+    const socket = io("http://localhost:5001")
+
+    // 소켓 연결 성공 시 실행
+    socket.on("connect", () => {
+      console.log("Socket connected")
+    })
+
+    // 스트리밍 데이터를 받을 때마다 실행
+    socket.on("stream", (data) => {
+      console.log("Stream chunk received:", data) // 받은 데이터 확인용
+      setStreamingText((prev) => {
+        // 이전 텍스트에 새로운 데이터를 이어붙임
+        const newText = prev + data.content
+        console.log("Accumulated text:", newText) // 누적된 전체 텍스트 확인용
+        return newText
+      })
+    })
+
+    // 스트리밍이 완료되었을 때 실행
+    socket.on("stream_end", () => {
+      console.log("Stream ended, final text:", streamingText) // 최종 텍스트 확인용
+
+      // 누적된 스트리밍 텍스트를 메시지 목록에 추가
+      setMessages((prev) => {
+        const lastMessage = {
+          text: streamingText, // 누적된 전체 텍스트
+          isUser: false, // AI 응답이므로 false
+          model: model, // 현재 선택된 모델
+        }
+        return [...prev, lastMessage]
+      })
+
+      // 스트리밍 텍스트 초기화 (다음 응답을 위해)
+      setStreamingText("")
+    })
+
+    // 소켓 에러 발생 시 실행
+    socket.on("error", (error) => {
+      console.error("Socket error:", error)
+    })
+
+    // 컴포넌트가 언마운트되거나 model이 변경될 때 소켓 연결 해제
+    return () => socket.disconnect()
+  }, [model, handleStreamEnd]) // model이나 handleStreamEnd가 변경될 때마다 재실행
+
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
-    setModel(modelName) // 선택된 모델 상태 설정
-    setDetailModel(detailModelList[modelName][0]) // 기본 세부 모델 설정
-    setShowModelCards(false) // 모델 카드 숨기기
+    console.log("Current userId:", userId)
 
-    // 선택된 모델의 응답을 메시지로 추가
+    if (!userId) {
+      console.error("유효하지 않은 사용자 ID")
+      return
+    }
+
+    console.log("Selected model response:", responses[modelName])
+
+    setModel(modelName)
+    setDetailModel(responses[modelName].detail_model)
+    setShowModelCards(false)
+
     const aiMessage = {
       text: responses[modelName].response,
       isUser: false,
@@ -69,61 +133,69 @@ const MainPage = () => {
     setMessages((prev) => [...prev, aiMessage])
 
     try {
-      const response = await api.post("/api/messages/choosemodel", {
-        userInput,
-        "answer": aiMessage.text,
-        "creatorId": userId
+      const response = await api.post("/api/messages/choiceModel", {
+        userInput: firstUserInput,
+        answer: aiMessage.text,
+        creatorId: userId,
+        detail_model: responses[modelName].detail_model,
       })
 
       setChatRoomId(response.data.chatRoomId)
-      
-
     } catch (error) {
-      console.log(error)
+      console.error("모델 선택 오류:", error)
+      console.error("Error details:", {
+        userId,
+        response: error.response?.data,
+        status: error.response?.status,
+        detail_model: responses[modelName].detail_model,
+      })
     }
   }
 
   // **메시지 전송 처리**
   const handleMessageSend = async (e) => {
     e.preventDefault()
+    if (!userInput.trim()) return
 
-    const { model, userInput } = requestData
-    
-    if (!model) {
-      // 처음 대화 시도 시 모든 모델의 대화목록을 받아오는 api로 시도
-      try {
-        // 서버에 메시지 전송
+    // 사용자 메시지를 즉시 화면에 표시
+    const userMessage = {
+      text: userInput,
+      isUser: true,
+    }
+    setMessages((prev) => [...prev, userMessage])
+
+    try {
+      if (!model) {
+        // 첫 메시지: 모든 모델의 응답을 받아옴
+        setFirstUserInput(userInput)
         const response = await api.post("/api/messages/all", { userInput })
-        
-        // 다수의 모델이 응답을 반환할 때
         const { models, responses } = response.data
-        setResponses(responses) // 응답 상태 설정
-        setShowModelCards(true) // 4개 응답 선택 창 띄우기
-        console.log("가용한 모델들: ", models)
-        
-      } catch (error) {
-        console.error("메세지 전송 오류: ", {
-          message: error.message,
-          response: error.response?.data, // axios 에러의 경우 서버 응답 데이터
-          status: error.response?.status, // HTTP 상태 코드
-          stack: error.stack, // 에러 발생 위치 추적
+        setResponses(responses)
+        setShowModelCards(true) // 모델 선택 카드 표시
+      } else {
+        // 이후 메시지: 선택된 모델과 대화
+        const response = await api.post("/api/messages/send", {
+          chatRoomId: chatRoomId,
+          model: model,
+          userInput,
+          creatorId: userId,
+          detailModel,
         })
+
+        // 응답 처리 (이 부분이 중복의 원인 - 웹소켓에서도 처리함)
+        const { chat_room_id, response: aiResponse } = response.data
+        const aiMessage = {
+          text: aiResponse,
+          isUser: false,
+          model: model,
+        }
+        setMessages((prev) => [...prev, aiMessage])
+        setChatRoomId(chat_room_id)
       }
+    } catch (error) {
+      console.error("메시지 전송 오류:", error)
     }
-
-    else if (model) {
-      // 대화가 첫 시도가 아니면(모델이 선택되었으면) 그 모델로 대화 시도
-      try {
-        const response = await api.post("/api/messages/send", requestData)
-
-        // 단일 모델 응답일 때
-        const { chat_room_id, model, detail_model, response: aiResponse } = response.data.data
-        setChatRoomId(chat_room_id) // 채팅 방 ID 업데이트
-
-      } catch (error) {
-        console.error(error)
-      }
-    }
+    setUserInput("")
   }
 
   // **모델 아이콘 경로 반환**
@@ -166,6 +238,9 @@ const MainPage = () => {
         {messages.map((message, index) => (
           <ModelCard key={index} text={message.text} isUser={message.isUser} model={message.model} />
         ))}
+
+        {/* 스트리밍 중인 텍스트가 있으면 표시 */}
+        {streamingText && <ModelCard text={streamingText} isUser={false} model={model} />}
 
         {/* 모델 선택 카드 영역 */}
         {showModelCards && (
