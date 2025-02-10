@@ -292,15 +292,15 @@ def escape_cypher_quotes(text):
     return escaped_text
 
 
-@ns_chatbot.route('/massage')
-class MassageAPI(Resource):
+@ns_chatbot.route('/message')
+class MessageAPI(Resource):
 
     @ns_chatbot.expect(message_model)  # 요청 스키마 정의 연결
     @ns_chatbot.response(200, '성공적인 응답')
     @ns_chatbot.response(400, '필수 필드 누락')
     @ns_chatbot.response(500, '내부 서버 오류')
     def post(self):
-        """Massage API"""
+        """Message API"""
         global memory
 
         try:
