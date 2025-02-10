@@ -39,7 +39,7 @@ public class ChatLogServiceImpl implements ChatLogService{
         chatLog.setUserId(userId);
         chatLog.setQuestion(userInput);
         chatLog.setAnswerSentences(answerSentences);
-        chatLog.setCreateAT(LocalDateTime.now());
+        chatLog.setCreatedAt(LocalDateTime.now());
         chatLog.setProcessed(false);
 
         // MongoDB에 저장

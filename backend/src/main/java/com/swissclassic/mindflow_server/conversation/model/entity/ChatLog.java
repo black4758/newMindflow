@@ -1,15 +1,11 @@
 package com.swissclassic.mindflow_server.conversation.model.entity;
 
-import jakarta.persistence.Column;
 import lombok.*;
-import org.bson.types.ObjectId;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,15 +15,12 @@ import java.util.UUID;
 public class ChatLog {
     @Id
     private String id;
-    @Field(name = "chatRoom_id")
     private long chatRoomId;
-
     private String question;
-    @Field(name = "user_id")
     private long userId;
     private List<AnswerSentence> answerSentences;
-    @Field(name = "created_at")
-    private LocalDateTime createAT;
+    private LocalDateTime createdAt;
+    private long modelVersionId;
     private boolean processed;
 
     // Getters and Setters
