@@ -86,11 +86,9 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
 4. 노드 생성 시:
    - 각 단계별로 적절한 추상화 수준 유지
    - 상위 개념은 포괄적으로, 하위 개념은 구체적으로 작성
-   - 모든 노드에 mongo_ref: '{mongo_ref}' 포함
    - 새로운 노드 생성 시 기존 노드와의 중복성 검사
    - 각 노드는 반드시 하나의 답변 문장에 대응되어야 함
-   - 각 노드의 mongo_ref 속성에는 해당 답변 문장의 line_id를 저장
-   - 기존 노드에 연결 시 chat_room_id 및 account_id 일치 여부 확인
+   - 각 노드의 mongo_ref 속성에는 해당 답변 문장들의 sentenceId 값을 저장(중요!!)
 
 5. Cypher 쿼리 작성 규칙:
    - 우선 MATCH로 연관된 기존 노드 검색
@@ -191,10 +189,14 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         current_structure = get_mindmap_structure(account_id)
 
         # 쿼리 생성을 위한 데이터 준비
-        query_data = {"structure": json.dumps(current_structure, indent=2,
-                                              default=str) if current_structure else "아직 생성된 노드가 없습니다.",
-                      "question": escape_cypher_quotes(question), "answer_lines": answer_sentences,
-                      "account_id": account_id, "chat_room_id": chat_room_id, "mongo_ref": chat_id}
+        query_data = {
+                        "structure": json.dumps(current_structure, indent=2, default=str) if current_structure else "아직 생성된 노드가 없습니다.",
+                        "question": escape_cypher_quotes(question), 
+                        "answer_lines": answer_sentences,
+                        "account_id": account_id, 
+                        "chat_room_id": chat_room_id, 
+                        # "mongo_ref": answer_sentences
+                    }
 
         # 쿼리 생성 및 실행
 
