@@ -5,6 +5,7 @@ import SpriteText from 'three-spritetext';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { fetchMindmapData, deleteNode } from '../../api/mindmap';
 
 const styles = {
   container: {
@@ -84,6 +85,10 @@ const Onedata = () => {
   const [hoverNode, setHoverNode] = useState(null);
   const [hiddenNodes, setHiddenNodes] = useState(new Set());
   const rawData = location.state?.graphData;
+  const [fixedNode, setFixedNode] = useState(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showNodeModal, setShowNodeModal] = useState(false);
+  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
 
   // findPathToRoot 함수를 먼저 정의
   const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
@@ -608,7 +613,7 @@ const Onedata = () => {
   }, [data]);
 
   // 노드 클릭 핸들러 수정
-  const handleNodeClick = useCallback((node) => {
+  const handleNodeClick = useCallback((node, event) => {
     const centerNodeId = rawData.centerNodeId;
     if (!centerNodeId) return;
 
@@ -653,7 +658,31 @@ const Onedata = () => {
 
       return newHidden;
     });
-  }, [rawData, findPathToRoot]);
+
+    // Ctrl + 클릭으로 노드 고정/해제
+    if (event.ctrlKey) {
+      if (node.fx !== undefined && node.fy !== undefined) {
+        // 고정 해제
+        node.fx = undefined;
+        node.fy = undefined;
+        if (is3D) {
+          node.fz = undefined;
+        }
+      } else {
+        // 현재 위치에 고정
+        node.fx = node.x;
+        node.fy = node.y;
+        if (is3D) {
+          node.fz = node.z;
+        }
+      }
+      return;
+    }
+
+    // 설명창 고정/해제 토글 및 위치 저장
+    setFixedNode(prev => prev?.id === node.id ? null : node);
+    setMousePosition({ x: event.clientX, y: event.clientY });
+  }, [is3D, rawData, findPathToRoot]);
 
   // filteredData 수정
   const filteredData = useMemo(() => {
@@ -668,6 +697,80 @@ const Onedata = () => {
       })
     };
   }, [data, isNodeVisible]);
+
+  // 마우스 이동 이벤트 핸들러
+  const handleMouseMove = useCallback((e) => {
+    setMousePosition({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  // 컴포넌트 마운트 시 이벤트 리스너 추가
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [handleMouseMove]);
+
+  // 설명창 외부 클릭 핸들러
+  const handleOutsideClick = useCallback((e) => {
+    if (fixedNode && !e.target.closest('.node-info-popup')) {
+      setFixedNode(null);
+    }
+  }, [fixedNode]);
+
+  useEffect(() => {
+    if (fixedNode) {
+      document.addEventListener('click', handleOutsideClick);
+      return () => document.removeEventListener('click', handleOutsideClick);
+    }
+  }, [fixedNode, handleOutsideClick]);
+
+  // ESC 키 핸들러
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setFixedNode(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // 노드 분리 핸들러 (나중에 구현을 위해 주석 처리)
+  const handleNodeSplit = useCallback(async () => {
+    try {
+      // await splitNode(selectedNodeForEdit.id);
+      // 성공 시 마인드맵 데이터 새로고침
+      // await refreshMindmapData();
+      setShowNodeModal(false);
+    } catch (error) {
+      // console.error('노드 분리 중 오류 발생:', error);
+      // alert('노드 분리에 실패했습니다.');
+    }
+  }, [selectedNodeForEdit]);
+
+  // 노드 삭제 핸들러 추가
+  const handleNodeDelete = useCallback(async () => {
+    try {
+      if (!fixedNode) {
+        console.error('선택된 노드가 없습니다.');
+        return;
+      }
+
+      await deleteNode(fixedNode.id);
+      
+      // 성공 시 마인드맵 데이터 새로고침
+      const updatedData = await fetchMindmapData();
+      setMindmapdata(updatedData);
+      
+      // 노드 상태 초기화
+      setFixedNode(null);
+    } catch (error) {
+      console.error('노드 삭제 중 오류 발생:', error);
+      alert('노드 삭제에 실패했습니다.');
+    }
+  }, [fixedNode]);
 
   return (
     <div className="relative w-full h-full">
@@ -845,18 +948,54 @@ const Onedata = () => {
         />
       )}
 
-      {/* 호버 시 보여줄 상세 정보 팝업 */}
-      {hoverNode && (
+      {/* 호버 노드 설명창 */}
+      {hoverNode && !fixedNode && (
         <div
-          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs"
+          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs node-info-popup"
+          style={{
+            left: mousePosition.x + 10,
+            top: mousePosition.y + 10,
+            zIndex: 1000,
+            backgroundColor: 'rgba(255, 255, 255, 0.5)', // 배경색에 투명도 적용
+          }}
+        >
+          <h3 className="font-bold text-lg mb-2">{hoverNode.title}</h3>
+          <p className="text-gray-600 mb-4">{hoverNode.content}</p>
+        </div>
+      )}
+
+      {/* 고정된 노드 설명창 */}
+      {fixedNode && (
+        <div
+          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs node-info-popup"
           style={{
             right: '2rem',
             bottom: '4rem',
             zIndex: 1000,
           }}
         >
-          <h3 className="font-bold text-lg mb-2">{hoverNode.title}</h3>
-          <p className="text-gray-600">{hoverNode.content}</p>
+          <h3 className="font-bold text-lg mb-2">{fixedNode.title}</h3>
+          <p className="text-gray-600 mb-4">{fixedNode.content}</p>
+          {/* chatroom 노드가 아닌 경우에만 버튼 표시 */}
+          {!fixedNode.id.startsWith('root_') && (
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setSelectedNodeForEdit(fixedNode);
+                  handleNodeSplit();
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+              >
+                분리
+              </button>
+              <button
+                onClick={() => handleNodeDelete()}
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+              >
+                삭제
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

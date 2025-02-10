@@ -3,9 +3,10 @@ import { ForceGraph2D } from "react-force-graph"
 import ForceGraph3D from "react-force-graph-3d"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
-import { fetchMindmapData } from '../../api/mindmap'
+import { fetchMindmapData, deleteNode } from '../../api/mindmap'
 import PropTypes from "prop-types"
 import { useNavigate, useLocation, useParams } from "react-router-dom"
+import * as d3 from "d3"
 
 
 const extraRenderers = [new CSS2DRenderer()]
@@ -35,6 +36,14 @@ const Mindmap = () => {
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
   const [mindmapdata, setMindmapdata] = useState({ nodes: [], relationships: [] });
+  const [lastClickedNode, setLastClickedNode] = useState(null);
+  const [doubleClickTimerRef] = useState(useRef(null));
+  const [fixedNode, setFixedNode] = useState(null);
+  const [fixedPosition, setFixedPosition] = useState({ x: 0, y: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [hoverTimeoutRef] = useState(useRef(null));
+  const [showNodeModal, setShowNodeModal] = useState(false);
+  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -259,7 +268,19 @@ const Mindmap = () => {
     updateHighlight()
   }, [updateHighlight])
 
-  // useEffect 수정
+  // 마우스 위치 추적을 위한 상태 추가
+  useEffect(() => {
+    const handleMouseMove = (event) => {
+      setMousePosition({ x: event.clientX, y: event.clientY });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
+  // useEffect 수정: 시뮬레이션 설정 업데이트
   useEffect(() => {
     if (graphRef.current) {
       if (is3D) {
@@ -268,12 +289,18 @@ const Mindmap = () => {
         graphRef.current.d3Force("link").distance(100);    // 링크 길이 2배로 증가 (50 -> 100)
       } else {
         // 2D 모드: 확산형 배치
-        graphRef.current.d3Force("charge").strength(-400); // 반발력 유지
-        graphRef.current.d3Force("link").distance(200);    // 링크 길이 유지
+        graphRef.current.d3Force("charge").strength(-800);
+        graphRef.current.d3Force("link").distance(200);    
+        
+        graphRef.current.d3Force("repulsion", d3.forceManyBody().strength((node) => {
+          const hasLinks = processedData.links.some(
+            link => link.source === node || link.target === node
+          );
+          return hasLinks ? -800 : -1600;
+        }));
       }
     }
-
-  }, [is3D]); // is3D가 변경될 때마다 실행
+  }, [is3D, processedData.links]);
 
   // 검색어에 따른 결과 필터링
   useEffect(() => {
@@ -344,67 +371,181 @@ const Mindmap = () => {
     }, {})
   }, [processedData.nodes])
 
-  // 노드 클릭/선택 핸들러 수정
-  const handleNodeFocus = useCallback((node) => {
-    if (isNodeFocused && selectedNode?.id === node.id) {
-      // 연결된 모든 노드들의 Set 생성
-      const allConnectedNodes = new Set();
-      const initialVisibleNodes = new Set();
-      
-      // 시작 노드 추가
-      allConnectedNodes.add(node.id);
-      initialVisibleNodes.add(node.id);
-
-      // 직접 연결된 노드들 찾기 (초기에 보여질 노드들)
-      mindmapdata.relationships.forEach(rel => {
-        if (rel.source === node.id) {
-          allConnectedNodes.add(rel.target);
-          initialVisibleNodes.add(rel.target);
+  // 노드 클릭 핸들러 수정
+  const handleNodeClick = useCallback((node, event) => {
+    // Ctrl + 클릭으로 노드 고정/해제
+    if (event.ctrlKey) {
+      if (node.fx !== undefined && node.fy !== undefined) {
+        // 고정 해제
+        node.fx = undefined;
+        node.fy = undefined;
+        if (is3D) {
+          node.fz = undefined;
         }
-        if (rel.target === node.id) {
-          allConnectedNodes.add(rel.source);
-          initialVisibleNodes.add(rel.source);
+      } else {
+        // 현재 위치에 고정
+        node.fx = node.x;
+        node.fy = node.y;
+        if (is3D) {
+          node.fz = node.z;
         }
-      });
-
-      // 연결된 노드들의 모든 하위 노드들 찾기 (재귀적으로)
-      const findAllConnectedNodes = (nodeId) => {
-        mindmapdata.relationships.forEach(rel => {
-          if (rel.source === nodeId && !allConnectedNodes.has(rel.target)) {
-            allConnectedNodes.add(rel.target);
-            findAllConnectedNodes(rel.target);
-          }
-          if (rel.target === nodeId && !allConnectedNodes.has(rel.source)) {
-            allConnectedNodes.add(rel.source);
-            findAllConnectedNodes(rel.source);
-          }
-        });
-      };
-
-      // 직접 연결된 노드들의 하위 노드들 찾기
-      Array.from(allConnectedNodes).forEach(findAllConnectedNodes);
-
-      // 필터링된 데이터 생성
-      const filteredData = {
-        nodes: mindmapdata.nodes.filter(n => allConnectedNodes.has(n.id)),
-        relationships: mindmapdata.relationships.filter(rel =>
-          allConnectedNodes.has(rel.source) && allConnectedNodes.has(rel.target)
-        ),
-        initialVisibleNodes: Array.from(initialVisibleNodes), // 초기에 보여질 노드들
-        centerNodeId: node.id // 중심 노드 ID
-      };
-
-      // state와 함께 navigate 호출 - chatRoomId를 포함한 경로로 수정
-      navigate(`/mindmap/${params.chatRoomId}/detail`, {  // URL 경로 수정
-        state: { graphData: filteredData },
-        replace: true
-      });
-    } else {
-      setIsNodeFocused(true);
-      setSelectedNode(node);
-      handleNodeSelect(node);
+      }
+      return;
     }
-  }, [isNodeFocused, selectedNode, handleNodeSelect, navigate, params.chatRoomId]); // params.chatRoomId 의존성 추가
+
+    // 기존의 더블클릭 및 클릭 로직
+    if (lastClickedNode && lastClickedNode.id === node.id) {
+      if (doubleClickTimerRef.current) {
+        clearTimeout(doubleClickTimerRef.current);
+        doubleClickTimerRef.current = null;
+        
+        // 루트 노드(chatroom)인 경우
+        if (node.isRoot) {
+          const chatRoomId = node.id.replace('root_', '');
+          const chatRoomNodes = processedData.nodes
+            .filter(n => n.chatRoomId === node.chatRoomId && !n.isRoot)
+            .map(n => ({
+              id: n.id,
+              title: n.title,
+              content: n.content,
+              chatRoomId: n.chatRoomId
+            }));
+          
+          const chatRoomNodeIds = new Set(chatRoomNodes.map(n => n.id));
+          
+          const chatRoomRelationships = processedData.links
+            .filter(rel =>
+              chatRoomNodeIds.has(rel.source.id || rel.source) && 
+              chatRoomNodeIds.has(rel.target.id || rel.target)
+            )
+            .map(rel => ({
+              source: rel.source.id || rel.source,
+              target: rel.target.id || rel.target,
+              type: rel.type
+            }));
+
+          navigate(`/mindmap/${chatRoomId}`, {
+            state: { 
+              graphData: {
+                nodes: chatRoomNodes,
+                relationships: chatRoomRelationships
+              }
+            }
+          });
+        } else {
+          // 일반 노드인 경우 - 기존 상세 페이지 이동 로직 유지
+          const allConnectedNodes = new Set();
+          const initialVisibleNodes = new Set();
+          
+          allConnectedNodes.add(node.id);
+          initialVisibleNodes.add(node.id);
+
+          mindmapdata.relationships.forEach(rel => {
+            if (rel.source === node.id) {
+              allConnectedNodes.add(rel.target);
+              initialVisibleNodes.add(rel.target);
+            }
+            if (rel.target === node.id) {
+              allConnectedNodes.add(rel.source);
+              initialVisibleNodes.add(rel.source);
+            }
+          });
+
+          const findAllConnectedNodes = (nodeId) => {
+            mindmapdata.relationships.forEach(rel => {
+              if (rel.source === nodeId && !allConnectedNodes.has(rel.target)) {
+                allConnectedNodes.add(rel.target);
+                findAllConnectedNodes(rel.target);
+              }
+              if (rel.target === nodeId && !allConnectedNodes.has(rel.source)) {
+                allConnectedNodes.add(rel.source);
+                findAllConnectedNodes(rel.source);
+              }
+            });
+          };
+
+          Array.from(allConnectedNodes).forEach(findAllConnectedNodes);
+
+          const filteredData = {
+            nodes: mindmapdata.nodes.filter(n => allConnectedNodes.has(n.id)),
+            relationships: mindmapdata.relationships.filter(rel =>
+              allConnectedNodes.has(rel.source) && allConnectedNodes.has(rel.target)
+            ),
+            initialVisibleNodes: Array.from(initialVisibleNodes),
+            centerNodeId: node.id
+          };
+
+          navigate(`/mindmap/${node.chatRoomId}/detail`, {
+            state: { graphData: filteredData }
+          });
+        }
+        
+        setLastClickedNode(null);
+        return;
+      }
+    }
+
+    // 첫 번째 클릭 또는 단일 클릭
+    setLastClickedNode(node);
+    doubleClickTimerRef.current = setTimeout(() => {
+      doubleClickTimerRef.current = null;
+      setLastClickedNode(null);
+      
+      // 카메라 이동
+      if (graphRef.current) {
+        if (is3D) {
+          const distance = 100;
+          const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+          graphRef.current.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+            node,
+            2000
+          );
+        } else {
+          graphRef.current.centerAt(node.x, node.y, 1000);
+        }
+      }
+      
+      // 설명창 고정/해제 토글 및 위치 저장
+      setFixedNode(prev => prev?.id === node.id ? null : node);
+      setFixedPosition({ x: mousePosition.x, y: mousePosition.y });
+    }, 300);
+  }, [lastClickedNode, navigate, mindmapdata, processedData, is3D, mousePosition, graphRef]);
+
+  // 노드 분리 핸들러
+  const handleNodeSplit = useCallback(async () => {
+    try {
+      // await splitNode(selectedNodeForEdit.id);
+      // 성공 시 마인드맵 데이터 새로고침
+      // await refreshMindmapData();
+      setShowNodeModal(false);
+    } catch (error) {
+      // console.error('노드 분리 중 오류 발생:', error);
+      // alert('노드 분리에 실패했습니다.');
+    }
+  }, [selectedNodeForEdit]);
+  
+  // 노드 삭제 핸들러 추가
+  const handleNodeDelete = useCallback(async () => {
+    try {
+      if (!fixedNode) {
+        console.error('선택된 노드가 없습니다.');
+        return;
+      }
+
+      await deleteNode(fixedNode.id);
+      
+      // 성공 시 마인드맵 데이터 새로고침
+      const updatedData = await fetchMindmapData();
+      setMindmapdata(updatedData);
+      
+      // 노드 상태 초기화
+      setFixedNode(null);
+    } catch (error) {
+      console.error('노드 삭제 중 오류 발생:', error);
+      alert('노드 삭제에 실패했습니다.');
+    }
+  }, [fixedNode]);
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node, isHighlighted) => {
@@ -645,17 +786,36 @@ const Mindmap = () => {
           linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 4 : 0)}
           linkDirectionalParticleSpeed={0.005}
           onNodeHover={(node) => {
-            setHoverNode(node)
+            // 이전 타이머가 있다면 취소
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+
             if (node) {
-              // 호버 시 커서 변경
-              document.body.style.cursor = "pointer"
+              setHoverNode(node);
+              document.body.style.cursor = "pointer";
             } else {
-              document.body.style.cursor = "default"
+              // 새로운 타이머 설정 및 참조 저장
+              hoverTimeoutRef.current = setTimeout(() => {
+                setHoverNode(prev => {
+                  if (document.querySelector('.fixed:hover')) {
+                    return prev;
+                  }
+                  return null;
+                });
+                hoverTimeoutRef.current = null;
+              }, 100);
+              document.body.style.cursor = "default";
             }
           }}
           onNodeDragEnd={(node) => {
-            node.fx = node.x
-            node.fy = node.y
+            // 노드 드래그 후 고정 기능 주석 처리
+            // node.fx = node.x
+            // node.fy = node.y
+            // if (is3D) {
+            //   node.fz = node.z
+            // }
           }}
           d3Force="charge"
           d3ForceStrength={-30}  // 집중형 배치를 위한 약한 반발력
@@ -670,7 +830,7 @@ const Mindmap = () => {
             ctx.fillStyle = color
             ctx.fillRect(node.x - width / 2, node.y - height / 2, width, height)
           }}
-          onNodeClick={handleNodeFocus}
+          onNodeClick={handleNodeClick}
         />
       ) : (
         <ForceGraph2D
@@ -731,17 +891,33 @@ const Mindmap = () => {
           linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 6 : 0)}
           linkDirectionalParticleSpeed={0.005}
           onNodeHover={(node) => {
-            setHoverNode(node)
+            // 이전 타이머가 있다면 취소
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+
             if (node) {
-              // 호버 시 커서 변경
-              document.body.style.cursor = "pointer"
+              setHoverNode(node);
+              document.body.style.cursor = "pointer";
             } else {
-              document.body.style.cursor = "default"
+              // 새로운 타이머 설정 및 참조 저장
+              hoverTimeoutRef.current = setTimeout(() => {
+                setHoverNode(prev => {
+                  if (document.querySelector('.fixed:hover')) {
+                    return prev;
+                  }
+                  return null;
+                });
+                hoverTimeoutRef.current = null;
+              }, 100);
+              document.body.style.cursor = "default";
             }
           }}
           onNodeDragEnd={(node) => {
-            node.fx = node.x
-            node.fy = node.y
+            // 노드 드래그 후 고정 기능 주석 처리
+            // node.fx = node.x
+            // node.fy = node.y
           }}
           d3Force="charge"
           d3ForceStrength={-200} // 확산형 배치를 위한 강한 반발력
@@ -756,22 +932,57 @@ const Mindmap = () => {
             ctx.fillStyle = color
             ctx.fillRect(node.x - width / 2, node.y - height / 2, width, height)
           }}
-          onNodeClick={handleNodeFocus}
+          onNodeClick={handleNodeClick}
         />
       )}
 
-      {/* 호버 시 보여줄 상세 정보 팝업 */}
-      {hoverNode && (
+      {/* 호버 노드 설명창 */}
+      {hoverNode && !fixedNode && (
         <div
-          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs"
+          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs node-info-popup"
           style={{
-            right: '2rem', // right: 4와 동일
-            bottom: '4rem', // bottom: 4 + 버튼 높이 + 여백
+            left: mousePosition.x + 10,
+            top: mousePosition.y + 10,
             zIndex: 1000,
+            backgroundColor: 'rgba(255, 255, 255, 0.5)', // 배경색에 투명도 적용
           }}
         >
           <h3 className="font-bold text-lg mb-2">{hoverNode.title}</h3>
-          <p className="text-gray-600">{hoverNode.content}</p>
+          <p className="text-gray-600 mb-4">{hoverNode.content}</p>
+        </div>
+      )}
+
+      {/* 고정된 노드 설명창 추가 */}
+      {fixedNode && (
+        <div
+          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs node-info-popup"
+          style={{
+            right: '2rem',
+            bottom: '4rem',
+            zIndex: 1000,
+          }}
+        >
+          <h3 className="font-bold text-lg mb-2">{fixedNode.title}</h3>
+          <p className="text-gray-600 mb-4">{fixedNode.content}</p>
+          {!fixedNode.id.startsWith('root_') && (
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setSelectedNodeForEdit(fixedNode);
+                  handleNodeSplit();
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+              >
+                분리
+              </button>
+              <button
+                onClick={() => handleNodeDelete()}
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+              >
+                삭제
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
