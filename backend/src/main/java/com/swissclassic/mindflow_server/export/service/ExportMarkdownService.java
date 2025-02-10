@@ -47,33 +47,33 @@ public class ExportMarkdownService {
             String providerName = llmProvidersRepository.findFirstById(llmProviderId)
                                                         .getName();
             List<AnswerSentence> sentences = log.getAnswerSentences();
-
-            markdown.append("**User:**\n");
-            // Add content
-            markdown.append(log.getQuestion())
-                    .append("\n");
-            // Add timestamp
-            markdown.append("<sub>")
-                    .append(log.getCreatedAt()
-                               .format(
-                                       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-                               ))
-                    .append("</sub>\n");
-            markdown.append("---\n");
-            markdown.append("**AI (")
-                    .append(providerName)
-                    .append(" ")
-                    .append(modelSpecificName)
-                    .append("):**\n");
             String content = sentences.stream()
                                       .map(AnswerSentence::getContent)
                                       .filter(str -> str != null && !str.trim()
                                                                         .isEmpty())
                                       .collect(Collectors.joining(" "));
-            markdown.append(content)
-                    .append("\n");
-            // Add separator
-            markdown.append("---\n");
+
+            markdown.append("**User:**\n")
+                    // Add content
+                    .append(log.getQuestion())
+                    .append("\n")
+                    // Add timestamp
+                    .append("<sub>")
+                    .append(log.getCreatedAt()
+                               .format(
+                                       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                               ))
+                    .append("</sub>\n")
+                    .append("---\n")
+                    .append("**AI (")
+                    .append(providerName)
+                    .append(" ")
+                    .append(modelSpecificName)
+                    .append("):**\n")
+                    .append(content)
+                    .append("\n")
+                    // Add separator
+                    .append("---\n");
         }
 
         return markdown.toString();
