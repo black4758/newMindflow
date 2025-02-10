@@ -1,5 +1,6 @@
 package com.swissclassic.mindflow_server.conversation.controller;
 import com.swissclassic.mindflow_server.conversation.model.dto.*;
+import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 import com.swissclassic.mindflow_server.conversation.model.entity.ConversationSummary;
 import com.swissclassic.mindflow_server.conversation.service.AiServerService;
@@ -9,16 +10,20 @@ import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
 import com.swissclassic.mindflow_server.conversation.service.ConversationSummaryService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.List;
 
 @Slf4j
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/messages")
 @Tag(name = "send", description = "채팅 관련 API")
@@ -27,12 +32,7 @@ public class ChatController {
     private final ChatRoomService roomService;
     private final ChatLogService chatLogService;
     private final ConversationSummaryService conversationSummaryService;
-    public ChatController(AiServerService aiServerService, ChatRoomService roomService, ChatLogService chatLogService, ConversationSummaryService conversationSummaryService) {
-        this.aiServerService = aiServerService;
-        this.roomService = roomService;
-        this.chatLogService = chatLogService;
-        this.conversationSummaryService = conversationSummaryService;
-    }
+
 
 
     @PostMapping("/send")
@@ -56,8 +56,8 @@ public class ChatController {
         return answer;
     }
     @PostMapping("/all")
-    public ChatAllResponse getAllResponse(@RequestBody ChatRequest chatRequest) {
-            return aiServerService.getAllChatResponse(chatRequest);
+    public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
+        return aiServerService.getAllChatResponse(chatRequest);
     }
     @PostMapping("/choiceModel")
     FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){

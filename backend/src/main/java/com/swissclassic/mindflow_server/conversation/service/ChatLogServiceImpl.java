@@ -49,7 +49,7 @@ public class ChatLogServiceImpl implements ChatLogService{
 
     }
     @Override
-    public List<ChatLog> getMessagesByChatRoomId(String chatRoomId) {
+    public List<ChatLog> getMessagesByChatRoomId(long chatRoomId) {
         return chatLogRepository.findByChatRoomId(chatRoomId); // chatRoomId로 조회
     }
 }
