@@ -1,5 +1,5 @@
 server:
-    port: 8080
+    port: 8453
     address: 0.0.0.0
 
 spring:
@@ -12,13 +12,49 @@ spring:
 
     data:
         mongodb:
-           uri: mongodb://mongo_container:27017/mindflow_db
+           uri: mongodb://REDACTED:REDACTED@mongo_container:27017/mindflow_db?authSource=mindflow_db
+           database: mindflow_db
 
     neo4j:
         uri: bolt://neo4j:7687
         authentication:
             username: neo4j
             password: REDACTEDREDACTED
+        database: mindmap
+
+    security:
+        oauth2:
+            client:
+                registration:
+                    google:
+                        client-id: ${GOOGLE_CLIENT_ID}
+                        client-secret: ${GOOGLE_CLIENT_SECRET}
+                        redirect-uri: http://springboot_container:8080/api/auth/oauth2/callback/google
+                        scope:
+                            - email
+                            - profile
+                        authorization-grant-type: authorization_code
+
+                    #          github:
+                    #            client-id: ${GITHUB_CLIENT_ID}
+                    #            client-secret: ${GITHUB_CLIENT_SECRET}
+                    #            scope: user:email, read:user
+
+                    kakao:
+                        client-id: ${KAKAO_CLIENT_ID}
+                        client-secret: ${KAKAO_CLIENT_SECRET}
+                        client-authentication-method: client_secret_post
+                        authorization-grant-type: authorization_code
+                        redirect-uri: http://springboot_container:8080/api/auth/oauth2/callback/kakao
+                        scope: profile_nickname, profile_image, account_email
+                        client-name: Mindflow
+
+                provider:
+                    kakao:
+                        authorization-uri: https://kauth.kakao.com/oauth/authorize
+                        token-uri: https://kauth.kakao.com/oauth/token
+                        user-info-uri: https://kapi.kakao.com/v2/user/me
+                        user-name-attribute: id
 
 python:
     server:
