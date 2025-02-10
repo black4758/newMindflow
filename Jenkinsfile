@@ -18,12 +18,13 @@ pipeline {
         stage('Build Backend') {
             steps {
                 script {
-                    echo "Building Spring Boot application..."
-                    sh '''
-                        cd backend
-                        chmod +x gradlew
-                        ./gradlew clean build -x test
-                    '''
+                     withEnv(['PATH+NODEJS=/var/lib/jenkins/tools/NodeJS/nodejs/bin']) {
+                        sh '''
+                            cd frontend
+                            npm install
+                            npm run build
+                        '''
+                    }
                 }
             }
         }
