@@ -19,7 +19,11 @@ pipeline {
             steps {
                 script {
                     echo "Building Spring Boot application..."
-                    sh 'cd backend && ./gradlew clean build -x test' // 테스트 제외 빌드
+                    sh '''
+                        cd backend
+                        chmod +x gradlew
+                        ./gradlew clean build -x test
+                    '''
                 }
             }
         }
