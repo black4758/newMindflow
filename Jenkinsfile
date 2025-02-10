@@ -14,34 +14,19 @@ pipeline {
                 }
             }
         }
-
-        stage('Build Backend') {
+        stage('Debug Environment') {
             steps {
                 script {
-                     withEnv(['PATH+NODEJS=/var/lib/jenkins/tools/NodeJS/nodejs/bin']) {
-                        sh '''
-                            cd frontend
-                            npm install
-                            npm run build
-                        '''
-                    }
+                    echo "Debugging Jenkins environment variables..."
+                    sh 'env'
                 }
             }
         }
 
-        stage('Build Frontend') {
+        stage('Build with Docker') {
             steps {
                 script {
-                    echo "Building React application..."
-                    sh 'cd frontend && npm install && npm run build'
-                }
-            }
-        }
-
-        stage('Deploy with Docker') {
-            steps {
-                script {
-                    echo "Deploying with Docker Compose..."
+                    echo "Building and Deploying with Docker Compose..."
                     sh 'docker-compose down'
                     sh 'docker-compose up --build -d'
                 }
