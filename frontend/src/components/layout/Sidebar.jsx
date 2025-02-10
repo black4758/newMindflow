@@ -1,10 +1,40 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Menu, Search, ExternalLink, Network } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import api from "../../api/axios.js"
+import { useSelector } from "react-redux"
 
 const Sidebar = ({onOpenModal}) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
+
+  const userId = useSelector((state) => state.auth.user.userId)
+  const [chatRooms, setChatRooms] = useState([])
+  const [chatRoomData, setChatRoomData] = useState([])
+  const [refreshTrigger, setRefreshTrigger] = useState(false)
+
+
+  const handleChatRooms = async () => {
+    try {
+      const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
+
+      setChatRooms(response.data)
+
+      console.log(response.data)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(() => {
+    handleChatRooms()
+  }, [refreshTrigger])
+
+
+  
+
+
+
 
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
@@ -41,7 +71,7 @@ const Sidebar = ({onOpenModal}) => {
       {!isCollapsed && (
         <div className="space-y-8">
           <div className="mb-6">
-            <h2 className="text-[#ffffff] mb-2">최근</h2>
+            <h2 className="text-[#ffffff] mb-2">오늘</h2>
             <div className="flex flex-col gap-2">
               {[1, 2, 3, 4].map((_, index) => (
                 <button
