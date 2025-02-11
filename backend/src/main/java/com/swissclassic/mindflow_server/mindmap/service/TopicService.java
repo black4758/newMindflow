@@ -78,18 +78,32 @@ public class TopicService {
 
     // 주제 분리
     @Transactional
-    public void seperateTopic(String elementId) {
-        // 1. 새로운 채팅방 생성
+    public Long seperateTopic(String elementId) {
+// 1. mongo_ref와 현재 chatRoomId 조회
+        Map<String, Object> nodeInfo = topicRepository.findMongoRefAndChatRoomId(elementId);
+        String mongoRef = (String) nodeInfo.get("mongoRef");
+        String oldChatRoomId = (String) nodeInfo.get("oldChatRoomId");
+
+        // 2. 새로운 채팅방 생성
         ChatRoom newChatRoom = chatRoomService.createChatRoom(
-                "Separated Topic", // 임시 제목, 나중에 수정 가능
+                "Separated Topic", // 임시 제목
                 1L  // 현재 사용자 ID
         );
 
-        // 2. 토픽 분리 및 chat_room_id 업데이트
+        // 3. Neo4j 토픽 분리 및 chat_room_id 업데이트
         topicRepository.separateTopicAndUpdateChatRoom(
                 elementId,
                 String.valueOf(newChatRoom.getId())
         );
+
+        // 4. MongoDB 데이터 복사 및 업데이트
+        chatLogService.copyAndUpdateChatLog(
+                mongoRef,
+                Long.parseLong(oldChatRoomId),
+                newChatRoom.getId()
+        );
+
+        return newChatRoom.getId();
 
     }
 

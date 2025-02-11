@@ -119,18 +119,19 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
 
 가능한 한 깊은 트리 구조를 만들되, 사이클이나 다이아몬드 구조가 생기면 안됩니다.
 기존 노드와의 연결을 최우선으로 고려하고, 완전히 새로운 주제인 경우에만 새 루트 노드를 생성하세요.
-Cypher 쿼리만 반환하고 다른 설명은 하지 말아주세요.""")])
+Cypher 쿼리만 반환하고 다른 설명은 하지 말아주세요. 단, APOC 라이브러리를 이용한 쿼리는 쓰면 안되요.""")])
 
 # LangChain 체인 구성
 query_chain = query_prompt | chat_model | StrOutputParser()
 
 
-def get_mindmap_structure(account_id):
-    """특정 account_id에 해당하는 마인드맵 구조를 반환"""
+def get_mindmap_structure(creator_id, chat_room_id):
+    """특정 chat_room_id에 해당하는 마인드맵 구조를 반환"""
+    
     with neo4j_driver.session(database="mindmap") as session:
         result = session.run("""
         MATCH (n:Topic)-[r]->(m:Topic)
-        WHERE n.account_id = $account_id AND m.account_id = $account_id
+        WHERE n.chat_room_id = $chat_room_id AND m.chat_room_id = $chat_room_id
         RETURN collect({
             source: {
                 id: elementId(n),
@@ -144,7 +145,7 @@ def get_mindmap_structure(account_id):
                 content: m.content
             }
         }) as structure
-        """, account_id=account_id)
+        """, chat_room_id=chat_room_id)
         return result.single()["structure"]
 
 
@@ -183,11 +184,12 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         - chat_room_id: {chat_room_id}
         - chat_id: {chat_id}
         - question: {question}
+        - creator_id : {creator_id}
         - sentences: {len(answer_sentences)}개
         """)
 
         # 마인드맵 구조 가져오기
-        current_structure = get_mindmap_structure(account_id)
+        current_structure = get_mindmap_structure(creator_id, chat_room_id)
 
         # 쿼리 생성을 위한 데이터 준비
         query_data = {

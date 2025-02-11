@@ -9,4 +9,8 @@ public interface ChatLogService {
     void saveChatLog(long chatRoomId, String userInput, String responseSentences,
                             List<ChatApiResponse.AnswerSentence> answerSentences, long userId);
     List<ChatLog> getMessagesByChatRoomId(long chatRoomId);
+
+    // 주제 분리용
+    void copyAndUpdateChatLog(String mongoRef, long oldChatRoomId, long newChatRoomId);
+    
 }

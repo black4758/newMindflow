@@ -6,8 +6,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
 
 @RestController
 @RequestMapping("/api/mindmaps")
@@ -45,14 +49,19 @@ public class TopicController {
     @Operation(summary = "마인드맵 주제 분리",
             description = "선택한 노드와 관련 노드들을 새로운 채팅방으로 분리합니다. " +
                     "부모 노드 3단계, 자식 노드 2단계까지 함께 복사됩니다.")
-    public void seperateTopic(@PathVariable String elementId) {
+    public ResponseEntity<?> separateTopic(@PathVariable String elementId) {
+        Long newChatRoomId = topicService.seperateTopic(elementId);
 
-            topicService.seperateTopic(elementId);
+        URI redirectUri = ServletUriComponentsBuilder
+                .fromPath("/api/chatroom/messages/{chatRoomId}")
+                .buildAndExpand(newChatRoomId)
+                .toUri();
 
-        }
-
-
-
+        return ResponseEntity.status(HttpStatus.SEE_OTHER)
+                .location(redirectUri)
+                .build();
     }
+
+}
 
 

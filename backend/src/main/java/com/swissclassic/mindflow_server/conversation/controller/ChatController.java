@@ -41,7 +41,8 @@ public class ChatController {
 
         ChatApiResponse answer = aiServerService.getChatResponse(chatRequest);
 
-        log.info("Flask 에서 도착한 Answer Sentences: {}", answer.getAnswerSentences());
+//        log.info("Flask 에서 도착한 Answer Sentences: {}", answer.getAnswerSentences());
+        log.info("Flask chat_room_id: {}", answer.getChatRoomId());
 
         chatLogService.saveChatLog(
                 chatRequest.getChatRoomId(),

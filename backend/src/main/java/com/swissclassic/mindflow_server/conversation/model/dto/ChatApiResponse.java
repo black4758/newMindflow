@@ -15,12 +15,15 @@ import java.util.List;
 @Builder
 public class ChatApiResponse {
     @JsonProperty("chat_room_id")
-    private Long chatRoomId;
+    private long chatRoomId;
     private String model;
     @JsonProperty("detail_model")
     private String detailModel;
     private String response;
 
+    private String accountId;
+
+    private long creatorId;
     
     // 류현석 추가
     @JsonProperty("answer_sentences")

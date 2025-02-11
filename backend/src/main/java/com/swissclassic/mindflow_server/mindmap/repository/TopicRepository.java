@@ -91,6 +91,14 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
             """)
     boolean hasParent(String elementId);
 
+
+    @Query("""
+        MATCH (n:Topic)
+        WHERE elementId(n) = $elementId
+        RETURN n.mongo_ref as mongoRef, n.chat_room_id as oldChatRoomId
+    """)
+    Map<String, Object> findMongoRefAndChatRoomId(String elementId);
+
     @Query("""
     MATCH (n:Topic)
     WHERE elementId(n) = $elementId
@@ -109,4 +117,8 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
     RETURN COUNT(node) as updatedNodes
 """)
     void separateTopicAndUpdateChatRoom(String elementId, String newChatRoomId);
+
+
+
+
 }
