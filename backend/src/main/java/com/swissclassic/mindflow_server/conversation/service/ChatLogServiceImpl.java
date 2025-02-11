@@ -4,6 +4,7 @@ import com.swissclassic.mindflow_server.conversation.model.dto.ChatApiResponse;
 import com.swissclassic.mindflow_server.conversation.model.entity.AnswerSentence;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.repository.ChatLogRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -19,13 +20,14 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class ChatLogServiceImpl implements ChatLogService{
+@Slf4j
+public class ChatLogServiceImpl implements ChatLogService {
 
     private final ChatLogRepository chatLogRepository;
     private final MongoTemplate mongoTemplate;
 
     @Autowired
-    public  ChatLogServiceImpl(ChatLogRepository chatLogRepository, MongoTemplate mongoTemplate) {
+    public ChatLogServiceImpl(ChatLogRepository chatLogRepository, MongoTemplate mongoTemplate) {
         this.chatLogRepository = chatLogRepository;
         this.mongoTemplate = mongoTemplate;
     }
@@ -49,6 +51,7 @@ public class ChatLogServiceImpl implements ChatLogService{
 
         chatLogRepository.save(chatLog);
     }
+
     @Override
     public List<ChatLog> getMessagesByChatRoomId(long chatRoomId) {
         return chatLogRepository.findByChatRoomId(chatRoomId); // chatRoomId로 조회
@@ -57,21 +60,31 @@ public class ChatLogServiceImpl implements ChatLogService{
     @Override
     @Transactional
     public void copyAndUpdateChatLog(String mongoRef, long oldChatRoomId, long newChatRoomId) {
-        // MongoDB에서 해당 문서 찾기
-        Query query = new Query(Criteria.where("chatRoomId").is(oldChatRoomId)
-                .and("answerSentences").elemMatch(Criteria.where("sentenceId").is(mongoRef)));
+        log.info("Finding document with sentenceId: {} in room {}", mongoRef, oldChatRoomId);
 
-        ChatLog chatLog = mongoTemplate.findOne(query, ChatLog.class);
+        // sentenceId로 해당 문서 찾기
+        Query query = new Query(
+                Criteria.where("answerSentences")
+                        .elemMatch(Criteria.where("sentenceId").is(mongoRef))
+        );
 
-        if (chatLog != null) {
+        ChatLog originalLog = mongoTemplate.findOne(query, ChatLog.class);
+
+        if (originalLog != null) {
+            log.info("Found original document: {}", originalLog);
+
             // 문서 복사 및 새로운 chatRoomId 설정
             ChatLog newLog = new ChatLog();
-            BeanUtils.copyProperties(chatLog, newLog, "id"); // id 필드 제외하고 복사
+            BeanUtils.copyProperties(originalLog, newLog, "id");
             newLog.setChatRoomId(newChatRoomId);
 
-            // 새로운 문서 저장
-            chatLogRepository.save(newLog);
+            // 새 문서 저장
+            ChatLog savedLog = chatLogRepository.save(newLog);
+            log.info("Created new document with ID: {} in room {}", savedLog.getId(), newChatRoomId);
+        } else {
+            log.warn("No document found with sentenceId: {}", mongoRef);
         }
     }
+
 
 }

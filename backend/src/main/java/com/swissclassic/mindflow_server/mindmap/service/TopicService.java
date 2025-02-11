@@ -5,12 +5,14 @@ import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
 import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
 import com.swissclassic.mindflow_server.mindmap.model.dto.TopicDTO;
 import com.swissclassic.mindflow_server.mindmap.model.entity.Topic;
+import com.swissclassic.mindflow_server.mindmap.model.entity.TopicRefs;
 import com.swissclassic.mindflow_server.mindmap.repository.TopicRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -74,37 +76,57 @@ public class TopicService {
     }
 
 
-
-
     // 주제 분리
     @Transactional
     public Long seperateTopic(String elementId) {
-// 1. mongo_ref와 현재 chatRoomId 조회
-        Map<String, Object> nodeInfo = topicRepository.findMongoRefAndChatRoomId(elementId);
-        String mongoRef = (String) nodeInfo.get("mongoRef");
-        String oldChatRoomId = (String) nodeInfo.get("oldChatRoomId");
+        log.info("Starting topic separation for elementId: {}", elementId);
+
+        // 1. 선택한 노드의 mongo_ref와 chatRoomId 가져오기
+        TopicRefs refs = topicRepository.findMongoRefAndChatRoomId(elementId);
+        log.info("Found TopicRefs - mongoRef: {}, chatRoomId: {}",
+                refs.getMongo_ref(), refs.getChat_room_id());
 
         // 2. 새로운 채팅방 생성
         ChatRoom newChatRoom = chatRoomService.createChatRoom(
-                "Separated Topic", // 임시 제목
-                1L  // 현재 사용자 ID
+                "분리된 주제",
+                1L
         );
+        Long newChatRoomId = newChatRoom.getId();
+        log.info("Created new chat room with ID: {}", newChatRoomId);
 
-        // 3. Neo4j 토픽 분리 및 chat_room_id 업데이트
+        // 3. MongoDB 데이터 복사 및 업데이트
+        if (refs.getMongo_ref() != null && refs.getChat_room_id() != null) {
+            try {
+                long oldChatRoomId = Long.parseLong(refs.getChat_room_id());
+
+                chatLogService.copyAndUpdateChatLog(
+                        refs.getMongo_ref(),
+                        oldChatRoomId,
+                        newChatRoomId
+                );
+                log.info("Successfully copied chat log");
+            } catch (NumberFormatException e) {
+                log.error("Error parsing chatRoomId: {}", refs.getChat_room_id(), e);
+                throw e;
+            } catch (Exception e) {
+                log.error("Error copying chat log", e);
+                throw e;
+            }
+        } else {
+            log.warn("Missing mongoRef or chatRoomId. mongoRef: {}, chatRoomId: {}",
+                    refs.getMongo_ref(), refs.getChat_room_id());
+        }
+
+        // 4. Neo4j 토픽 분리 및 chat_room_id 업데이트
         topicRepository.separateTopicAndUpdateChatRoom(
                 elementId,
-                String.valueOf(newChatRoom.getId())
+                String.valueOf(newChatRoomId)
         );
+        log.info("Successfully updated Neo4j relationships");
 
-        // 4. MongoDB 데이터 복사 및 업데이트
-        chatLogService.copyAndUpdateChatLog(
-                mongoRef,
-                Long.parseLong(oldChatRoomId),
-                newChatRoom.getId()
-        );
-
-        return newChatRoom.getId();
-
+        return newChatRoomId;
     }
+
+
 
 }

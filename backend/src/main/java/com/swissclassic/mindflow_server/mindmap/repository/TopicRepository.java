@@ -1,6 +1,7 @@
 package com.swissclassic.mindflow_server.mindmap.repository;
 
 import com.swissclassic.mindflow_server.mindmap.model.entity.Topic;
+import com.swissclassic.mindflow_server.mindmap.model.entity.TopicRefs;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
@@ -83,42 +84,32 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
 
     // 주제 분리
 
-    @Query("""
-            MATCH (n:Topic)
-            WHERE elementId(n) = $elementId
-            OPTIONAL MATCH (parent:Topic)-[:HAS_SUBTOPIC]->(n)
-            RETURN EXISTS((parent)-[:HAS_SUBTOPIC]->(n)) as hasParent
-            """)
-    boolean hasParent(String elementId);
-
-
+    // 선택한 노드의 mongo_ref와 chatRoomId 조회
     @Query("""
         MATCH (n:Topic)
         WHERE elementId(n) = $elementId
-        RETURN n.mongo_ref as mongoRef, n.chat_room_id as oldChatRoomId
+        RETURN n.mongo_ref as mongo_ref, n.chat_room_id as chat_room_id
     """)
-    Map<String, Object> findMongoRefAndChatRoomId(String elementId);
+    TopicRefs findMongoRefAndChatRoomId(String elementId);
 
+
+    // 선택한 노드와 그 하위 노드들의 chatRoomId 업데이트 및 부모와의 관계 제거
     @Query("""
-    MATCH (n:Topic)
-    WHERE elementId(n) = $elementId
-    // 부모 노드와의 관계 찾기
-    OPTIONAL MATCH (parent:Topic)-[r]->(n)
-    // 하위 노드들 찾기 (n 포함)
-    WITH n, r, parent
-    MATCH (n)-[*0..]->(descendant:Topic)
-    WITH COLLECT(descendant) as nodesToUpdate, r
-    // 1. 부모와의 관계 삭제
-    DELETE r
-    // 2. 모든 연관 노드의 chat_room_id 업데이트
-    WITH nodesToUpdate
-    UNWIND nodesToUpdate as node
-    SET node.chat_room_id = $newChatRoomId
-    RETURN COUNT(node) as updatedNodes
-""")
+        MATCH (n:Topic)
+        WHERE elementId(n) = $elementId
+        // 부모 노드와의 관계 찾기
+        OPTIONAL MATCH (parent:Topic)-[r]->(n)
+        // 하위 노드들 찾기 (n 포함)
+        WITH n, r, parent
+        MATCH (n)-[*0..]->(descendant:Topic)
+        WITH COLLECT(descendant) as nodesToUpdate, r
+        // 1. 부모와의 관계 삭제
+        DELETE r
+        // 2. 모든 연관 노드의 chat_room_id 업데이트
+        WITH nodesToUpdate
+        UNWIND nodesToUpdate as node
+        SET node.chat_room_id = $newChatRoomId
+        RETURN COUNT(node) as updatedNodes
+    """)
     void separateTopicAndUpdateChatRoom(String elementId, String newChatRoomId);
-
-
-
-
 }

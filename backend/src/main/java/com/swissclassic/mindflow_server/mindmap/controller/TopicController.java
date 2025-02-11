@@ -23,13 +23,13 @@ public class TopicController {
     private TopicService topicService;
 
     @GetMapping("/{userId}")
-    @Operation(summary = "유저 전체 마인드맵 조회", description = "accountId 입력하세요")
+    @Operation(summary = "유저 전체 마인드맵 조회", description = "userId 입력하세요")
     public TopicDTO getTopicByUserId(@PathVariable String userId) {
         return topicService.getTopicByUserId(userId);
     }
 
     @GetMapping("/{userId}/{chatRoomId}")
-    @Operation(summary = "유저의 해당 채팅방 마인드맵 조회", description = "accountId, chatRoomId 입력")
+    @Operation(summary = "유저의 해당 채팅방 마인드맵 조회", description = "userId, chatRoomId 입력")
     public TopicDTO getTopicByUserIdAndChatRoom(
             @PathVariable String userId,
             @PathVariable String chatRoomId) {
