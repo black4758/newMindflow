@@ -80,4 +80,43 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
             """)
     void deleteSubtopicsByElementId(String elementId);
 
+
+    @Query("""
+        MATCH (n:Topic)
+        WHERE elementId(n) = $elementId
+        WITH n,
+             elementId(n) as rootId,
+             n.title as rootTitle,
+             n.content as rootContent,
+             n.mongo_ref as rootMongoRef,
+             n.account_id as rootAccountId,
+             n.chat_room_id as rootChatRoomId,
+             n.created_at as rootCreatedAt
+        MATCH path = (n)-[r:HAS_SUBTOPIC*0..]->(child)
+        WITH rootId, rootTitle, rootContent, rootMongoRef, 
+             rootAccountId, rootChatRoomId, rootCreatedAt,
+             collect(DISTINCT {
+                id: elementId(child),
+                title: child.title,
+                content: child.content,
+                mongoRef: child.mongo_ref,
+                accountId: child.account_id,
+                chatRoomId: child.chat_room_id,
+                createdAt: child.created_at
+             }) as childNodes
+        RETURN {
+            nodes: childNodes,
+            rootNode: {
+                id: rootId,
+                title: rootTitle,
+                content: rootContent,
+                mongoRef: rootMongoRef,
+                accountId: rootAccountId,
+                chatRoomId: rootChatRoomId,
+                createdAt: rootCreatedAt
+            }
+        } AS result
+    """)
+    Map<String, Object> getSeparatedTopicData(String elementId);
+
 }

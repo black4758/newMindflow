@@ -56,6 +56,7 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
          content: '내용',
          account_id: '{account_id}',
          chat_room_id: '{chat_room_id}',
+         creator_id: '{creator_id}',
          created_at: datetime()
      }})
 
@@ -173,7 +174,7 @@ def escape_cypher_quotes(text):
 
 
 @celery.task
-def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences):
+def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences, creator_id):
     print(f"Task received with chat_room_id: {chat_room_id}")
     try:
         print(f"""
@@ -195,6 +196,7 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
                         "answer_lines": answer_sentences,
                         "account_id": account_id, 
                         "chat_room_id": chat_room_id, 
+                        "creator_id": creator_id,
                         # "mongo_ref": answer_sentences
                     }
 

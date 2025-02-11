@@ -23,6 +23,8 @@ public class TopicDTO {
         private String chatRoomId;
         private LocalDateTime createdAt;
 
+        private Long creatorId;
+
     }
 
     // RelationshipDTO

@@ -35,4 +35,13 @@ public class TopicController {
     public void deleteSubtopics(@PathVariable String elementId) {
         topicService.deleteSubtopics(elementId);
     }
+
+
+    @PutMapping("/seperateTopic/{elementId}")
+    @Operation(summary = "해당 노드와 하위 노드를 새로운 주제로 분리", description = "노드의 id를 받아서 해당 브랜치로 새로운 채팅방 생성")
+    public void seperateTopic(@PathVariable String elementId) {
+        topicService.seperateTopic(elementId);
+    }
+
+
 }
