@@ -99,7 +99,7 @@ def initialize_memory(chat_room_id):
 def generate_response_for_model(user_input, model_class, detail_model):
     history = memory.load_memory_variables({}).get("history", "")
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "너는 한국말로 짧게말하는 챗봇이야. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("system", "너는 한국말로 챗봇. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
         ("human", "{user_input}")])
 
     formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
@@ -150,7 +150,7 @@ def generate_room_title(user_input):
 
 
 def all_re(model=google_llm,user_input="input",model_name="name"):
-    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고  간단하게 말해"), ("human", "{user_input}")])
+    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말로 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
     seen_chunks = set()
     full_response = "" 
@@ -292,7 +292,7 @@ def escape_cypher_quotes(text):
     return escaped_text
 
 
-@ns_chatbot.route('/massage')
+@ns_chatbot.route('/message')
 class MassageAPI(Resource):
 
     @ns_chatbot.expect(message_model)  # 요청 스키마 정의 연결
@@ -323,41 +323,56 @@ class MassageAPI(Resource):
 
             # 챗봇 응답 생성
             response_obj = chatbot_response(user_input, model=model, detail_model=detail_model)
-            # print(f"Response object: {response_obj}")  # 챗봇 응답 출력
 
             response_content_serialized = (response_obj)
-            # print(f"Serialized response content: {response_content_serialized}")  # 직렬화된 응답 내용 출력
 
-            answer_sentences = [line.strip() for line in response_content_serialized.split('\n') if
-                                line.strip()]
-            # print(f"Answer sentences: {answer_sentences}")  # 응답 문장 출력
-
+            answer_sentences = [
+                sentence.strip() 
+                for sentence in response_content_serialized.replace('\n', ' ').split('.')  # 개행은 공백으로 바꾸고, 마침표로 분리
+                if sentence.strip()  # 빈 문장 제거
+            ]
+            
             memory_content = memory.load_memory_variables({})["history"]
-            # print(f"Memory content: {memory_content}")  # 메모리 내용 출력
+           
 
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
             sentences_with_ids = [
-                {'sentenceId': str(uuid.uuid4()), 'content': escape_cypher_quotes(sentence)  # Cypher 이스케이프 처리
-                 } for sentence in answer_sentences]
-            # print(f"Sentences with IDs: {sentences_with_ids}")  # 문장에 ID와 Cypher 이스케이프 적용된 결과 출력
+                {
+                    'sentenceId': str(uuid.uuid4()), 
+                    'content': escape_cypher_quotes(sentence) + '.'  # Cypher 이스케이프 처리
+                } 
+                for sentence in answer_sentences
+            ]
+            
+            print("문장 아이디 부여: ", sentences_with_ids)
+            
 
-            task = create_mindmap.delay(  # account_id=data.get('accountId'),
-                account_id="REDACTED123", chat_room_id=data.get('chatRoomId'), chat_id="chat_id", question=user_input,
-                answer_sentences=sentences_with_ids)
+            task = create_mindmap.delay(  
+                    # account_id=data.get('accountId'),
+                    # user_id=data.get('userId'),
+                    account_id="REDACTED123", 
+                    chat_room_id=data.get('chatRoomId'), 
+                    chat_id="chat_id", 
+                    question=user_input,
+                    answer_sentences=sentences_with_ids
+                )
             print(f"Celery task created with id: {task.id}")
 
             save_conversation_summary(chat_room_id, memory_content)
             print("Conversation summary saved.")  # 대화 요약 저장 완료 출력
 
             response_data = {
+                
+                'status': 'success',
                 'chat_room_id': chat_room_id,
                 'model': model,
                 'detail_model':detail_model,
                 'response': response_content_serialized,
+                'answer_sentences': sentences_with_ids
             }
 
             response_json = json.dumps(response_data, ensure_ascii=False)
-            print(f"Response JSON: {response_json}")  # 최종 응답 JSON 출력
+            print(f"응답 JSON: {response_json}")  # 최종 응답 JSON 출력
             return make_response(response_json, 200, {"Content-Type": "application/json"})
 
         except Exception as e:

@@ -26,7 +26,7 @@ public class AiServerServiceImpl implements AiServerService {
         // 요청 데이터를 생성
         // Flask API 호출 및 응답 처리
         return aiServerWebClient.post()
-                .uri("/chatbot/massage") // Flask 서버의 엔드포인트
+                .uri("/chatbot/message") // Flask 서버의 엔드포인트
                 .header("Content-Type", "application/json")
                 .bodyValue(chatRequest) // JSON 데이터 전송
                 .retrieve()
