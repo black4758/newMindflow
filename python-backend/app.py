@@ -309,6 +309,7 @@ class MassageAPI(Resource):
             chat_room_id = data.get('chatRoomId')
             model = data.get('model')
             user_input = data.get('userInput')
+            # creator_id = data.get('creatorId')
             creator_id = data.get('creatorId')
             detail_model = data.get('detailModel')
 
@@ -354,7 +355,9 @@ class MassageAPI(Resource):
                     chat_room_id=data.get('chatRoomId'), 
                     chat_id="chat_id", 
                     question=user_input,
-                    answer_sentences=sentences_with_ids
+                    answer_sentences=sentences_with_ids,
+                    # creator_id=creator_id
+                    creator_id='1'
                 )
             print(f"Celery task created with id: {task.id}")
 
