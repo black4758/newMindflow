@@ -1,4 +1,5 @@
 package com.swissclassic.mindflow_server.conversation.controller;
+
 import com.swissclassic.mindflow_server.conversation.model.dto.*;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
@@ -34,12 +35,11 @@ public class ChatController {
     private final ConversationSummaryService conversationSummaryService;
 
 
-
     @PostMapping("/send")
     @Operation(description = "gemini-2.0-flash-exp")
     public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
 
-        ChatApiResponse answer =aiServerService.getChatResponse(chatRequest);
+        ChatApiResponse answer = aiServerService.getChatResponse(chatRequest);
 
         log.info("Flask 에서 도착한 Answer Sentences: {}", answer.getAnswerSentences());
 
@@ -53,16 +53,16 @@ public class ChatController {
 
         return answer;
     }
+
     @PostMapping("/all")
     public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
         return aiServerService.getAllChatResponse(chatRequest);
     }
 
 
-
     // 여기는 말만 summary지 실제로는 대화를 저장함
     @PostMapping("/choiceModel")
-    FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){
+    FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest conversationSummaryRequest) {
 
         ChatRoom room = roomService.createChatRoom(
                 roomService.getTitle(conversationSummaryRequest.getUserInput()),
@@ -72,15 +72,18 @@ public class ChatController {
 
         // Flask의 응답 형식과 동일하게 AnswerSentence 리스트 생성
         List<ChatApiResponse.AnswerSentence> answerSentences = Arrays.stream(
-                        conversationSummaryRequest.getAnswer().split("\n"))
-                .filter(line -> !line.trim().isEmpty())
-                .map(line -> {
-                    ChatApiResponse.AnswerSentence sentence = new ChatApiResponse.AnswerSentence();
-                    sentence.setSentenceId(UUID.randomUUID().toString());
-                    sentence.setContent(line.trim());
-                    return sentence;
-                })
-                .collect(Collectors.toList());
+                                                                             conversationSummaryRequest.getAnswer()
+                                                                                                       .split("\n"))
+                                                                     .filter(line -> !line.trim()
+                                                                                          .isEmpty())
+                                                                     .map(line -> {
+                                                                         ChatApiResponse.AnswerSentence sentence = new ChatApiResponse.AnswerSentence();
+                                                                         sentence.setSentenceId(UUID.randomUUID()
+                                                                                                    .toString());
+                                                                         sentence.setContent(line.trim());
+                                                                         return sentence;
+                                                                     })
+                                                                     .collect(Collectors.toList());
 
         // 수정된 saveChatLog 메서드 호출
         chatLogService.saveChatLog(
@@ -92,10 +95,11 @@ public class ChatController {
         );
 
 
-        ConversationSummary  conversationSummary=new ConversationSummary();
+        ConversationSummary conversationSummary = new ConversationSummary();
         conversationSummary.setTimestamp(String.valueOf(Instant.now()));
         conversationSummary.setChatRoomId(roomId);
-        conversationSummary.setSummaryContent("User:"+conversationSummaryRequest.getUserInput()+"\nAI"+ conversationSummaryRequest.getAnswer());
+        conversationSummary.setSummaryContent(
+                "User:" + conversationSummaryRequest.getUserInput() + "\nAI" + conversationSummaryRequest.getAnswer());
 
         conversationSummaryService.saveConversationSummary(conversationSummary);
 

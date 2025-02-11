@@ -1,6 +1,7 @@
 package com.swissclassic.mindflow_server.conversation.service;
 
 import com.swissclassic.mindflow_server.conversation.model.dto.ChatApiResponse;
+import com.swissclassic.mindflow_server.conversation.model.entity.AnswerSentence;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.repository.ChatLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,12 +31,12 @@ public class ChatLogServiceImpl implements ChatLogService{
         chatLog.setQuestion(userInput);
 
         // Convert Flask's answer sentences to ChatLog answer sentences
-        List<ChatLog.AnswerSentence> logSentences = answerSentences.stream()
-                .map(s -> new ChatLog.AnswerSentence(s.getSentenceId(), s.getContent()))
+        List<AnswerSentence> logSentences = answerSentences.stream()
+                .map(s -> new AnswerSentence(s.getSentenceId(), s.getContent()))
                 .collect(Collectors.toList());
 
         chatLog.setAnswerSentences(logSentences);
-        chatLog.setCreateAT(LocalDateTime.now());
+        chatLog.setCreatedAt(LocalDateTime.now());
         chatLog.setProcessed(false);
 
         chatLogRepository.save(chatLog);
