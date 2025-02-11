@@ -202,7 +202,7 @@ def serialize_message(message):
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'REDACTED'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*",host='0.0.0.0')
 
 api = Api(app, version='1.0', title='다중 AI 챗봇 API', description='다양한 AI 모델을 활용한 챗봇 API')
 
@@ -292,15 +292,15 @@ def escape_cypher_quotes(text):
     return escaped_text
 
 
-@ns_chatbot.route('/message')
-class MessageAPI(Resource):
+@ns_chatbot.route('/massage')
+class MassageAPI(Resource):
 
     @ns_chatbot.expect(message_model)  # 요청 스키마 정의 연결
     @ns_chatbot.response(200, '성공적인 응답')
     @ns_chatbot.response(400, '필수 필드 누락')
     @ns_chatbot.response(500, '내부 서버 오류')
     def post(self):
-        """Message API"""
+        """Massage API"""
         global memory
 
         try:
