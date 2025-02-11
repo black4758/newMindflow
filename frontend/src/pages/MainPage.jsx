@@ -17,7 +17,7 @@ const socket = io("http://localhost:5001", {
 })
 
 // 메인 페이지 컴포넌트
-const MainPage = () => {
+const MainPage = ({ setRefreshTrigger }) => {
   // ===== Refs =====
   // textarea의 높이를 동적으로 조절하기 위한 ref
   const textareaRef = useRef(null)
@@ -50,7 +50,8 @@ const MainPage = () => {
 
   // Redux에서 현재 로그인한 사용자 ID 가져오기
   const userId = useSelector((state) => state.auth.user.userId)
-
+  // Redux에서 현재 지정된 ChatRoom ID 가져오기
+  const currentChatRoom = useSelector((state) => state.chatRoom.currentChatRoom)
   // ===== 상수 정의 =====
   // 사용 가능한 AI 모델 목록
   const modelList = ["chatgpt", "claude", "google", "clova"]
@@ -63,6 +64,33 @@ const MainPage = () => {
   }
 
   // ===== useEffect 훅 =====
+  // ChatroomId가 있을 시 지난 대화 목록 가져오기기
+  useEffect(() => {
+    const loadChatRoomMessages = async () => {
+      if (currentChatRoom) {
+        try {
+          const response = await api.get(`/api/chatroom/messages/${currentChatRoom}`)
+
+          const formattedMessages = response.data.flatMap(message => [
+            {
+              text: message.question,
+              isUser: true,
+            },
+            {
+              text: message.answerSentences
+              .map(sentence => sentence.content)
+              .join(' '),
+              isUser: false,
+            }
+          ]);
+          setMessages(formattedMessages);
+        } catch (error) {
+          console.error('채팅 메세지 로딩 실패:', error)
+        }
+      }
+    };
+    loadChatRoomMessages();
+  }, [currentChatRoom]);
   // textarea 높이 자동 조절
   useEffect(() => {
     if (textareaRef.current) {
@@ -164,6 +192,9 @@ const MainPage = () => {
         google: "",
         clova: "",
       })
+
+      // 채팅방이 생성된 후 사이드바에 새로운 채팅방을 생성했다고 알림
+      setRefreshTrigger((prev) => !prev)
     } catch (error) {
       console.error("모델 선택 오류:", error)
     }

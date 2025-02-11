@@ -2,24 +2,23 @@ import { useState, useEffect } from "react"
 import { Menu, Search, ExternalLink, Network } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
-import { useSelector } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
+import { setCurrentChatRoom, resetCurrentChatRoom } from "../../store/slices/roomSlice.js"
 
-const Sidebar = ({onOpenModal}) => {
+const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
 
   const userId = useSelector((state) => state.auth.user.userId)
   const [chatRooms, setChatRooms] = useState([])
-  const [chatRoomData, setChatRoomData] = useState([])
-  const [refreshTrigger, setRefreshTrigger] = useState(false)
+
+  const dispatch = useDispatch();
 
 
   const handleChatRooms = async () => {
     try {
       const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
-
       setChatRooms(response.data)
-
       console.log(response.data)
     } catch (error) {
       console.log(error)
@@ -29,12 +28,6 @@ const Sidebar = ({onOpenModal}) => {
   useEffect(() => {
     handleChatRooms()
   }, [refreshTrigger])
-
-
-  
-
-
-
 
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
@@ -53,7 +46,7 @@ const Sidebar = ({onOpenModal}) => {
             </button>
             <button 
               className="p-1 rounded hover:bg-gray-200 transition-colors"
-              onClick={() => navigate('/')}
+              onClick={() => {dispatch(resetCurrentChatRoom()); navigate("/");}}
             >
               <ExternalLink className="w-6 h-6 text-[#ffffff]" />
             </button>
@@ -73,9 +66,17 @@ const Sidebar = ({onOpenModal}) => {
           <div className="mb-6">
             <h2 className="text-[#ffffff] mb-2">오늘</h2>
             <div className="flex flex-col gap-2">
-              {[1, 2, 3, 4].map((_, index) => (
+              {chatRooms.filter(chatRoom => {
+                const today = new Date().toISOString().split('T')[0];
+                console.log(today)
+                const chatDate = chatRoom.createdAt.split('T')[0];
+                return chatDate === today;
+              })
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map((chatRoom) => (
                 <button
-                  key={index}
+                  key={chatRoom.id}
+                  onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
                   className="
                     relative 
                     w-full 
@@ -92,7 +93,7 @@ const Sidebar = ({onOpenModal}) => {
                     group
                   "
                 >
-                  <span className="relative z-10">메뉴 아이템 {index + 1}</span>
+                  <span className="relative z-10">{chatRoom.title}</span>
                   <div
                     className="
                       absolute 
@@ -113,11 +114,19 @@ const Sidebar = ({onOpenModal}) => {
           </div>
 
           <div>
-            <h2 className="text-[#ffffff] mb-2">지난 일</h2>
+            <h2 className="text-[#ffffff] mb-2">지난 7일</h2>
             <div className="flex flex-col gap-2">
-              {[1, 2, 3, 4, 5, 6, 7].map((_, index) => (
+              {chatRooms.filter(chatRoom => {
+                const today = new Date().toISOString().split('T')[0];
+                console.log(today)
+                const chatDate = chatRoom.createdAt.split('T')[0];
+                return today - chatDate <= 7;
+              })
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map((chatRoom) => (
                 <button
-                  key={index}
+                  key={chatRoom.id}
+                  onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
                   className="
                     relative 
                     w-full 
@@ -134,7 +143,7 @@ const Sidebar = ({onOpenModal}) => {
                     group
                   "
                 >
-                  <span className="relative z-10">지난 일 {index + 1}</span>
+                  <span className="relative z-10">{chatRoom.title}</span>
                   <div
                     className="
                       absolute 
