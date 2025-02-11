@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:8.0.41
-    container_name: mysql_container
+    container_name: mysql
     restart: always
     env_file:
       - .env
@@ -20,7 +20,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: springboot_container
+    container_name: springboot
     restart: always
     depends_on:
       mysql:
@@ -33,6 +33,7 @@ services:
         condition: service_healthy
     env_file:
       - .env
+      - backend/.env 
     environment:
       - SPRING_PROFILES_ACTIVE=prod 
     ports:
@@ -40,7 +41,7 @@ services:
 
   mongo:
       image: mongo:8.0
-      container_name: mongo_container
+      container_name: mongo
       restart: always
       env_file:
       - .env
@@ -80,50 +81,50 @@ services:
       - neo4j_data:/data
       - neo4j_logs:/logs
 
-  python:
-    build:
-      context: ./python-backend  # Python 백엔드 코드가 있는 디렉토리
-      dockerfile: Dockerfile
-    container_name: python_container
-    restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-      neo4j:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      - IS_DOCKER=true
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    ports:
-      - "5001:5001"  # Flask 앱 포트
+  # python:
+  #   build:
+  #     context: ./python-backend  # Python 백엔드 코드가 있는 디렉토리
+  #     dockerfile: Dockerfile
+  #   container_name: python_container
+  #   restart: always
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     mongo:
+  #       condition: service_healthy
+  #     neo4j:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - IS_DOCKER=true
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   ports:
+  #     - "5001:5001"  # Flask 앱 포트
 
-  celery:
-    build:
-      context: ./python-backend
-      dockerfile: Dockerfile
-    container_name: celery_container
-    command: celery -A tasks worker --loglevel=info
-    restart: always
-    depends_on:
-      - redis
-      - python
-    env_file:
-      - .env
-    environment:
-      - IS_DOCKER=true
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+  # celery:
+  #   build:
+  #     context: ./python-backend
+  #     dockerfile: Dockerfile
+  #   container_name: celery_container
+  #   command: celery -A tasks worker --loglevel=info
+  #   restart: always
+  #   depends_on:
+  #     - redis
+  #     - python
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - IS_DOCKER=true
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
 
   redis:
     image: redis:latest
-    container_name: redis_container
+    container_name: redis
     ports:
       - "6380:6379"
     healthcheck:
@@ -132,25 +133,18 @@ services:
       timeout: 3s
       retries: 5
 
-  frontend:
+  nginx:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
-    container_name: react_container
-    restart: always
-
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_container
+      dockerfile: frontend/Dockerfile  # React 빌드 후 Nginx에서 서빙
+    container_name: nginx
     restart: always
     depends_on:
-      - frontend
       - springboot
     ports:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-
 volumes:
   mysql_data:
   mongo_data:

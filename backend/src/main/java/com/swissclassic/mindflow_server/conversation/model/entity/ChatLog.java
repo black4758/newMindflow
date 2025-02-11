@@ -19,15 +19,20 @@ import java.util.UUID;
 public class ChatLog {
     @Id
     private String id;
+
     @Field(name = "chatRoom_id")
     private long chatRoomId;
 
     private String question;
     @Field(name = "user_id")
+
     private long userId;
+
     private List<AnswerSentence> answerSentences;
+
     @Field(name = "created_at")
     private LocalDateTime createAT;
+
     private boolean processed;
 
     // Getters and Setters
@@ -38,8 +43,9 @@ public class ChatLog {
         private String content;
         @Field(name = "is_deleted")
         private boolean isDeleted;
-        public AnswerSentence(String content) {
-            this.sentenceId = UUID.randomUUID().toString();
+
+        public AnswerSentence(String sentenceId, String content) {
+            this.sentenceId = sentenceId;
             this.content = content;
             this.isDeleted = false;
         }
