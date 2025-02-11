@@ -13,8 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 애플리케이션 코드 복사
 COPY . .
 
-# Flask-SocketIO를 위한 포트 노출
-EXPOSE 5001
-
 # Gunicorn을 eventlet로 실행 (WebSocket 지원)
-CMD ["gunicorn", "-k", "eventlet", "-b", "0.0.0.0:5001", "--timeout", "120", "paste:app"]
+CMD ["gunicorn", "-k", "eventlet", "-b", "0.0.0.0:5001", "app:app"]

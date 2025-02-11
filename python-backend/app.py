@@ -56,10 +56,6 @@ chat_rooms = db['chat_rooms']
 chat_logs = db['chat_logs']
 conversation_summaries = db['conversation_summaries']
 
-google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
-clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
-chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
-claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
 
 memory = None
 
@@ -95,48 +91,6 @@ def initialize_memory(chat_room_id):
     return memory
 
 
-
-def generate_response_for_model(user_input, model_class, detail_model):
-    history = memory.load_memory_variables({}).get("history", "")
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "너는 한국말로 짧게말하는 챗봇이야. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
-        ("human", "{user_input}")])
-
-    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096)
-    seen_chunks = set()
-    full_response = "" 
-    for chunk in model.stream(formatted_prompt):  # 실시간으로 청크 단위 출력
-        print(chunk.content, end="", flush=True)
-        seen_chunks.add(chunk.content)  # 새로운 청크 저장
-        full_response += chunk.content  # 전체 응답에 추가
-        socketio.emit('stream', {
-                    'content': chunk.content
-                })
-    memory.save_context(
-        {"input": user_input},  # 사용자 입력 저장
-        {"output": full_response}  # 모델 응답 저장
-        )
-    return full_response
-
-
-
-def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
-    model_classes = {"google": ChatGoogleGenerativeAI, "clova": ChatClovaX, "chatgpt": ChatOpenAI,
-                     "claude": ChatAnthropic}
-    model_class = model_classes.get(model)
-    if model_class:
-        return generate_response_for_model(user_input, model_class, detail_model)
-    return {"error": "Invalid model"}
-
-
-def save_conversation_summary(chat_room_id, memory_content):
-    updated_summary = memory_content
-
-    conversation_summaries.update_one({"chat_room_id": chat_room_id}, {
-        "$set": {"summary_content": updated_summary.strip(), "timestamp": datetime.now().isoformat()}}, upsert=True)
-
-
 def generate_room_title(user_input):
     # ChatPromptTemplate 생성
     tile_prompt = ChatPromptTemplate.from_messages(
@@ -147,6 +101,13 @@ def generate_room_title(user_input):
     response = google_llm(formatted_prompt)
     # 응답 내용 반환
     return response.content.strip()
+
+
+google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
+clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
+chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
+claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
+
 
 
 def all_re(model=google_llm,user_input="input",model_name="name"):
@@ -190,6 +151,50 @@ def generate_model_responses(user_input):
             'detail_model':"claude-3-5-sonnet-latest"
         }
     }
+
+
+def generate_response_for_model(user_input, model_class, detail_model):
+    history = memory.load_memory_variables({}).get("history", "")
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "너는 한국말로 짧게말하는 챗봇이야. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("human", "{user_input}")])
+
+    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
+    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096)
+    seen_chunks = set()
+    full_response = "" 
+    for chunk in model.stream(formatted_prompt):  # 실시간으로 청크 단위 출력
+        print(chunk.content, end="", flush=True)
+        seen_chunks.add(chunk.content)  # 새로운 청크 저장
+        full_response += chunk.content  # 전체 응답에 추가
+        socketio.emit('stream', {
+                    'content': chunk.content
+                })
+    memory.save_context(
+        {"input": user_input},  # 사용자 입력 저장
+        {"output": full_response}  # 모델 응답 저장
+        )
+    return full_response
+
+
+
+def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
+    model_classes = {"google": ChatGoogleGenerativeAI, "clova": ChatClovaX, "chatgpt": ChatOpenAI,
+                     "claude": ChatAnthropic}
+    model_class = model_classes.get(model)
+    if model_class:
+        return generate_response_for_model(user_input, model_class, detail_model)
+    return {"error": "Invalid model"}
+
+
+def save_conversation_summary(chat_room_id, memory_content):
+    updated_summary = memory_content
+
+    conversation_summaries.update_one({"chat_room_id": chat_room_id}, {
+        "$set": {"summary_content": updated_summary.strip(), "timestamp": datetime.now().isoformat()}}, upsert=True)
+
+
+
 
 def serialize_message(message):
     if hasattr(message, 'to_dict'):  # 객체에 to_dict 메서드가 있는 경우
