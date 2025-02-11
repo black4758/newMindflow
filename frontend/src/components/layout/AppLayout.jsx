@@ -50,10 +50,10 @@ const AppLayout = () => {
                 path={route.path}
                 element={
                   route.path === "/"
-                    ? React.cloneElement(route.element, {
+                    ? React.cloneElement(route.element.props.element, {
                         setRefreshTrigger: setRefreshTrigger,
                       })
-                    : route.element
+                    : route.element.props.element
                 }
               />
             ))}

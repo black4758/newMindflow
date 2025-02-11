@@ -25,7 +25,6 @@ const MainPage = ({ setRefreshTrigger }) => {
   const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref
   const messagesEndRef = useRef(null) // 새 메시지 추가시 자동 스크롤을 위한 ref
 
-  
   const containerRef = useRef(null) // 채팅 메시지 컨테이너의 DOM 요소를 참조하기 위한 ref
   // - 스크롤 위치 감지
   // - 무한 스크롤 구현에 사용
@@ -36,6 +35,7 @@ const MainPage = ({ setRefreshTrigger }) => {
   const [userInput, setUserInput] = useState("") // 현재 사용자 입력
   const [firstUserInput, setFirstUserInput] = useState("") // 첫 질문 저장
   const [streamingText, setStreamingText] = useState("") // AI 응답 스트리밍 텍스트
+  const [isLoading, setIsLoading] = useState(false) // 응답 로딩 상태
 
   // AI 모델 관련 상태들
   const [model, setModel] = useState("") // 선택된 AI 모델
@@ -241,6 +241,8 @@ const MainPage = ({ setRefreshTrigger }) => {
     e.preventDefault()
     if (!userInput.trim()) return
 
+    setIsLoading(true) //로딩 시작작
+
     // 사용자 메시지를 즉시 화면에 표시
     const userMessage = {
       text: userInput,
@@ -291,8 +293,10 @@ const MainPage = ({ setRefreshTrigger }) => {
     } catch (error) {
       console.error("메시지 전송 오류:", error)
       setStreamingText("")
+    } finally {
+      setIsLoading(false) // 로딩 종료료
+      setUserInput("")
     }
-    setUserInput("")
   }
 
   // **모델 아이콘 경로 반환**
@@ -356,16 +360,23 @@ const MainPage = ({ setRefreshTrigger }) => {
 
       // 서버로부터 받은 메시지 데이터를 UI에 맞게 변환
       const newMessages = response.data.flatMap((message) => [
-        // ... 메시지 변환 로직 ...
+        {
+          text: message.question,
+          isUser: true,
+        },
+        {
+          text: message.answerSentences.map((sentence) => sentence.content).join(" "),
+          isUser: false,
+        },
       ])
 
       // 새로 받은 메시지들을 기존 메시지 배열의 앞쪽에 추가
       // (시간순으로 정렬하기 위해 이전 메시지가 앞에 위치)
       setMessages((prev) => [...newMessages, ...prev])
-      
+
       // 다음 페이지를 위해 페이지 번호 증가
       setPage((prev) => prev + 1)
-      
+
       // 새로 받은 메시지가 있으면 더 불러올 메시지가 있다고 판단
       // 메시지가 없으면 더 이상 불러올 메시지가 없음을 표시
       setHasMore(newMessages.length > 0)
@@ -429,7 +440,11 @@ const MainPage = ({ setRefreshTrigger }) => {
             value={userInput}
             onChange={handleInputChange}
             rows={1}
-            className="w-full px-4 py-2 pr-12 rounded-lg bg-[#e0e0e0] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FFD26F] resize-none overflow-y-auto"
+            disabled={isLoading || !model}
+            placeholder={isLoading || !model ? "메시지 전송 중..." : "메시지를 입력하세요"}
+            className={`w-full px-4 py-2 pr-12 rounded-lg bg-[#e0e0e0] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FFD26F] resize-none overflow-y-auto ${
+              isLoading || !model ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             style={{ minHeight: "40px", maxHeight: "120px", lineHeight: "24px" }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -438,7 +453,7 @@ const MainPage = ({ setRefreshTrigger }) => {
               }
             }}
           />
-          <button type="submit" className="absolute right-2 top-[8px] text-gray-600 hover:text-[#FBFBFB]">
+          <button type="submit" className={`absolute right-2 top-[8px] text-gray-600 hover:text-[#FBFBFB] ${isLoading || !model ? "opacity-50 cursor-not-allowed" : ""}`}>
             <ArrowUpCircle size={24} />
           </button>
         </form>
