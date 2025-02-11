@@ -4,43 +4,51 @@ import ModelCard from "../components/common/ModelCard.jsx"
 import api from "../api/axios.js"
 import { useSelector } from "react-redux"
 import { io } from "socket.io-client"
+import { useLocation } from "react-router-dom"
 
 // WebSocket 연결 설정
-// - localhost:5001 서버와 웹소켓 연결
-// - websocket 전송 방식 사용
-// - 재연결 시도 최대 5회, 1초 간격으로 시도
+// - localhost:5001 서버와 웹소켓 연결을 설정
+// - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
 const socket = io("http://localhost:5001", {
-  transports: ["websocket"],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
+  transports: ["websocket"], // WebSocket 프로토콜만 사용
+  reconnection: true, // 연결 끊김 시 재연결 시도
+  reconnectionAttempts: 5, // 최대 재연결 시도 횟수
+  reconnectionDelay: 1000, // 재연결 시도 간격 (1초)
 })
 
-// 메인 페이지 컴포넌트
-const MainPage = () => {
+// MainPage 컴포넌트 정의
+// setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
+const MainPage = ({ setRefreshTrigger }) => {
+  const location = useLocation()
+
   // ===== Refs =====
-  // textarea의 높이를 동적으로 조절하기 위한 ref
-  const textareaRef = useRef(null)
-  // 새 메시지가 추가될 때 자동 스크롤을 위한 ref
-  const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref
+  const messagesEndRef = useRef(null) // 새 메시지 추가시 자동 스크롤을 위한 ref
+
+  
+  const containerRef = useRef(null) // 채팅 메시지 컨테이너의 DOM 요소를 참조하기 위한 ref
+  // - 스크롤 위치 감지
+  // - 무한 스크롤 구현에 사용
 
   // ===== State 관리 =====
-  // 채팅 관련 상태
-  const [messages, setMessages] = useState([]) // 전체 채팅 메시지 목록
-  const [userInput, setUserInput] = useState("") // 사용자 입력 텍스트
-  const [firstUserInput, setFirstUserInput] = useState("") // 첫 번째 사용자 메시지 저장
-  const [streamingText, setStreamingText] = useState("") // 현재 스트리밍 중인 텍스트
+  // 채팅 관련 상태들
+  const [messages, setMessages] = useState([]) // 전체 채팅 기록
+  const [userInput, setUserInput] = useState("") // 현재 사용자 입력
+  const [firstUserInput, setFirstUserInput] = useState("") // 첫 질문 저장
+  const [streamingText, setStreamingText] = useState("") // AI 응답 스트리밍 텍스트
 
-  // 모델 관련 상태
-  const [model, setModel] = useState("") // 현재 선택된 AI 모델
+  // AI 모델 관련 상태들
+  const [model, setModel] = useState("") // 선택된 AI 모델
   const [detailModel, setDetailModel] = useState("") // 선택된 모델의 세부 버전
-  const [showModelCards, setShowModelCards] = useState(false) // 모델 선택 카드 표시 여부
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false) // 모델 드롭다운 메뉴 상태
+  const [showModelCards, setShowModelCards] = useState(false) // 모델 선택 UI 표시 여부
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false) // 모델 선택 드롭다운 상태
 
   // 채팅방 관련 상태
-  const [chatRoomId, setChatRoomId] = useState(0) // 현재 채팅방 ID
+  const [chatRoomId, setChatRoomId] = useState(null) // 현재 채팅방 ID
+  const [page, setPage] = useState(1) // 무한 스크롤을 위한 현재 페이지 번호 (1부터 시작)
+  const [hasMore, setHasMore] = useState(true) // 더 불러올 이전 메시지가 있는지 여부를 나타내는 플래그
 
-  // 각 모델별 스트리밍 응답을 저장하는 상태
+  // 각 AI 모델별 스트리밍 응답 저장
   const [modelStreamingTexts, setModelStreamingTexts] = useState({
     chatgpt: "",
     claude: "",
@@ -48,13 +56,14 @@ const MainPage = () => {
     clova: "",
   })
 
-  // Redux에서 현재 로그인한 사용자 ID 가져오기
+  // Redux에서 필요한 상태 가져오기
   const userId = useSelector((state) => state.auth.user.userId)
+  const currentChatRoom = useSelector((state) => state.chatRoom.currentChatRoom)
 
   // ===== 상수 정의 =====
-  // 사용 가능한 AI 모델 목록
+  // 지원하는 AI 모델 목록
   const modelList = ["chatgpt", "claude", "google", "clova"]
-  // 각 모델별 세부 버전 목록
+  // 각 모델별 세부 버전 정의
   const detailModelList = {
     chatgpt: ["gpt-3.5-turbo", "gpt-4o", "gpi-4o-mini", "gpt-o1"],
     claude: ["claude-3-5-sonnet-latest", "claude-3-opus", "claude-3.5-haiku"],
@@ -63,6 +72,61 @@ const MainPage = () => {
   }
 
   // ===== useEffect 훅 =====
+  useEffect(() => {
+    const loadChatRoomMessages = async () => {
+      // currentChatRoom이 null이면 메시지 초기화
+      if (!currentChatRoom) {
+        setMessages([])
+        return
+      }
+
+      try {
+        // API를 통해 채팅 내역 가져오기
+        const response = await api.get(`/api/chatroom/messages/${currentChatRoom}`)
+
+        // 서버 응답 데이터를 UI에 표시할 수 있는 형식으로 변환
+        const formattedMessages = response.data.flatMap((message) => [
+          // 첫 번째 요소: 사용자의 질문
+          {
+            text: message.question,
+            isUser: true, // 사용자 메시지임을 표시
+          },
+          // 두 번째 요소: AI의 답변
+          {
+            // answerSentences 배열의 각 문장(sentence)에서 content를 추출하여
+            // 하나의 문자열로 결합 (공백으로 구분)
+            text: message.answerSentences.map((sentence) => sentence.content).join(" "),
+            isUser: false, // AI 메시지임을 표시
+          },
+        ])
+
+        setMessages(formattedMessages)
+      } catch (error) {
+        console.error("채팅 메세지 로딩 실패:", error)
+      }
+    }
+
+    loadChatRoomMessages()
+  }, [currentChatRoom])
+
+  // 새 창 버튼을 눌렀을 때 location.state 변경 감지하여 초기화
+  useEffect(() => {
+    if (location.state?.refresh) {
+      setMessages([])
+      setModel("")
+      setDetailModel("")
+      setShowModelCards(false)
+      setStreamingText("")
+      setChatRoomId(0)
+      setModelStreamingTexts({
+        chatgpt: "",
+        claude: "",
+        google: "",
+        clova: "",
+      })
+    }
+  }, [location.state?.refresh])
+
   // textarea 높이 자동 조절
   useEffect(() => {
     if (textareaRef.current) {
@@ -164,6 +228,9 @@ const MainPage = () => {
         google: "",
         clova: "",
       })
+
+      // 채팅방이 생성된 후 사이드바에 새로운 채팅방을 생성했다고 알림
+      setRefreshTrigger((prev) => !prev)
     } catch (error) {
       console.error("모델 선택 오류:", error)
     }
@@ -182,7 +249,8 @@ const MainPage = () => {
     setMessages((prev) => [...prev, userMessage])
 
     try {
-      if (!model) {
+      // currentChatRoom이 null이거나 model이 없으면 새로운 대화 시작
+      if (!currentChatRoom || !model) {
         // 첫 메시지일 때는 모델 선택 카드를 즉시 표시
         setFirstUserInput(userInput)
         setShowModelCards(true)
@@ -259,16 +327,70 @@ const MainPage = () => {
     adjustTextareaHeight(e.target)
   }
 
+  // 스크롤 이벤트 처리
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current) return
+
+    const { scrollTop } = containerRef.current
+    // 스크롤이 상단에 가까워지면 이전 메시지 로드
+    if (scrollTop < 100 && hasMore) {
+      loadMoreMessages()
+    }
+  }, [hasMore])
+
+  /**
+   * 이전 메시지들을 페이지네이션 방식으로 불러오는 함수
+   * 스크롤이 상단에 도달했을 때 호출되어 이전 대화 내용을 로드함
+   * 이렇게 페이지 번호를 사용하는 이유:
+      모든 메시지를 한 번에 가져오면 데이터가 너무 많아질 수 있음
+      사용자가 필요한 만큼만 점진적으로 로드하여 성능 최적화
+      서버의 부하를 분산시킬 수 있음
+   */
+  const loadMoreMessages = async () => {
+    // 현재 활성화된 채팅방이 없으면 함수 종료
+    if (!currentChatRoom) return
+
+    try {
+      // 현재 페이지 번호를 기준으로 이전 메시지들을 서버에서 가져옴
+      const response = await api.get(`/api/chatroom/messages/${currentChatRoom}?page=${page}`)
+
+      // 서버로부터 받은 메시지 데이터를 UI에 맞게 변환
+      const newMessages = response.data.flatMap((message) => [
+        // ... 메시지 변환 로직 ...
+      ])
+
+      // 새로 받은 메시지들을 기존 메시지 배열의 앞쪽에 추가
+      // (시간순으로 정렬하기 위해 이전 메시지가 앞에 위치)
+      setMessages((prev) => [...newMessages, ...prev])
+      
+      // 다음 페이지를 위해 페이지 번호 증가
+      setPage((prev) => prev + 1)
+      
+      // 새로 받은 메시지가 있으면 더 불러올 메시지가 있다고 판단
+      // 메시지가 없으면 더 이상 불러올 메시지가 없음을 표시
+      setHasMore(newMessages.length > 0)
+    } catch (error) {
+      console.error("이전 메시지 로딩 실패:", error)
+    }
+  }
+
+  // 스크롤 이벤트 리스너 등록
+  useEffect(() => {
+    const container = containerRef.current
+    if (container) {
+      container.addEventListener("scroll", handleScroll)
+      return () => container.removeEventListener("scroll", handleScroll)
+    }
+  }, [handleScroll])
+
   // **렌더링**
   return (
-    <div className="h-full overflow-hidden p-4 relative" id="modal-root">
-      {/* 메시지 표시 영역 */}
-      <div className="h-[calc(100%-80px)] overflow-y-auto mb-4">
+    <div className="h-full flex flex-col p-4 relative" id="modal-root">
+      {/* 메시지 표시 영역 - 스크롤 가능 */}
+      <div className="flex-1 overflow-y-auto mb-4">
         {/* 이전 메시지들 표시 */}
         {messages.map((message, index) => (
           <div key={index} className="mb-4">
-            {" "}
-            {/* 각 메시지를 구분하기 위한 마진 추가 */}
             <ModelCard text={message.text} isUser={message.isUser} model={message.model} />
           </div>
         ))}
@@ -299,8 +421,8 @@ const MainPage = () => {
         )}
       </div>
 
-      {/* 채팅 입력 폼 */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-1/2 flex gap-2">
+      {/* 채팅 입력 폼 - 고정 위치 */}
+      <div className="w-1/2 mx-auto flex gap-2">
         <form onSubmit={handleMessageSend} className="relative flex-1">
           <textarea
             ref={textareaRef}

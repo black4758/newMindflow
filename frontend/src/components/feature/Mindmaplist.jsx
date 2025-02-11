@@ -24,8 +24,6 @@ const Mindmap = () => {
   const [is3D, setIs3D] = useState(getViewMode())
   const graphRef = useRef()
   const navigate = useNavigate()
-  const [highlightNodes, setHighlightNodes] = useState(new Set())
-  const [highlightLinks, setHighlightLinks] = useState(new Set())
   const [hoverNode, setHoverNode] = useState(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchResults, setSearchResults] = useState([])
@@ -43,6 +41,11 @@ const Mindmap = () => {
   const [fixedNode, setFixedNode] = useState(null);
   const doubleClickTimerRef = useRef(null);
   const [lastClickedNode, setLastClickedNode] = useState(null);
+  const [isGraphStable, setIsGraphStable] = useState(false);
+  const [isCameraMoving, setIsCameraMoving] = useState(false);
+  const lastCameraPositionRef = useRef(null);
+  const stabilityTimeoutRef = useRef(null);
+  const cameraTimeoutRef = useRef(null);
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -203,127 +206,6 @@ const Mindmap = () => {
     
     return null;
   }, [mindmapdata.relationships]);
-
-  // updateHighlight 함수 수정
-  const updateHighlight = useCallback(() => {
-    if (!hoverNode) {
-      setHighlightNodes(new Set());
-      setHighlightLinks(new Set());
-      // 모든 노드의 속성 초기화
-      processedData.nodes.forEach(node => {
-        node.isPathNode = false;
-        node.relationType = null; // 관계 타입 초기화 추가
-      });
-      // 모든 링크의 속성 초기화
-      processedData.links.forEach(link => {
-        link.isPathLink = false;
-      });
-      return;
-    }
-
-    // 하이라이트 시작 전에 모든 노드와 링크의 속성 초기화
-    processedData.nodes.forEach(node => {
-      node.isPathNode = false;
-      node.relationType = null;
-    });
-    processedData.links.forEach(link => {
-      link.isPathLink = false;
-    });
-
-    // 연결된 노드들과 관계 타입 찾기
-    const connectedNodesWithTypes = processedData.links
-      .filter(link => link.source === hoverNode || link.target === hoverNode)
-      .map(link => {
-        const connectedNode = link.source === hoverNode ? link.target : link.source;
-        return {
-          node: connectedNode,
-          type: link.type,
-          isSource: link.source === hoverNode
-        };
-      });
-
-    // 루트까지의 경로 찾기
-    const path = findPathToRoot(hoverNode.id);
-    
-    // 모든 하이라이트할 노드들을 하나의 Set으로 합치기
-    const highlightedNodes = new Set([hoverNode]);
-    const highlightedLinks = new Set();
-
-    // 연결된 노드들의 관계 타입 설정
-    connectedNodesWithTypes.forEach(({ node, type, isSource }) => {
-      highlightedNodes.add(node);
-      node.relationType = type; // 관계 타입 저장
-      
-      // 해당 링크 찾기
-      const link = processedData.links.find(l => 
-        (l.source === hoverNode && l.target === node) ||
-        (l.source === node && l.target === hoverNode)
-      );
-      if (link) {
-        highlightedLinks.add(link);
-      }
-    });
-
-    // 루트까지의 경로를 별도로 저장
-    if (path) {
-      path.forEach(nodeId => {
-        const node = processedData.nodes.find(n => n.id === nodeId);
-        if (node) {
-          node.isPathNode = true;
-          highlightedNodes.add(node);
-        }
-      });
-      
-      processedData.links.forEach(link => {
-        if (path.includes(link.source.id || link.source) && 
-            path.includes(link.target.id || link.target)) {
-          link.isPathLink = true;
-          highlightedLinks.add(link);
-        }
-      });
-    }
-
-    setHighlightNodes(highlightedNodes);
-    setHighlightLinks(highlightedLinks);
-  }, [hoverNode, processedData.links, processedData.nodes, findPathToRoot]);
-
-  // useEffect의 의존성 배열 수정
-  useEffect(() => {
-    updateHighlight()
-  }, [updateHighlight])
-
-  // useEffect 수정: 3D 모드의 힘 설정을 원래대로 복구
-  useEffect(() => {
-    if (graphRef.current) {
-      if (is3D) {
-        // 3D 모드: 집중형 배치
-        graphRef.current.d3Force("charge").strength(-60);  // 반발력 유지
-        graphRef.current.d3Force("link").distance(100);    // 링크 길이 2배로 증가 (50 -> 100)
-      } else {
-        // 2D 모드: 확산형 배치
-        graphRef.current.d3Force("charge").strength(-800);
-        graphRef.current.d3Force("link").distance(200);    
-        
-        graphRef.current.d3Force("repulsion", d3.forceManyBody().strength((node) => {
-          const hasLinks = processedData.links.some(
-            link => link.source === node || link.target === node
-          );
-          return hasLinks ? -800 : -1600;
-        }));
-      }
-    }
-  }, [is3D, processedData.links]);
-
-  // 검색어에 따른 결과 필터링
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setSearchResults([])
-      return
-    }
-
-    const filteredNodes = processedData.nodes.filter((node) => node.title.toLowerCase().includes(searchTerm.toLowerCase()) || node.content.toLowerCase().includes(searchTerm.toLowerCase()))
-    setSearchResults(filteredNodes)
-  }, [searchTerm, processedData.nodes])
 
   // 노드 선택 시 해당 노드로 카메라 이동하는 함수 수정
   const handleNodeSelect = useCallback((node) => {
@@ -564,43 +446,25 @@ const Mindmap = () => {
   }, [fixedNode]); // selectedNodeForEdit 대신 fixedNode를 의존성으로 변경
 
   // 노드 색상을 원래대로 되돌리기
-  const getNodeColor = (node, isHighlighted) => {
-    // chatroom 루트 노드와 직접 연결된 노드인지 확인
+  const getNodeColor = (node) => {
+    if (node.isRoot) {
+      return "rgba(255,107,107,0.9)";  // 루트 노드 색상
+    }
+    
     const isDirectlyConnectedToChatRoom = processedData.links.some(link => {
       const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
       const targetId = typeof link.target === 'object' ? link.target.id : link.target;
       const isChatRoomNode = sourceId.startsWith('root_') || targetId.startsWith('root_');
       return isChatRoomNode && (sourceId === node.id || targetId === node.id);
     });
-
-    if (!isHighlighted) {
-      if (node.isRoot) {
-        return "rgba(255,107,107,0.6)";  // 루트 노드 색상
-      }
-      if (isDirectlyConnectedToChatRoom) {
-        return "rgba(147,51,234,0.4)";   // chatroom 노드와 연결된 노드 색상
-      }
-      return "rgba(66,153,225,0.4)";     // 일반 노드 색상
-    }
     
-    if (node.isPathNode) {
-      return "rgba(245,158,11,0.9)";     // 루트까지의 경로 색상
-    }
-    
-    if (node.isRoot) {
-      return "rgba(255,107,107,0.9)";    // 하이라이트된 루트 노드 색상
-    }
-    
-    if (isDirectlyConnectedToChatRoom) {
-      return "rgba(147,51,234,0.9)";     // 하이라이트된 chatroom 연결 노드 색상
-    }
-    
-    return "rgba(66,153,225,0.9)";       // 하이라이트된 일반 노드 색상
+    return isDirectlyConnectedToChatRoom 
+      ? "rgba(147,51,234,0.5)"   // chatroom 노드와 연결된 노드 색상
+      : "rgba(66,153,225,0.5)";  // 일반 노드 색상
   };
 
   // 링크 색상을 관계 타입에 따라 설정
-  const getLinkColor = (link, isHighlighted) => {
-    // chatroom 루트 노드와 연결된 링크 확인
+  const getLinkColor = (link) => {
     const isChatRoomLink = 
       (typeof link.source === 'object' && link.source.id.startsWith('root_')) ||
       (typeof link.target === 'object' && link.target.id.startsWith('root_')) ||
@@ -608,24 +472,16 @@ const Mindmap = () => {
       (typeof link.target === 'string' && link.target.startsWith('root_'));
 
     if (isChatRoomLink) {
-      return isHighlighted ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)";
+      return 'rgba(255,255,255,0.5)';
     }
 
-    if (!isHighlighted) {
-      return "#ffffff";
-    }
-    
-    if (link.isPathLink) {
-      return "rgba(245,158,11,0.9)";
-    }
-    
     switch (link.type) {
       case "RELATED_TO":
-        return "rgba(52,211,153,0.9)";
+        return "rgba(52,211,153,0.6)";
       case "HAS_SUBTOPIC":
-        return "rgba(99,102,241,0.9)";
+        return "rgba(99,102,241,0.6)";
       case "COMPARE_TO":
-        return "rgba(236,72,153,0.9)";
+        return "rgba(236,72,153,0.6)";
       default:
         return "rgba(255,255,255,0.8)";
     }
@@ -697,15 +553,177 @@ const Mindmap = () => {
     }
   }, [fixedNode, handleOutsideClick]);
 
+  // 그래프 안정성 체크 함수
+  const checkGraphStability = useCallback((positions) => {
+    if (stabilityTimeoutRef.current) {
+      clearTimeout(stabilityTimeoutRef.current);
+    }
+    
+    stabilityTimeoutRef.current = setTimeout(() => {
+      setIsGraphStable(true);
+    }, 300); // 300ms 동안 움직임이 없으면 안정된 것으로 간주
+    
+    setIsGraphStable(false);
+  }, []);
+
+  // 카메라 움직임 체크 함수
+  const checkCameraMovement = useCallback((cameraPosition) => {
+    if (cameraTimeoutRef.current) {
+      clearTimeout(cameraTimeoutRef.current);
+    }
+
+    if (!lastCameraPositionRef.current) {
+      lastCameraPositionRef.current = cameraPosition;
+      return;
+    }
+
+    const hasChanged = JSON.stringify(lastCameraPositionRef.current) !== JSON.stringify(cameraPosition);
+    if (hasChanged) {
+      setIsCameraMoving(true);
+      lastCameraPositionRef.current = cameraPosition;
+
+      cameraTimeoutRef.current = setTimeout(() => {
+        setIsCameraMoving(false);
+      }, 300); // 300ms 동안 카메라 움직임이 없으면 정지된 것으로 간주
+    }
+  }, []);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (stabilityTimeoutRef.current) {
+        clearTimeout(stabilityTimeoutRef.current);
+      }
+      if (cameraTimeoutRef.current) {
+        clearTimeout(cameraTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 3D 그래프의 nodeThreeObject 수정
+  const nodeThreeObject = useCallback((node) => {
+    if (!isGraphStable || isCameraMoving) {
+      // 움직이는 동안에는 기본 구체만 표시
+      return null;
+    }
+
+    const sprite = new SpriteText(node.title);
+    const isHighlighted = false;
+    
+    const baseSize = node.isRoot ? 10 : 8;
+    
+    sprite.backgroundColor = getNodeColor(node);
+    sprite.textHeight = baseSize;
+    sprite.padding = baseSize * 0.5;
+    sprite.borderRadius = baseSize;
+    
+    if (node.title.length > 10) {
+      sprite.text = node.title.substring(0, 10) + '...';
+    }
+    
+    return sprite;
+  }, [isGraphStable, isCameraMoving]);
+
+  // 2D 그래프의 nodeCanvasObject 수정
+  const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
+    const fontSize = node.isRoot ? 32 : 26;
+    const { width, height } = getNodeSize(node.title, ctx, fontSize);
+    const isHighlighted = false;
+    const radius = 16;
+
+    ctx.save();
+
+    // 노드 배경 그리기
+    ctx.beginPath();
+    ctx.roundRect(
+      node.x - width / 2 - radius,
+      node.y - height / 2 - radius,
+      width + radius * 2,
+      height + radius * 2,
+      radius
+    );
+    
+    ctx.fillStyle = getNodeColor(node);
+    ctx.fill();
+
+    // 테두리 설정
+    if (isHighlighted || (node.fx !== undefined && node.fy !== undefined)) {
+      ctx.strokeStyle = node === hoverNode 
+        ? "#ff4444"
+        : node.fx !== undefined 
+          ? "#FFD700"
+          : "#ffffff";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // 2D 모드에서는 항상 텍스트 표시
+    ctx.font = `${fontSize}px Sans-Serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(node.title, node.x, node.y);
+
+    ctx.restore();
+
+    node.size = Math.max(width, height);
+    node.width = width;
+    node.height = height;
+  }, [hoverNode, getNodeSize]);
+
+  // useEffect 수정: 2D/3D 모드에 따른 힘 설정
+  useEffect(() => {
+    if (graphRef.current) {
+      if (is3D) {
+        // 3D 모드: 기존 설정 유지
+        graphRef.current.d3Force("charge").strength(-60);
+        graphRef.current.d3Force("link").distance(100);
+      } else {
+        // 2D 모드: 노드 간 거리 증가
+        graphRef.current.d3Force("charge").strength(-800);  // 반발력 증가
+        graphRef.current.d3Force("link").distance(200);     // 링크 길이 증가
+        
+        // 추가적인 반발력 설정
+        graphRef.current.d3Force("repulsion", d3.forceManyBody().strength((node) => {
+          const hasLinks = processedData.links.some(
+            link => link.source === node || link.target === node
+          );
+          return hasLinks ? -800 : -1600;  // 연결된 노드와 연결되지 않은 노드의 반발력 차등 적용
+        }));
+      }
+    }
+  }, [is3D, processedData.links]);
+
+  // 검색어 변경 시 결과 필터링을 위한 useEffect 추가
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const searchLowerCase = searchTerm.toLowerCase();
+    const filteredNodes = processedData.nodes.filter(node => 
+      node.title?.toLowerCase().includes(searchLowerCase) ||
+      node.content?.toLowerCase().includes(searchLowerCase)
+    );
+
+    setSearchResults(filteredNodes.slice(0, 10)); // 최대 10개 결과만 표시
+  }, [searchTerm, processedData.nodes]);
+
+  // 검색창 입력 핸들러 수정
+  const handleSearchInput = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
   return (
     <div className="relative w-full h-full">
-      {/* 검색창 컨테이너 */}
+      {/* 검색창 컨테이너 수정 */}
       <div className="absolute left-4 top-4 z-50">
         <div className="relative">
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchInput}
             placeholder="노드 검색..."
             className="w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -719,7 +737,13 @@ const Mindmap = () => {
                   className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                 >
                   <div className="font-medium">{node.title}</div>
-                  <div className="text-sm text-gray-600 truncate">{node.content}</div>
+                  {node.content && (
+                    <div className="text-sm text-gray-600 truncate">
+                      {node.content.length > 50 
+                        ? `${node.content.substring(0, 50)}...` 
+                        : node.content}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -786,84 +810,19 @@ const Mindmap = () => {
         <ForceGraph3D
           ref={graphRef}
           graphData={processedData}
-          nodeThreeObject={node => {
-            const sprite = new SpriteText(node.title);
-            const isHighlighted = highlightNodes.has(node);
-            
-            const baseSize = node.isRoot ? 10 : 8;
-            
-            sprite.backgroundColor = getNodeColor(node, isHighlighted);
-            sprite.textHeight = baseSize;
-            sprite.padding = baseSize * 0.5;
-            sprite.borderRadius = baseSize;
-            
-            if (node.title.length > 10) {
-              sprite.text = node.title.substring(0, 10) + '...';
-            }
-            
-            return sprite;
-          }}
+          nodeThreeObject={nodeThreeObject}
+          nodeThreeObjectExtend={false}
           width={window.innerWidth - 256}
           height={window.innerHeight - 64}
-          nodeRelSize={1}
-          nodeVal={1}
-          nodeColor={(node) => "#4299e1"}
-          nodeOpacity={1}
-          nodeCanvasObjectMode={() => "replace"}
-          nodeCanvasObject={(node, ctx, globalScale) => {
-            const fontSize = 12;
-            const { width, height } = getNodeSize(node.title, ctx, fontSize);
-            const isHighlighted = highlightNodes.has(node);
-            const radius = 16;
-            
-            ctx.save();
-
-            // 노드 배경 그리기
-            ctx.beginPath();
-            ctx.roundRect(
-              node.x - width / 2 - radius,
-              node.y - height / 2 - radius,
-              width + radius * 2,
-              height + radius * 2,
-              radius
-            );
-            
-            // 배경색 설정
-            ctx.fillStyle = getNodeColor(node, isHighlighted);
-            ctx.fill();
-
-            // 테두리 설정
-            if (isHighlighted || (node.fx !== undefined && node.fy !== undefined)) {
-              ctx.strokeStyle = node === hoverNode 
-                ? "#ff4444"  // 호버 상태: 빨간색
-                : node.fx !== undefined 
-                  ? "#FFD700" // 고정 상태: 골드색
-                  : "#ffffff"; // 하이라이트 상태: 흰색
-              ctx.lineWidth = 3;
-              ctx.stroke();
-            }
-
-            // 텍스트 설정
-            ctx.font = `${fontSize}px Sans-Serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillStyle = "#ffffff";
-            ctx.fillText(node.title, node.x, node.y);
-
-            ctx.restore();
-
-            node.size = Math.max(width, height);
-            node.width = width;
-            node.height = height;
-          }}
-          linkWidth={(link) => getLinkWidth(link, highlightLinks.has(link))}
-          linkColor={(link) => getLinkColor(link, highlightLinks.has(link))}
-          linkOpacity={0.5} // 링크 불투명도를 최대로 설정
+          backgroundColor="#353A3E"
+          nodeColor={getNodeColor}
+          linkWidth={2}
+          linkColor={getLinkColor}
+          linkOpacity={0.8}
           linkDirectionalParticles={4}
-          linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 4 : 0)}
+          linkDirectionalParticleWidth={2}
           linkDirectionalParticleSpeed={0.005}
-          onNodeHover={(node) => {
-            // 이전 타이머가 있다면 취소
+          onNodeHover={node => {
             if (hoverTimeoutRef.current) {
               clearTimeout(hoverTimeoutRef.current);
               hoverTimeoutRef.current = null;
@@ -873,7 +832,6 @@ const Mindmap = () => {
               setHoverNode(node);
               document.body.style.cursor = "pointer";
             } else {
-              // 새로운 타이머 설정 및 참조 저장
               hoverTimeoutRef.current = setTimeout(() => {
                 setHoverNode(prev => {
                   if (document.querySelector('.fixed:hover')) {
@@ -886,31 +844,30 @@ const Mindmap = () => {
               document.body.style.cursor = "default";
             }
           }}
-          d3Force="charge"
-          d3ForceStrength={-30}  // 집중형 배치를 위한 약한 반발력
-          linkDistance={100}      // 짧은 링크 거리
-          nodeLabel={(node) => ""}
-          backgroundColor="#353A3E"
-          nodePointerAreaPaint={(node, color, ctx) => {
-            const fontSize = node.isRoot ? 32 : 26;
-            const { width, height } = getNodeSize(node.title, ctx, fontSize);
-            const radius = 16;
-
-            ctx.beginPath();
-            // 노드의 전체 영역(배경 포함)을 포인터 영역으로 설정
-            ctx.roundRect(
-              node.x - width / 2 - radius,
-              node.y - height / 2 - radius,
-              width + radius * 2,
-              height + radius * 2,
-              radius
-            );
-            ctx.fillStyle = color;
-            ctx.fill();
-          }}
           onNodeClick={(node, event) => handleNodeClick(node, event)}
-          enableNavigationControls={true}  // 네비게이션 컨트롤 활성화
-          controlType="trackball"         // trackball로 되돌리기
+          enableNavigationControls={true}
+          controlType="trackball"
+          d3Force="charge"
+          d3ForceStrength={-30}
+          linkDistance={100}
+          cooldownTime={2000}
+          cooldownTicks={50}
+          nodeResolution={8}
+          warmupTicks={50}
+          dagMode={null}
+          dagLevelDistance={50}
+          d3VelocityDecay={0.4}
+          d3AlphaMin={0.001}
+          d3AlphaDecay={0.02}
+          rendererConfig={{
+            antialias: false,
+            precision: 'lowp'
+          }}
+          onEngineStop={() => setIsGraphStable(true)}
+          onNodeDragStart={() => setIsGraphStable(false)}
+          onNodeDrag={() => setIsGraphStable(false)}
+          onCameraOrbit={() => setIsCameraMoving(true)}
+          onCameraMove={(cameraPosition) => checkCameraMovement(cameraPosition)}
         />
       ) : (
         <ForceGraph2D
@@ -920,62 +877,17 @@ const Mindmap = () => {
           height={window.innerHeight - 64}
           nodeRelSize={1}
           nodeVal={1}
-          nodeColor={(node) => "#4299e1"}
+          nodeColor={getNodeColor}
           nodeOpacity={1}
           nodeCanvasObjectMode={() => "replace"}
-          nodeCanvasObject={(node, ctx, globalScale) => {
-            const fontSize = node.isRoot ? 32 : 26;
-            const { width, height } = getNodeSize(node.title, ctx, fontSize);
-            const isHighlighted = highlightNodes.has(node);
-            const radius = 16;
-
-            ctx.save();
-
-            // 노드 배경 그리기
-            ctx.beginPath();
-            ctx.roundRect(
-              node.x - width / 2 - radius,
-              node.y - height / 2 - radius,
-              width + radius * 2,
-              height + radius * 2,
-              radius
-            );
-            
-            // 배경색 설정
-            ctx.fillStyle = getNodeColor(node, isHighlighted);
-            ctx.fill();
-
-            // 테두리 설정
-            if (isHighlighted || (node.fx !== undefined && node.fy !== undefined)) {
-              ctx.strokeStyle = node === hoverNode 
-                ? "#ff4444"  // 호버 상태: 빨간색
-                : node.fx !== undefined 
-                  ? "#FFD700" // 고정 상태: 골드색
-                  : "#ffffff"; // 하이라이트 상태: 흰색
-              ctx.lineWidth = 3;
-              ctx.stroke();
-            }
-
-            // 텍스트 설정
-            ctx.font = `${fontSize}px Sans-Serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillStyle = "#ffffff";
-            ctx.fillText(node.title, node.x, node.y);
-
-            ctx.restore();
-
-            node.size = Math.max(width, height);
-            node.width = width;
-            node.height = height;
-          }}
-          linkWidth={(link) => getLinkWidth(link, highlightLinks.has(link))}
-          linkColor={(link) => getLinkColor(link, highlightLinks.has(link))}
+          nodeCanvasObject={nodeCanvasObject}
+          linkWidth={1}
+          linkColor={getLinkColor}
+          linkOpacity={0.8}
           linkDirectionalParticles={4}
-          linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 6 : 0)}
+          linkDirectionalParticleWidth={4}
           linkDirectionalParticleSpeed={0.005}
           onNodeHover={(node) => {
-            // 이전 타이머가 있다면 취소
             if (hoverTimeoutRef.current) {
               clearTimeout(hoverTimeoutRef.current);
               hoverTimeoutRef.current = null;
@@ -985,7 +897,6 @@ const Mindmap = () => {
               setHoverNode(node);
               document.body.style.cursor = "pointer";
             } else {
-              // 새로운 타이머 설정 및 참조 저장
               hoverTimeoutRef.current = setTimeout(() => {
                 setHoverNode(prev => {
                   if (document.querySelector('.fixed:hover')) {
@@ -1021,6 +932,18 @@ const Mindmap = () => {
             ctx.fill();
           }}
           onNodeClick={(node, event) => handleNodeClick(node, event)}
+          cooldownTime={2000}
+          cooldownTicks={50}
+          nodeResolution={8}
+          warmupTicks={50}
+          d3VelocityDecay={0.4}
+          d3AlphaMin={0.001}
+          d3AlphaDecay={0.02}
+          onEngineStop={() => setIsGraphStable(true)}
+          onNodeDragStart={() => setIsGraphStable(false)}
+          onNodeDrag={() => setIsGraphStable(false)}
+          onZoom={() => setIsCameraMoving(true)}
+          onZoomEnd={() => setIsCameraMoving(false)}
         />
       )}
 
