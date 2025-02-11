@@ -1,9 +1,12 @@
 package com.swissclassic.mindflow_server.mindmap.service;
 
+import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
 import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
 import com.swissclassic.mindflow_server.mindmap.model.dto.TopicDTO;
+import com.swissclassic.mindflow_server.mindmap.model.entity.Topic;
 import com.swissclassic.mindflow_server.mindmap.repository.TopicRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +16,7 @@ import java.util.Map;
 
 @Service
 @Transactional
+@Slf4j
 public class TopicService {
 
     private final ChatRoomService chatRoomService;
@@ -69,8 +73,24 @@ public class TopicService {
         topicRepository.deleteSubtopicsByElementId(elementId);
     }
 
-    public void seperateTopic(String elementId) {
 
+
+
+    // 주제 분리
+    @Transactional
+    public void seperateTopic(String elementId) {
+        // 1. 새로운 채팅방 생성
+        ChatRoom newChatRoom = chatRoomService.createChatRoom(
+                "Separated Topic", // 임시 제목, 나중에 수정 가능
+                1L  // 현재 사용자 ID
+        );
+
+        // 2. 토픽 분리 및 chat_room_id 업데이트
+        topicRepository.separateTopicAndUpdateChatRoom(
+                elementId,
+                String.valueOf(newChatRoom.getId())
+        );
 
     }
+
 }

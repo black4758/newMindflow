@@ -4,12 +4,15 @@ import com.swissclassic.mindflow_server.mindmap.model.dto.TopicDTO;
 import com.swissclassic.mindflow_server.mindmap.service.TopicService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/mindmaps")
 @Tag(name="MindMap API", description = "마인드맵 관련 API 입니다.")
+@Slf4j
 public class TopicController {
 
     @Autowired
@@ -37,11 +40,19 @@ public class TopicController {
     }
 
 
-    @PutMapping("/seperateTopic/{elementId}")
-    @Operation(summary = "해당 노드와 하위 노드를 새로운 주제로 분리", description = "노드의 id를 받아서 해당 브랜치로 새로운 채팅방 생성")
+    // 주제 분리
+    @PostMapping("/seperateTopic/{elementId}")
+    @Operation(summary = "마인드맵 주제 분리",
+            description = "선택한 노드와 관련 노드들을 새로운 채팅방으로 분리합니다. " +
+                    "부모 노드 3단계, 자식 노드 2단계까지 함께 복사됩니다.")
     public void seperateTopic(@PathVariable String elementId) {
-        topicService.seperateTopic(elementId);
+
+            topicService.seperateTopic(elementId);
+
+        }
+
+
+
     }
 
 
-}

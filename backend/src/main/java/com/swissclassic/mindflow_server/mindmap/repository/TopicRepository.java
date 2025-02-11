@@ -81,42 +81,32 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
     void deleteSubtopicsByElementId(String elementId);
 
 
-    @Query("""
-        MATCH (n:Topic)
-        WHERE elementId(n) = $elementId
-        WITH n,
-             elementId(n) as rootId,
-             n.title as rootTitle,
-             n.content as rootContent,
-             n.mongo_ref as rootMongoRef,
-             n.account_id as rootAccountId,
-             n.chat_room_id as rootChatRoomId,
-             n.created_at as rootCreatedAt
-        MATCH path = (n)-[r:HAS_SUBTOPIC*0..]->(child)
-        WITH rootId, rootTitle, rootContent, rootMongoRef, 
-             rootAccountId, rootChatRoomId, rootCreatedAt,
-             collect(DISTINCT {
-                id: elementId(child),
-                title: child.title,
-                content: child.content,
-                mongoRef: child.mongo_ref,
-                accountId: child.account_id,
-                chatRoomId: child.chat_room_id,
-                createdAt: child.created_at
-             }) as childNodes
-        RETURN {
-            nodes: childNodes,
-            rootNode: {
-                id: rootId,
-                title: rootTitle,
-                content: rootContent,
-                mongoRef: rootMongoRef,
-                accountId: rootAccountId,
-                chatRoomId: rootChatRoomId,
-                createdAt: rootCreatedAt
-            }
-        } AS result
-    """)
-    Map<String, Object> getSeparatedTopicData(String elementId);
+    // 주제 분리
 
+    @Query("""
+            MATCH (n:Topic)
+            WHERE elementId(n) = $elementId
+            OPTIONAL MATCH (parent:Topic)-[:HAS_SUBTOPIC]->(n)
+            RETURN EXISTS((parent)-[:HAS_SUBTOPIC]->(n)) as hasParent
+            """)
+    boolean hasParent(String elementId);
+
+    @Query("""
+    MATCH (n:Topic)
+    WHERE elementId(n) = $elementId
+    // 부모 노드와의 관계 찾기
+    OPTIONAL MATCH (parent:Topic)-[r]->(n)
+    // 하위 노드들 찾기 (n 포함)
+    WITH n, r, parent
+    MATCH (n)-[*0..]->(descendant:Topic)
+    WITH COLLECT(descendant) as nodesToUpdate, r
+    // 1. 부모와의 관계 삭제
+    DELETE r
+    // 2. 모든 연관 노드의 chat_room_id 업데이트
+    WITH nodesToUpdate
+    UNWIND nodesToUpdate as node
+    SET node.chat_room_id = $newChatRoomId
+    RETURN COUNT(node) as updatedNodes
+""")
+    void separateTopicAndUpdateChatRoom(String elementId, String newChatRoomId);
 }
