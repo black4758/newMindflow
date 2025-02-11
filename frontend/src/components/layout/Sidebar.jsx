@@ -5,15 +5,14 @@ import api from "../../api/axios.js"
 import { useDispatch, useSelector } from "react-redux"
 import { setCurrentChatRoom, resetCurrentChatRoom } from "../../store/slices/roomSlice.js"
 
-const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
+const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
 
   const userId = useSelector((state) => state.auth.user.userId)
   const [chatRooms, setChatRooms] = useState([])
 
-  const dispatch = useDispatch();
-
+  const dispatch = useDispatch()
 
   const handleChatRooms = async () => {
     try {
@@ -38,22 +37,19 @@ const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
         </button>
         {!isCollapsed && (
           <>
-            <button
-              className="p-1 rounded hover:bg-gray-200 transition-colors"
-              onClick={onOpenModal}
-            >
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
               <Search className="w-6 h-6 text-[#ffffff]" />
             </button>
-            <button 
+            <button
               className="p-1 rounded hover:bg-gray-200 transition-colors"
-              onClick={() => {dispatch(resetCurrentChatRoom()); navigate("/");}}
+              onClick={() => {
+                dispatch(resetCurrentChatRoom())
+                navigate("/", { state: { refresh: Date.now() } })
+              }}
             >
               <ExternalLink className="w-6 h-6 text-[#ffffff]" />
             </button>
-            <button 
-              className="p-1 rounded hover:bg-gray-200 transition-colors"
-              onClick={() => navigate('/mindmap')}
-            >
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
               <Network className="w-6 h-6 text-[#ffffff]" />
             </button>
           </>
@@ -66,18 +62,19 @@ const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
           <div className="mb-6">
             <h2 className="text-[#ffffff] mb-2">오늘</h2>
             <div className="flex flex-col gap-2">
-              {chatRooms.filter(chatRoom => {
-                const today = new Date().toISOString().split('T')[0];
-                console.log(today)
-                const chatDate = chatRoom.createdAt.split('T')[0];
-                return chatDate === today;
-              })
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .map((chatRoom) => (
-                <button
-                  key={chatRoom.id}
-                  onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
-                  className="
+              {chatRooms
+                .filter((chatRoom) => {
+                  const today = new Date().toISOString().split("T")[0]
+                  console.log(today)
+                  const chatDate = chatRoom.createdAt.split("T")[0]
+                  return chatDate === today
+                })
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .map((chatRoom) => (
+                  <button
+                    key={chatRoom.id}
+                    onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
+                    className="
                     relative 
                     w-full 
                     px-4 
@@ -92,10 +89,10 @@ const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
                     hover:shadow-neon
                     group
                   "
-                >
-                  <span className="relative z-10">{chatRoom.title}</span>
-                  <div
-                    className="
+                  >
+                    <span className="relative z-10">{chatRoom.title}</span>
+                    <div
+                      className="
                       absolute 
                       top-0 
                       -left-full 
@@ -107,27 +104,28 @@ const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
                       to-transparent
                       group-hover:animate-neon-shine
                     "
-                  ></div>
-                </button>
-              ))}
+                    ></div>
+                  </button>
+                ))}
             </div>
           </div>
 
           <div>
             <h2 className="text-[#ffffff] mb-2">지난 7일</h2>
             <div className="flex flex-col gap-2">
-              {chatRooms.filter(chatRoom => {
-                const today = new Date().toISOString().split('T')[0];
-                console.log(today)
-                const chatDate = chatRoom.createdAt.split('T')[0];
-                return today - chatDate <= 7;
-              })
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .map((chatRoom) => (
-                <button
-                  key={chatRoom.id}
-                  onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
-                  className="
+              {chatRooms
+                .filter((chatRoom) => {
+                  const today = new Date().toISOString().split("T")[0]
+                  console.log(today)
+                  const chatDate = chatRoom.createdAt.split("T")[0]
+                  return today - chatDate <= 7
+                })
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .map((chatRoom) => (
+                  <button
+                    key={chatRoom.id}
+                    onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
+                    className="
                     relative 
                     w-full 
                     px-4 
@@ -142,10 +140,10 @@ const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
                     hover:shadow-neon
                     group
                   "
-                >
-                  <span className="relative z-10">{chatRoom.title}</span>
-                  <div
-                    className="
+                  >
+                    <span className="relative z-10">{chatRoom.title}</span>
+                    <div
+                      className="
                       absolute 
                       top-0 
                       -left-full 
@@ -157,9 +155,9 @@ const Sidebar = ({onOpenModal, refreshTrigger, setRefreshTrigger}) => {
                       to-transparent
                       group-hover:animate-neon-shine
                     "
-                  ></div>
-                </button>
-              ))}
+                    ></div>
+                  </button>
+                ))}
             </div>
           </div>
         </div>

@@ -7,7 +7,6 @@ import SearchModal from "../common/SearchModal"
 import routes from "../../routes"
 
 const AppLayout = () => {
-
   // 채팅방이 새로 생성되었는지 아닌지의 상태를 관리하는 state
   const [refreshTrigger, setRefreshTrigger] = useState(false)
   // 검색 모달의 열림/닫힘 상태를 관리하는 state
@@ -35,31 +34,27 @@ const AppLayout = () => {
   return (
     <div className="flex h-screen bg-[#353a3e]">
       {/* 사이드바 컴포넌트 - 모달 열기/닫기 함수 전달 */}
-      <Sidebar 
-        onOpenModal={() => setIsOpen(!isOpen)}
-        refreshTrigger={refreshTrigger}
-        setRefreshTrigger={setRefreshTrigger}
-      />
+      <Sidebar onOpenModal={() => setIsOpen(!isOpen)} refreshTrigger={refreshTrigger} setRefreshTrigger={setRefreshTrigger} />
       <div className="flex-1 flex flex-col">
         {/* 상단 네비게이션 바 */}
         <Navbar />
         {/* 메인 컨텐츠 영역 */}
-        <main className="flex-1 px-5">
+        <main className="flex-1 px-5 overflow-y-auto">
           {/* 검색 모달 컴포넌트 */}
           <SearchModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
           {/* 라우트에 따른 컴포넌트 렌더링 */}
           <Routes>
             {routes.map((route) => (
-              <Route 
-                key={route.path} 
-                path={route.path} 
+              <Route
+                key={route.path}
+                path={route.path}
                 element={
-                  route.path === "/" ? (
-                    React.cloneElement(route.element, {
-                      setRefreshTrigger: setRefreshTrigger
-                    })
-                  ) : ( route.element )
-                  } 
+                  route.path === "/"
+                    ? React.cloneElement(route.element, {
+                        setRefreshTrigger: setRefreshTrigger,
+                      })
+                    : route.element
+                }
               />
             ))}
           </Routes>
