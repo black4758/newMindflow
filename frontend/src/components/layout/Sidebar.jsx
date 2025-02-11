@@ -3,6 +3,7 @@ import { Menu, Search, ExternalLink, Network } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useDispatch, useSelector } from "react-redux"
+import { useLocation } from "react-router-dom" 
 import { setCurrentChatRoom, resetCurrentChatRoom } from "../../store/slices/roomSlice.js"
 
 const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
@@ -27,6 +28,15 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
   useEffect(() => {
     handleChatRooms()
   }, [refreshTrigger])
+
+  //대화 목록을 클릭했을 시의 핸들러
+  const handleChatRoomClick = (roomId) => {
+    dispatch(setCurrentChatRoom(roomId))
+
+    if (location.pathname !== '/') {
+      navigate('/')
+    }
+  }
 
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
@@ -64,16 +74,17 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
             <div className="flex flex-col gap-2">
               {chatRooms
                 .filter((chatRoom) => {
-                  const today = new Date().toISOString().split("T")[0]
-                  console.log(today)
-                  const chatDate = chatRoom.createdAt.split("T")[0]
-                  return chatDate === today
+                  const now = new Date()
+                  const chatDate = new Date(chatRoom.createdAt)
+                  return chatDate.getFullYear() === now.getFullYear() &&
+                          chatDate.getMonth() === now.getMonth() &&
+                          chatDate.getDate() === now.getDate()
                 })
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .map((chatRoom) => (
                   <button
                     key={chatRoom.id}
-                    onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
+                    onClick={() => handleChatRoomClick(chatRoom.id)}
                     className="
                     relative 
                     w-full 
@@ -115,16 +126,21 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
             <div className="flex flex-col gap-2">
               {chatRooms
                 .filter((chatRoom) => {
-                  const today = new Date().toISOString().split("T")[0]
-                  console.log(today)
-                  const chatDate = chatRoom.createdAt.split("T")[0]
-                  return today - chatDate <= 7
+                  const chatDate = new Date(chatRoom.createdAt)
+                  const now = new Date()
+
+                  const isToday = chatDate.getFullYear() === now.getFullYear() &&
+                  chatDate.getMonth() === now.getMonth() &&
+                  chatDate.getDate() === now.getDate()
+
+                  const diffDats = (now - chatDate) / (1000 * 60 * 60 * 24)
+                  return diffDats <= 7 && !isToday
                 })
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .map((chatRoom) => (
                   <button
                     key={chatRoom.id}
-                    onClick={() => dispatch(setCurrentChatRoom(chatRoom.id))}
+                    onClick={() => handleChatRoomClick(chatRoom.id)}
                     className="
                     relative 
                     w-full 
