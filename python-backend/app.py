@@ -349,7 +349,7 @@ def escape_cypher_quotes(text):
     return escaped_text
 
 
-@ns_chatbot.route('/massage')
+@ns_chatbot.route('/message')
 class MassageAPI(Resource):
 
     @ns_chatbot.expect(message_model)  # 요청 스키마 정의 연결
@@ -357,7 +357,7 @@ class MassageAPI(Resource):
     @ns_chatbot.response(400, '필수 필드 누락')
     @ns_chatbot.response(500, '내부 서버 오류')
     def post(self):
-        """Massage API"""
+        """Message API"""
         global memory
 
         try:
