@@ -43,12 +43,7 @@ const MindmapPage = () => {
     return <Mindmaproomdetail data={mindmapData} />;
   } else if (chatRoomId) {
     // /mindmap/:chatRoomId 패턴
-    return (
-      <Mindmaproom 
-        data={mindmapData} 
-        onDataUpdate={handleDataUpdate}
-      />
-    );
+    return <Mindmaproom data={mindmapData} />;
   } else {
     // /mindmap/ 패턴
     return <Mindmap data={mindmapData} />;

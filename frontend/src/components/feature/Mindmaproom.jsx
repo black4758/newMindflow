@@ -35,7 +35,7 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
   const [isNodeFocused, setIsNodeFocused] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
-  const [mindmapdata, setMindmapdata] = useState(data);
+  const [localData, setLocalData] = useState(data);
   const [lastClickedNode, setLastClickedNode] = useState(null);
   const [doubleClickTimerRef] = useState(useRef(null));
   const [fixedNode, setFixedNode] = useState(null);
@@ -50,10 +50,15 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
     setViewMode(is3D);
   }, [is3D]);
 
+  // 데이터가 변경될 때 localData 업데이트
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
+
   // 현재 chatRoomId에 해당하는 데이터만 필터링
   const processedData = useMemo(() => {
-    // 해당 chatRoomId의 노드만 필터링
-    const filteredNodes = data.nodes.filter(node => 
+    // localData를 사용하도록 변경
+    const filteredNodes = localData.nodes.filter(node => 
       node.chatRoomId === chatRoomId
     );
 
@@ -61,7 +66,7 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
     const filteredNodeIds = new Set(filteredNodes.map(node => node.id));
 
     // 필터링된 노드들 간의 관계만 추출
-    const filteredRelationships = data.relationships.filter(rel =>
+    const filteredRelationships = localData.relationships.filter(rel =>
       filteredNodeIds.has(rel.source) && filteredNodeIds.has(rel.target)
     );
 
@@ -70,7 +75,7 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
 
-      const relationships = data.relationships.filter(rel => rel.source === nodeId);
+      const relationships = localData.relationships.filter(rel => rel.source === nodeId);
       if (relationships.length === 0) return 0;
 
       const childDepths = relationships.map(rel => calculateDepth(rel.target, visited));
@@ -82,12 +87,12 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = data.nodes.find(n => n.id === nodeId);
+      const node = localData.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = data.relationships
+      const children = localData.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -139,7 +144,7 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
     });
 
     return { nodes, links };
-  }, [data, chatRoomId]);
+  }, [localData, chatRoomId]);
 
   // 루트 노드까지의 경로를 찾는 함수 추가
   // findPathToRoot 함수 수정 (mindmapdata를 의존성으로 추가)
@@ -148,11 +153,11 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
     visited.add(nodeId);
 
     // 현재 노드가 루트 노드인지 확인
-    const isRoot = !data.relationships.some(rel => rel.target === nodeId);
+    const isRoot = !localData.relationships.some(rel => rel.target === nodeId);
     if (isRoot) return [nodeId];
 
     // 부모 노드들 찾기
-    const parentRels = data.relationships.filter(rel => rel.target === nodeId);
+    const parentRels = localData.relationships.filter(rel => rel.target === nodeId);
     
     for (const rel of parentRels) {
       const path = findPathToRoot(rel.source, visited);
@@ -162,7 +167,7 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
     }
     
     return null;
-  }, [data.relationships]);  // mindmapdata.relationships 의존성 추가
+  }, [localData.relationships]);  // mindmapdata.relationships 의존성 추가
 
   // updateHighlight 함수 수정
   const updateHighlight = useCallback(() => {
@@ -414,34 +419,72 @@ const Mindmaproom = ({ data, onDataUpdate }) => {
       setFixedNode(prev => prev?.id === node.id ? null : node);
       setFixedPosition({ x: mousePosition.x, y: mousePosition.y });
     }, 300);
-  }, [lastClickedNode, navigate, mindmapdata, processedData, is3D, mousePosition, graphRef]);
+  }, [lastClickedNode, navigate, localData, processedData, is3D, mousePosition, graphRef]);
 
-  // 노드 분리 핸들러
+  // 노드 분리 핸들러 수정
   const handleNodeSplit = useCallback(async () => {
     try {
-      // await splitNode(selectedNodeForEdit.id);
-      // 성공 시 마인드맵 데이터 새로고침
-      // await refreshMindmapData();
+      if (!selectedNodeForEdit) {
+        console.error('선택된 노드가 없습니다.');
+        return;
+      }
+
+      // 먼저 UI에서 노드를 분리
+      setLocalData(prevData => {
+        const updatedRelationships = prevData.relationships.filter(rel => 
+          !(rel.target === selectedNodeForEdit.id)
+        );
+
+        return {
+          nodes: prevData.nodes,
+          relationships: updatedRelationships
+        };
+      });
+
+      // UI 업데이트 후 서버에 분리 요청
+      await splitNode(selectedNodeForEdit.id);
+      setSelectedNodeForEdit(null);
       setShowNodeModal(false);
     } catch (error) {
-      // console.error('노드 분리 중 오류 발생:', error);
-      // alert('노드 분리에 실패했습니다.');
+      console.error('노드 분리 중 오류 발생:', error);
+      setLocalData(data);
+      alert('노드 분리에 실패했습니다.');
     }
-  }, [selectedNodeForEdit]);
+  }, [selectedNodeForEdit, data]);
   
-  // 노드 삭제 핸들러 추가
+  // 노드 삭제 핸들러 수정
   const handleNodeDelete = useCallback(async () => {
     try {
       if (!fixedNode) return;
+
+      // 먼저 UI에서 노드를 제거
+      setLocalData(prevData => {
+        // 삭제할 노드와 관련된 관계들을 필터링
+        const updatedRelationships = prevData.relationships.filter(rel => 
+          rel.source !== fixedNode.id && rel.target !== fixedNode.id
+        );
+
+        // 노드 배열에서 해당 노드 제거
+        const updatedNodes = prevData.nodes.filter(node => 
+          node.id !== fixedNode.id
+        );
+
+        return {
+          nodes: updatedNodes,
+          relationships: updatedRelationships
+        };
+      });
+
+      // UI 업데이트 후 서버에 삭제 요청
       await deleteNode(fixedNode.id);
-      // 삭제 성공 후 부모 컴포넌트에서 데이터 갱신하도록 props로 전달받은 함수 호출
-      onDataUpdate && onDataUpdate();
       setFixedNode(null);
     } catch (error) {
       console.error('노드 삭제 중 오류 발생:', error);
+      // 삭제 실패 시 원래 데이터로 복구
+      setLocalData(data);
       alert('노드 삭제에 실패했습니다.');
     }
-  }, [fixedNode, onDataUpdate]);
+  }, [fixedNode, data]);
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node, isHighlighted) => {

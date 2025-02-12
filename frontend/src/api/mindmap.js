@@ -39,8 +39,9 @@ export const fetchMindmapData = async (chatRoomId = null) => {
 export const splitNode = async (nodeId) => {
   try {
     // POST /api/mindmaps/nodes/{nodeId}/split
-    // const response = await axios.post(`${BASE_URL}/nodes/${nodeId}/split`);
-    // return response.data;
+    console.log(nodeId)
+    const response = await axios.post(`${BASE_URL}/api/mindmaps/seperateTopic/${nodeId}/REDACTED123`);
+    return response.data;
   } catch (error) {
     console.error('노드 분리 실패:', error);
     throw error;

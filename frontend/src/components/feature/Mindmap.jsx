@@ -3,7 +3,7 @@ import { ForceGraph2D } from "react-force-graph"
 import ForceGraph3D from "react-force-graph-3d"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
-import { fetchMindmapData, deleteNode } from '../../api/mindmap'
+import { fetchMindmapData, deleteNode, splitNode } from '../../api/mindmap'
 import PropTypes from "prop-types"
 import { useNavigate } from "react-router-dom"
 import * as d3 from "d3"
@@ -31,7 +31,7 @@ const Mindmap = ({ data }) => {
   const [isNodeFocused, setIsNodeFocused] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
-  const [mindmapdata, setMindmapdata] = useState({ nodes: [], relationships: [] });
+  const [localData, setLocalData] = useState(data);
   const [showNodeModal, setShowNodeModal] = useState(false);
   const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -52,10 +52,9 @@ const Mindmap = ({ data }) => {
     setViewMode(is3D);
   }, [is3D]);
 
+  // 데이터가 변경될 때 localData 업데이트
   useEffect(() => {
-    if (data) {
-      setMindmapdata(data);
-    }
+    setLocalData(data);
   }, [data]);
 
   const processedData = useMemo(() => {
@@ -64,7 +63,7 @@ const Mindmap = ({ data }) => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
 
-      const relationships = mindmapdata.relationships.filter(rel => rel.source === nodeId);
+      const relationships = localData.relationships.filter(rel => rel.source === nodeId);
       if (relationships.length === 0) return 0;
 
       const childDepths = relationships.map(rel => calculateDepth(rel.target, visited));
@@ -76,12 +75,12 @@ const Mindmap = ({ data }) => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = mindmapdata.nodes.find(n => n.id === nodeId);
+      const node = localData.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = mindmapdata.relationships
+      const children = localData.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -91,8 +90,8 @@ const Mindmap = ({ data }) => {
     };
 
     // 기존 루트 노드 찾기
-    const originalRootNodes = mindmapdata.nodes
-      .filter(node => !mindmapdata.relationships.some(rel => rel.target === node.id));
+    const originalRootNodes = localData.nodes
+      .filter(node => !localData.relationships.some(rel => rel.target === node.id));
 
     // chatRoomId별로 루트 노드 그룹화
     const rootNodeGroups = originalRootNodes.reduce((groups, node) => {
@@ -105,8 +104,8 @@ const Mindmap = ({ data }) => {
     }, {});
 
     // 새로운 노드와 관계 배열 생성
-    let newNodes = [...mindmapdata.nodes];
-    let newRelationships = [...mindmapdata.relationships];
+    let newNodes = [...localData.nodes];
+    let newRelationships = [...localData.relationships];
 
     // 각 chatRoom 그룹별로 새로운 루트 노드 생성
     Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
@@ -175,7 +174,7 @@ const Mindmap = ({ data }) => {
     });
 
     return { nodes, links };
-  }, [mindmapdata.relationships, mindmapdata.nodes, is3D]);
+  }, [localData, is3D]);
   //}, [is3D]); // 노드의 멀어짐 해결책책
 
   // 루트 노드까지의 경로를 찾는 함수 추가
@@ -184,11 +183,11 @@ const Mindmap = ({ data }) => {
     visited.add(nodeId);
 
     // 현재 노드가 루트 노드인지 확인
-    const isRoot = !mindmapdata.relationships.some(rel => rel.target === nodeId);
+    const isRoot = !localData.relationships.some(rel => rel.target === nodeId);
     if (isRoot) return [nodeId];
 
     // 부모 노드들 찾기
-    const parentRels = mindmapdata.relationships.filter(rel => rel.target === nodeId);
+    const parentRels = localData.relationships.filter(rel => rel.target === nodeId);
     
     for (const rel of parentRels) {
       const path = findPathToRoot(rel.source, visited);
@@ -198,7 +197,7 @@ const Mindmap = ({ data }) => {
     }
     
     return null;
-  }, [mindmapdata.relationships]);
+  }, [localData.relationships]);
 
   // 노드 선택 시 해당 노드로 카메라 이동하는 함수 수정
   const handleNodeSelect = useCallback((node) => {
@@ -329,42 +328,69 @@ const Mindmap = ({ data }) => {
     };
   }, []);
 
-  // 노드 분리 핸들러
-  const handleNodeSplit = useCallback(async () => {
+  // 분리 버튼 클릭 핸들러를 별도로 생성
+  const handleSplitButtonClick = useCallback(async (node) => {
     try {
-      // await splitNode(selectedNodeForEdit.id);
-      // 성공 시 마인드맵 데이터 새로고침
-      // await refreshMindmapData();
+      if (!node) {
+        console.error('선택된 노드가 없습니다.');
+        return;
+      }
+
+      // 먼저 UI에서 노드를 분리
+      setLocalData(prevData => {
+        const updatedRelationships = prevData.relationships.filter(rel => 
+          !(rel.target === node.id)
+        );
+
+        return {
+          nodes: prevData.nodes,
+          relationships: updatedRelationships
+        };
+      });
+
+      // UI 업데이트 후 서버에 분리 요청
+      await splitNode(node.id);
+      setFixedNode(null);
       setShowNodeModal(false);
     } catch (error) {
-      // console.error('노드 분리 중 오류 발생:', error);
-      // alert('노드 분리에 실패했습니다.');
+      console.error('노드 분리 중 오류 발생:', error);
+      setLocalData(data);
+      alert('노드 분리에 실패했습니다.');
     }
-  }, [selectedNodeForEdit]);
+  }, [data]);
 
   // 노드 삭제 핸들러 수정
   const handleNodeDelete = useCallback(async () => {
     try {
-      // fixedNode가 null이 아닌지 확인
       if (!fixedNode) {
         console.error('선택된 노드가 없습니다.');
         return;
       }
 
+      // 먼저 UI에서 노드를 제거
+      setLocalData(prevData => {
+        const updatedNodes = prevData.nodes.filter(node => node.id !== fixedNode.id);
+        const updatedRelationships = prevData.relationships.filter(rel => 
+          rel.source !== fixedNode.id && rel.target !== fixedNode.id
+        );
+
+        return {
+          nodes: updatedNodes,
+          relationships: updatedRelationships
+        };
+      });
+
+      // UI 업데이트 후 서버에 삭제 요청
       await deleteNode(fixedNode.id);
-      
-      // 성공 시 마인드맵 데이터 새로고침
-      const updatedData = await fetchMindmapData();
-      setMindmapdata(updatedData);
-      
-      // 노드 상태 초기화
       setFixedNode(null);
       setShowNodeModal(false);
     } catch (error) {
       console.error('노드 삭제 중 오류 발생:', error);
+      // 삭제 실패 시 원래 데이터로 복구
+      setLocalData(data);
       alert('노드 삭제에 실패했습니다.');
     }
-  }, [fixedNode]); // selectedNodeForEdit 대신 fixedNode를 의존성으로 변경
+  }, [fixedNode, data]);
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node) => {
@@ -900,7 +926,7 @@ const Mindmap = ({ data }) => {
           {!fixedNode.id.startsWith('root_') && (
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => handleNodeSplit(fixedNode)}
+                onClick={() => handleSplitButtonClick(fixedNode)}
                 className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
               >
                 분리
