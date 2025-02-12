@@ -38,9 +38,20 @@ export const fetchMindmapData = async (chatRoomId = null) => {
 // 노드 분리 API
 export const splitNode = async (nodeId) => {
   try {
-    // POST /api/mindmaps/nodes/{nodeId}/split
+    const elementId = nodeId
+
     console.log(nodeId)
-    const response = await axios.post(`${BASE_URL}/api/mindmaps/seperateTopic/${nodeId}/REDACTED123`);
+    console.log(`${BASE_URL}/api/mindmaps/seperateTopic/${elementId}/2`)
+    // creatorId를 숫자로 설정 (예: 123)
+    const creatorId = 123; // 실제 사용자 ID로 변경 필요
+    
+    // elementId에서 UUID 부분만 추출 (예: e0ff3137-379d-4f62-a816-37fb9474bd92)
+    
+    const response = await axios.post(
+      `${BASE_URL}/api/mindmaps/seperateTopic/${elementId}/2`
+    );
+    
+    console.log('분리 응답:', response.data); // 새로운 채팅방 ID 반환
     return response.data;
   } catch (error) {
     console.error('노드 분리 실패:', error);
