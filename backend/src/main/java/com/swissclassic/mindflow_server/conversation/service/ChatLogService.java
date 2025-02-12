@@ -7,4 +7,5 @@ import java.util.List;
 public interface ChatLogService {
     void saveChatLog(long chatRoomId, String userInput, String responseSentences, long userId); // 대화 저장
     List<ChatLog> getMessagesByChatRoomId(long chatRoomId);
+    List<ChatLog> findBySentenceContent(String searchKeyword);
 }

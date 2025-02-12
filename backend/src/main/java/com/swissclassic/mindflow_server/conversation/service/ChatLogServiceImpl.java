@@ -52,4 +52,9 @@ public class ChatLogServiceImpl implements ChatLogService{
     public List<ChatLog> getMessagesByChatRoomId(long chatRoomId) {
         return chatLogRepository.findByChatRoomId(chatRoomId); // chatRoomId로 조회
     }
+
+    @Override
+    public  List<ChatLog> findBySentenceContent(String searchKeyword){
+        return chatLogRepository.findBySentenceContent(searchKeyword);
+    }
 }

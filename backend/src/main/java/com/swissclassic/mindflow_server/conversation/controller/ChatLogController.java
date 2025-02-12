@@ -1,0 +1,20 @@
+package com.swissclassic.mindflow_server.conversation.controller;
+import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
+import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("api/chat-log")
+public class ChatLogController {
+
+    @Autowired
+    private ChatLogService service;
+
+    @GetMapping("/search")
+    public List<ChatLog> search(@RequestParam String keyword) {
+        return service.findBySentenceContent(keyword);
+    }
+}
