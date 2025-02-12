@@ -1,4 +1,5 @@
 package com.swissclassic.mindflow_server.conversation.controller;
+
 import com.swissclassic.mindflow_server.conversation.model.dto.*;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
@@ -34,17 +35,17 @@ public class ChatController {
     private final ConversationSummaryService conversationSummaryService;
 
 
-
     @PostMapping("/send")
     public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
 
-        if (chatRequest.getModel().isEmpty()){
+        if (chatRequest.getModel()
+                       .isEmpty()) {
             System.out.println("모델이 비어 있습니다.");
         }
 //        if (chatRequest.getChatRoomId()==0){
 //            chatRequest.setChatRoomId(roomService.createChatRoom(roomService.getTitle(chatRequest.getUserInput()),chatRequest.getCreatorId()).getId());
 //        }
-        ChatApiResponse answer =aiServerService.getChatResponse(chatRequest);
+        ChatApiResponse answer = aiServerService.getChatResponse(chatRequest);
 
         chatLogService.saveChatLog(
                 (chatRequest.getChatRoomId()),
@@ -55,24 +56,28 @@ public class ChatController {
 
         return answer;
     }
+
     @PostMapping("/all")
     public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
         return aiServerService.getAllChatResponse(chatRequest);
     }
+
     @PostMapping("/choiceModel")
-    FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){
-        ChatRoom room =roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),conversationSummaryRequest.getCreatorId());
-        long RoomId=(room.getId());
+    FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest conversationSummaryRequest) {
+        ChatRoom room = roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),
+                                                   conversationSummaryRequest.getCreatorId());
+        long RoomId = (room.getId());
         chatLogService.saveChatLog(
                 (RoomId),
                 conversationSummaryRequest.getUserInput(),
                 conversationSummaryRequest.getAnswer(),
                 (conversationSummaryRequest.getCreatorId())
         );
-        ConversationSummary  conversationSummary=new ConversationSummary();
+        ConversationSummary conversationSummary = new ConversationSummary();
         conversationSummary.setTimestamp(String.valueOf(Instant.now()));
         conversationSummary.setChatRoomId(RoomId);
-        conversationSummary.setSummaryContent("User:"+conversationSummaryRequest.getUserInput()+"\nAI"+ conversationSummaryRequest.getAnswer());
+        conversationSummary.setSummaryContent(
+                "User:" + conversationSummaryRequest.getUserInput() + "\nAI" + conversationSummaryRequest.getAnswer());
         conversationSummaryService.saveConversationSummary(conversationSummary);
         FirstChatRespose firstChatRespose = new FirstChatRespose();
         firstChatRespose.setChatRoomId((RoomId));

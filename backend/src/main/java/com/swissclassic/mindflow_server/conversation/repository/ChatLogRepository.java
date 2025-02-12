@@ -5,6 +5,7 @@ import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,4 +15,6 @@ public interface ChatLogRepository extends MongoRepository<ChatLog, ObjectId> {
     List<ChatLog> findByChatRoomId(long chatRoomId);
     @Query("{'$or': [{'question': {$regex: ?0, $options: 'i'}}, {'answerSentences.content': {$regex: ?0, $options: 'i'}}]}")
     List<ChatLog> findBySentenceContent(String searchKeyword);
+    @Transactional
+    void deleteAllByUserId(Long userId);
 }
