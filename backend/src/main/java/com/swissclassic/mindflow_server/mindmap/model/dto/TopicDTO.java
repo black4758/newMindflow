@@ -11,6 +11,7 @@ public class TopicDTO {
     private String chatRoomId;
     private List<NodeDTO> nodes;
     private List<RelationshipDTO> relationships;
+    private String userId;
 
     // NodeDTO
     @Data
@@ -22,6 +23,8 @@ public class TopicDTO {
         private String accountId;
         private String chatRoomId;
         private LocalDateTime createdAt;
+
+        private Long creatorId;
 
     }
 
