@@ -1,6 +1,6 @@
 import { PrivateRoute } from "./PrivateRoute.jsx"
 import { PublicRoute } from "./PublicRoute.jsx"
-import MainPage from "../pages/Mainpage.jsx"
+import MainPage from "../pages/MainPage.jsx"
 import Login from "../pages/Login.jsx"
 import Signup from "../pages/Signup.jsx"
 import Profile from "../pages/Profile.jsx"

@@ -33,12 +33,22 @@ public class ChatLogServiceImpl implements ChatLogService {
     }
 
     @Override
-    public void saveChatLog(long chatRoomId, String userInput, String responseSentences,
-                            List<ChatApiResponse.AnswerSentence> answerSentences, long userId) {
+    public void saveChatLog(long chatRoomId,
+                            String userInput,
+                            String responseSentences,
+                            String llmProviders,
+                            String modelVersion,
+                            List<ChatApiResponse.AnswerSentence> answerSentences,
+                            long userId) {
+
         ChatLog chatLog = new ChatLog();
         chatLog.setChatRoomId(chatRoomId);
         chatLog.setUserId(userId);
         chatLog.setQuestion(userInput);
+
+        chatLog.setLlmProviders(llmProviders);
+        chatLog.setModelVersion(modelVersion);
+
 
         // Convert Flask's answer sentences to ChatLog answer sentences
         List<AnswerSentence> logSentences = answerSentences.stream()
@@ -47,6 +57,7 @@ public class ChatLogServiceImpl implements ChatLogService {
 
         chatLog.setAnswerSentences(logSentences);
         chatLog.setCreatedAt(LocalDateTime.now());
+
         chatLog.setProcessed(false);
 
         chatLogRepository.save(chatLog);
@@ -58,6 +69,16 @@ public class ChatLogServiceImpl implements ChatLogService {
     }
 
     @Override
+    public  List<ChatLog> findBySentenceContent(String searchKeyword){
+        return chatLogRepository.findBySentenceContent(searchKeyword);
+    }
+
+    @Override
+    public void deleteChatLogsByChatRoomId(long chatRoomId) {
+        chatLogRepository.deleteByChatRoomId(chatRoomId);
+    }
+
+
     @Transactional
     public void copyAndUpdateChatLog(String mongoRef, long oldChatRoomId, long newChatRoomId) {
         log.info("Finding document with sentenceId: {} in room {}", mongoRef, oldChatRoomId);
@@ -112,3 +133,4 @@ public class ChatLogServiceImpl implements ChatLogService {
     }
 
 }
+

@@ -39,17 +39,25 @@ public class ChatController {
     @Operation(description = "gemini-2.0-flash-exp")
     public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
 
+
         ChatApiResponse answer = aiServerService.getChatResponse(chatRequest);
 
 //        log.info("Flask 에서 도착한 Answer Sentences: {}", answer.getAnswerSentences());
         log.info("Flask chat_room_id: {}", answer.getChatRoomId());
 
+
         chatLogService.saveChatLog(
                 chatRequest.getChatRoomId(),
                 chatRequest.getUserInput(),
                 answer.getResponse(),
+
+                chatRequest.getModel(),
+                chatRequest.getDetailModel(),
+//                chatRequest.getCreatorId()
+
                 answer.getAnswerSentences(),  // Pass the full answer sentences
                 chatRequest.getCreatorId()
+
         );
 
         return answer;
@@ -88,13 +96,22 @@ public class ChatController {
                 .collect(Collectors.toList());
 
         // 수정된 saveChatLog 메서드 호출
+
         chatLogService.saveChatLog(
                 roomId,
                 conversationSummaryRequest.getUserInput(),
                 conversationSummaryRequest.getAnswer(),
+
+               conversationSummaryRequest.getLlmProviders(),
+                conversationSummaryRequest.getModelVersion()
+                ,
+//                (conversationSummaryRequest.getCreatorId())
+
                 answerSentences,  // 새로 생성한 AnswerSentence 리스트
                 conversationSummaryRequest.getCreatorId()
+
         );
+
 
 
         ConversationSummary conversationSummary = new ConversationSummary();
