@@ -69,5 +69,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         // TitleResponse 객체에서 제목 추출
         return response.getResponse();
     }
+
+    @Override
+    @Transactional
+    public void deleteChatRoomById(Long id){
+        chatRoomRepository.deleteById(id);
+    }
 }
 

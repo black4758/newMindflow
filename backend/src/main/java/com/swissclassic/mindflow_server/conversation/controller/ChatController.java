@@ -50,6 +50,8 @@ public class ChatController {
                 (chatRequest.getChatRoomId()),
                 chatRequest.getUserInput(),
                 answer.getResponse(),
+                chatRequest.getModel(),
+                chatRequest.getDetailModel(),
                 (chatRequest.getCreatorId())
         );
 
@@ -59,14 +61,20 @@ public class ChatController {
     public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
         return aiServerService.getAllChatResponse(chatRequest);
     }
+
     @PostMapping("/choiceModel")
+
     FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){
         ChatRoom room =roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),conversationSummaryRequest.getCreatorId());
         long RoomId=(room.getId());
+
         chatLogService.saveChatLog(
                 (RoomId),
                 conversationSummaryRequest.getUserInput(),
                 conversationSummaryRequest.getAnswer(),
+               conversationSummaryRequest.getLlmProviders(),
+                conversationSummaryRequest.getModelVersion()
+                ,
                 (conversationSummaryRequest.getCreatorId())
         );
         ConversationSummary  conversationSummary=new ConversationSummary();

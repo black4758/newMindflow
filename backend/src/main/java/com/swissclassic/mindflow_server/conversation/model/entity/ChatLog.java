@@ -19,8 +19,15 @@ import java.util.UUID;
 public class ChatLog {
     @Id
     private String id;
+
     @Field(name = "chatRoom_id")
     private long chatRoomId;
+
+    @Field(name = "llm_providers")
+    String llmProviders;
+
+    @Field(name = "model_versions")
+    private String modelVersion;
 
     private String question;
     @Field(name = "user_id")
