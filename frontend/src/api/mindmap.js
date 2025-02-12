@@ -18,7 +18,7 @@ export const fetchMindmapData = async (chatRoomId = null) => {
     const mindmapData = response.data.data || response.data;
     
     if (chatRoomId) {
-      // chatRoomId로 필터링
+      // chatRoomId로 필터링된 데이터 반환
       return {
         nodes: mindmapData.nodes.filter(node => node.chatRoomId === chatRoomId),
         relationships: mindmapData.relationships.filter(rel => {
@@ -31,9 +31,7 @@ export const fetchMindmapData = async (chatRoomId = null) => {
     return mindmapData;
   } catch (error) {
     console.error('마인드맵 데이터 가져오기 실패:', error);
-    // 에러 발생 시 테스트 데이터 반환
-    console.log('Fallback to test data');
-    return testchatroomData;
+    return null;
   }
 };
 

@@ -28,6 +28,11 @@ const MindmapPage = () => {
     loadMindmapData();
   }, [chatRoomId]);
 
+  const handleDataUpdate = async () => {
+    const updatedData = await fetchMindmapData(chatRoomId);
+    setMindmapData(updatedData);
+  };
+
   if (loading) return <div>로딩 중...</div>;
   if (error) return <div>에러가 발생했습니다.</div>;
   if (!mindmapData) return null;
@@ -38,7 +43,12 @@ const MindmapPage = () => {
     return <Mindmaproomdetail data={mindmapData} />;
   } else if (chatRoomId) {
     // /mindmap/:chatRoomId 패턴
-    return <Mindmaproom data={mindmapData} />;
+    return (
+      <Mindmaproom 
+        data={mindmapData} 
+        onDataUpdate={handleDataUpdate}
+      />
+    );
   } else {
     // /mindmap/ 패턴
     return <Mindmap data={mindmapData} />;

@@ -6,6 +6,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRe
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { fetchMindmapData, deleteNode } from '../../api/mindmap';
+import PropTypes from 'prop-types';
 
 const styles = {
   container: {
@@ -72,10 +73,11 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Onedata = () => {
+const Mindmaproomdetail = ({ data: initialData }) => {
+  const { chatRoomId, id } = useParams();
+  const [processedData, setProcessedData] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const params = useParams();
   const fgRef = useRef();
   const [is3D, setIs3D] = useState(getViewMode());
   const [searchTerm, setSearchTerm] = useState('');
@@ -90,18 +92,41 @@ const Onedata = () => {
   const [showNodeModal, setShowNodeModal] = useState(false);
   const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
 
+  // 데이터 처리 로직
+  useEffect(() => {
+    if (!initialData || !chatRoomId || !id) return;
+
+    // 선택된 노드를 중심 노드로 설정
+    const centerNode = initialData.nodes.find(node => 
+      node.chatRoomId === chatRoomId && node.id === id
+    );
+
+    if (!centerNode) return;
+
+    // 필터링된 데이터 생성
+    const processedData = {
+      nodes: initialData.nodes.filter(node => node.chatRoomId === chatRoomId),
+      relationships: initialData.relationships,
+      centerNodeId: centerNode.id  // 중심 노드 ID 추가
+    };
+
+    setProcessedData(processedData);
+  }, [initialData, chatRoomId, id]);
+
+  if (!processedData) return <div>로딩 중...</div>;
+
   // findPathToRoot 함수를 먼저 정의
   const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
-    if (!rawData) return null;
+    if (!processedData) return null;
     if (visited.has(nodeId)) return null;
     visited.add(nodeId);
 
     // 현재 노드가 루트 노드인지 확인
-    const isRoot = !rawData.relationships.some(rel => rel.target === nodeId);
+    const isRoot = !processedData.relationships.some(rel => rel.target === nodeId);
     if (isRoot) return [nodeId];
 
     // 부모 노드들 찾기
-    const parentRels = rawData.relationships.filter(rel => rel.target === nodeId);
+    const parentRels = processedData.relationships.filter(rel => rel.target === nodeId);
     
     for (const rel of parentRels) {
       const path = findPathToRoot(rel.source, visited);
@@ -111,21 +136,21 @@ const Onedata = () => {
     }
     
     return null;
-  }, [rawData]);
+  }, [processedData]);
 
   // 초기 hiddenNodes 설정을 위한 useEffect
   useEffect(() => {
-    if (!rawData) return;
+    if (!processedData) return;
 
-    const centerNodeId = rawData.centerNodeId;
+    const centerNodeId = processedData.centerNodeId;
     if (!centerNodeId) return;
 
     // 모든 노드 ID 수집
-    const allNodeIds = new Set(rawData.nodes.map(node => node.id));
+    const allNodeIds = new Set(processedData.nodes.map(node => node.id));
     
     // 직계 하위노드 찾기
     const directChildren = new Set();
-    rawData.relationships.forEach(rel => {
+    processedData.relationships.forEach(rel => {
       if (rel.source === centerNodeId) {
         directChildren.add(rel.target);
       }
@@ -152,11 +177,11 @@ const Onedata = () => {
     });
 
     setHiddenNodes(initialHiddenNodes);
-  }, [rawData, findPathToRoot]);
+  }, [processedData, findPathToRoot]);
 
   // 노드가 표시 가능한 상태인지 확인하는 함수
   const isNodeVisible = useCallback((nodeId) => {
-    if (!rawData) return false;
+    if (!processedData) return false;
     
     // 숨김 상태인 노드는 표시하지 않음
     if (hiddenNodes.has(nodeId)) return false;
@@ -171,23 +196,23 @@ const Onedata = () => {
     }
     
     return true;
-  }, [rawData, hiddenNodes, findPathToRoot]);
+  }, [processedData, hiddenNodes, findPathToRoot]);
 
   // 받은 데이터를 ForceGraph3D 형식으로 변환
   const data = useMemo(() => {
-    if (!rawData) return null;
+    if (!processedData) return null;
 
     // 노드의 레벨(level) 계산 함수
     const calculateLevel = (nodeId, parentId = null, level = 0, visited = new Set()) => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = rawData.nodes.find(n => n.id === nodeId);
+      const node = processedData.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = rawData.relationships
+      const children = processedData.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -197,8 +222,8 @@ const Onedata = () => {
     };
 
     // 루트 노드들 찾기
-    const rootNodes = rawData.nodes
-      .filter(node => !rawData.relationships.some(rel => rel.target === node.id))
+    const rootNodes = processedData.nodes
+      .filter(node => !processedData.relationships.some(rel => rel.target === node.id))
       .map(node => node.id);
 
     // 각 루트 노드에서 시작하여 레벨 계산
@@ -211,9 +236,9 @@ const Onedata = () => {
 
     // 그래프 데이터 생성
     const gData = {
-      nodes: rawData.nodes.map(node => {
-        const isRoot = !rawData.relationships.some(rel => rel.target === node.id);
-        const isCenterNode = node.id === rawData.centerNodeId; // 중심 노드 여부 확인
+      nodes: processedData.nodes.map(node => {
+        const isRoot = !processedData.relationships.some(rel => rel.target === node.id);
+        const isCenterNode = node.id === processedData.centerNodeId; // 중심 노드 여부 확인
         return {
           ...node,
           color: isCenterNode ? centerNodeColor : isRoot ? rootColor : colors[node.level % colors.length],
@@ -221,7 +246,7 @@ const Onedata = () => {
           isCenterNode
         };
       }),
-      links: rawData.relationships.map(rel => ({
+      links: processedData.relationships.map(rel => ({
         source: rel.source,
         target: rel.target,
         type: rel.type
@@ -245,20 +270,7 @@ const Onedata = () => {
     });
 
     return gData;
-  }, [rawData]);
-
-  // useEffect(() => {
-  //   if (!data) {
-  //     navigate('/test');
-  //     return;
-  //   }
-
-  //   const bloomPass = new UnrealBloomPass();
-  //   bloomPass.strength = 0.3;
-  //   bloomPass.radius = 0;
-  //   bloomPass.threshold = 0;
-  //   fgRef.current.postProcessingComposer().addPass(bloomPass);
-  // }, [data, navigate]);
+  }, [processedData]);
 
   // 검색 관련 코드 수정
   const handleSearchChange = (event) => {
@@ -614,7 +626,7 @@ const Onedata = () => {
 
   // 노드 클릭 핸들러 수정
   const handleNodeClick = useCallback((node, event) => {
-    const centerNodeId = rawData.centerNodeId;
+    const centerNodeId = processedData.centerNodeId;
     if (!centerNodeId) return;
 
     // 중심 노드에서 루트까지의 경로 찾기
@@ -623,7 +635,7 @@ const Onedata = () => {
 
     // 직계 하위노드 찾기
     const directChildren = new Set();
-    rawData.relationships.forEach(rel => {
+    processedData.relationships.forEach(rel => {
       if (rel.source === node.id) {
         // 보호된 노드의 하위 노드는 토글 대상에서 제외
         if (!protectedNodes.has(rel.target)) {
@@ -682,7 +694,7 @@ const Onedata = () => {
     // 설명창 고정/해제 토글 및 위치 저장
     setFixedNode(prev => prev?.id === node.id ? null : node);
     setMousePosition({ x: event.clientX, y: event.clientY });
-  }, [is3D, rawData, findPathToRoot]);
+  }, [is3D, processedData, findPathToRoot]);
 
   // filteredData 수정
   const filteredData = useMemo(() => {
@@ -762,7 +774,7 @@ const Onedata = () => {
       
       // 성공 시 마인드맵 데이터 새로고침
       const updatedData = await fetchMindmapData();
-      setMindmapdata(updatedData);
+      setProcessedData(updatedData);
       
       // 노드 상태 초기화
       setFixedNode(null);
@@ -812,7 +824,7 @@ const Onedata = () => {
       {/* 뒤로가기 버튼 수정 */}
       <button 
         className="absolute top-4 right-4 z-50 bg-gray-500 text-white px-4 py-2 rounded-lg"
-        onClick={() => navigate(`/mindmap/${params.chatRoomId}`)}
+        onClick={() => navigate(`/mindmap/${chatRoomId}`)}
       >
         뒤로 가기
       </button>
@@ -1002,4 +1014,8 @@ const Onedata = () => {
   );
 };
 
-export default Onedata;
+Mindmaproomdetail.propTypes = {
+  data: PropTypes.object.isRequired
+};
+
+export default Mindmaproomdetail;

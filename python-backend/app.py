@@ -309,9 +309,11 @@ class MassageAPI(Resource):
             chat_room_id = data.get('chatRoomId')
             model = data.get('model')
             user_input = data.get('userInput')
-            creator_id = data.get('creatorId')
+            # creator_id = data.get('creatorId')
+            creator_id = 'REDACTED123'
             detail_model = data.get('detailModel')
             account_id = data.get('accountId')
+            # account_id = 'REDACTED123'
 
             # 메모리 초기화
             # global memory

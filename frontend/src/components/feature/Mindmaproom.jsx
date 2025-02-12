@@ -20,12 +20,12 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Mindmap = () => {
+const Mindmaproom = ({ data, onDataUpdate }) => {
+  const { chatRoomId } = useParams();
+  const navigate = useNavigate();
   const [is3D, setIs3D] = useState(getViewMode())
   const graphRef = useRef()
-  const navigate = useNavigate()
   const location = useLocation()
-  const params = useParams()
   const [highlightNodes, setHighlightNodes] = useState(new Set())
   const [highlightLinks, setHighlightLinks] = useState(new Set())
   const [hoverNode, setHoverNode] = useState(null)
@@ -35,7 +35,7 @@ const Mindmap = () => {
   const [isNodeFocused, setIsNodeFocused] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
-  const [mindmapdata, setMindmapdata] = useState({ nodes: [], relationships: [] });
+  const [mindmapdata, setMindmapdata] = useState(data);
   const [lastClickedNode, setLastClickedNode] = useState(null);
   const [doubleClickTimerRef] = useState(useRef(null));
   const [fixedNode, setFixedNode] = useState(null);
@@ -50,26 +50,10 @@ const Mindmap = () => {
     setViewMode(is3D);
   }, [is3D]);
 
-  // mindmapdata를 가져오는 useEffect 추가
-  useEffect(() => {
-    const loadMindmapData = async () => {
-      try {
-        const data = await fetchMindmapData(params.chatRoomId);
-        setMindmapdata(data);
-      } catch (error) {
-        console.error('마인드맵 데이터 가져오기 실패:', error);
-      }
-    };
-    
-    loadMindmapData();
-  }, [params.chatRoomId]);
-
+  // 현재 chatRoomId에 해당하는 데이터만 필터링
   const processedData = useMemo(() => {
-    // chatRoomId 가져오기
-    const chatRoomId = params.chatRoomId;
-
     // 해당 chatRoomId의 노드만 필터링
-    const filteredNodes = mindmapdata.nodes.filter(node => 
+    const filteredNodes = data.nodes.filter(node => 
       node.chatRoomId === chatRoomId
     );
 
@@ -77,7 +61,7 @@ const Mindmap = () => {
     const filteredNodeIds = new Set(filteredNodes.map(node => node.id));
 
     // 필터링된 노드들 간의 관계만 추출
-    const filteredRelationships = mindmapdata.relationships.filter(rel =>
+    const filteredRelationships = data.relationships.filter(rel =>
       filteredNodeIds.has(rel.source) && filteredNodeIds.has(rel.target)
     );
 
@@ -86,7 +70,7 @@ const Mindmap = () => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
 
-      const relationships = mindmapdata.relationships.filter(rel => rel.source === nodeId);
+      const relationships = data.relationships.filter(rel => rel.source === nodeId);
       if (relationships.length === 0) return 0;
 
       const childDepths = relationships.map(rel => calculateDepth(rel.target, visited));
@@ -98,12 +82,12 @@ const Mindmap = () => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = mindmapdata.nodes.find(n => n.id === nodeId);
+      const node = data.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = mindmapdata.relationships
+      const children = data.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -155,7 +139,7 @@ const Mindmap = () => {
     });
 
     return { nodes, links };
-  }, [params.chatRoomId, is3D, mindmapdata.nodes, mindmapdata.relationships]);
+  }, [data, chatRoomId]);
 
   // 루트 노드까지의 경로를 찾는 함수 추가
   // findPathToRoot 함수 수정 (mindmapdata를 의존성으로 추가)
@@ -164,11 +148,11 @@ const Mindmap = () => {
     visited.add(nodeId);
 
     // 현재 노드가 루트 노드인지 확인
-    const isRoot = !mindmapdata.relationships.some(rel => rel.target === nodeId);
+    const isRoot = !data.relationships.some(rel => rel.target === nodeId);
     if (isRoot) return [nodeId];
 
     // 부모 노드들 찾기
-    const parentRels = mindmapdata.relationships.filter(rel => rel.target === nodeId);
+    const parentRels = data.relationships.filter(rel => rel.target === nodeId);
     
     for (const rel of parentRels) {
       const path = findPathToRoot(rel.source, visited);
@@ -178,7 +162,7 @@ const Mindmap = () => {
     }
     
     return null;
-  }, [mindmapdata.relationships]);  // mindmapdata.relationships 의존성 추가
+  }, [data.relationships]);  // mindmapdata.relationships 의존성 추가
 
   // updateHighlight 함수 수정
   const updateHighlight = useCallback(() => {
@@ -399,88 +383,8 @@ const Mindmap = () => {
         clearTimeout(doubleClickTimerRef.current);
         doubleClickTimerRef.current = null;
         
-        // 루트 노드(chatroom)인 경우
-        if (node.isRoot) {
-          const chatRoomId = node.id.replace('root_', '');
-          const chatRoomNodes = processedData.nodes
-            .filter(n => n.chatRoomId === node.chatRoomId && !n.isRoot)
-            .map(n => ({
-              id: n.id,
-              title: n.title,
-              content: n.content,
-              chatRoomId: n.chatRoomId
-            }));
-          
-          const chatRoomNodeIds = new Set(chatRoomNodes.map(n => n.id));
-          
-          const chatRoomRelationships = processedData.links
-            .filter(rel =>
-              chatRoomNodeIds.has(rel.source.id || rel.source) && 
-              chatRoomNodeIds.has(rel.target.id || rel.target)
-            )
-            .map(rel => ({
-              source: rel.source.id || rel.source,
-              target: rel.target.id || rel.target,
-              type: rel.type
-            }));
-
-          navigate(`/mindmap/${chatRoomId}`, {
-            state: { 
-              graphData: {
-                nodes: chatRoomNodes,
-                relationships: chatRoomRelationships
-              }
-            }
-          });
-        } else {
-          // 일반 노드인 경우 - 기존 상세 페이지 이동 로직 유지
-          const allConnectedNodes = new Set();
-          const initialVisibleNodes = new Set();
-          
-          allConnectedNodes.add(node.id);
-          initialVisibleNodes.add(node.id);
-
-          mindmapdata.relationships.forEach(rel => {
-            if (rel.source === node.id) {
-              allConnectedNodes.add(rel.target);
-              initialVisibleNodes.add(rel.target);
-            }
-            if (rel.target === node.id) {
-              allConnectedNodes.add(rel.source);
-              initialVisibleNodes.add(rel.source);
-            }
-          });
-
-          const findAllConnectedNodes = (nodeId) => {
-            mindmapdata.relationships.forEach(rel => {
-              if (rel.source === nodeId && !allConnectedNodes.has(rel.target)) {
-                allConnectedNodes.add(rel.target);
-                findAllConnectedNodes(rel.target);
-              }
-              if (rel.target === nodeId && !allConnectedNodes.has(rel.source)) {
-                allConnectedNodes.add(rel.source);
-                findAllConnectedNodes(rel.source);
-              }
-            });
-          };
-
-          Array.from(allConnectedNodes).forEach(findAllConnectedNodes);
-
-          const filteredData = {
-            nodes: mindmapdata.nodes.filter(n => allConnectedNodes.has(n.id)),
-            relationships: mindmapdata.relationships.filter(rel =>
-              allConnectedNodes.has(rel.source) && allConnectedNodes.has(rel.target)
-            ),
-            initialVisibleNodes: Array.from(initialVisibleNodes),
-            centerNodeId: node.id
-          };
-
-          navigate(`/mindmap/${node.chatRoomId}/detail`, {
-            state: { graphData: filteredData }
-          });
-        }
-        
-        setLastClickedNode(null);
+        // 더블클릭 시 상세 페이지로 이동
+        navigate(`/mindmap/${node.chatRoomId}/${node.id}`);
         return;
       }
     }
@@ -528,24 +432,16 @@ const Mindmap = () => {
   // 노드 삭제 핸들러 추가
   const handleNodeDelete = useCallback(async () => {
     try {
-      if (!fixedNode) {
-        console.error('선택된 노드가 없습니다.');
-        return;
-      }
-
+      if (!fixedNode) return;
       await deleteNode(fixedNode.id);
-      
-      // 성공 시 마인드맵 데이터 새로고침
-      const updatedData = await fetchMindmapData();
-      setMindmapdata(updatedData);
-      
-      // 노드 상태 초기화
+      // 삭제 성공 후 부모 컴포넌트에서 데이터 갱신하도록 props로 전달받은 함수 호출
+      onDataUpdate && onDataUpdate();
       setFixedNode(null);
     } catch (error) {
       console.error('노드 삭제 중 오류 발생:', error);
       alert('노드 삭제에 실패했습니다.');
     }
-  }, [fixedNode]);
+  }, [fixedNode, onDataUpdate]);
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node, isHighlighted) => {
@@ -1015,4 +911,9 @@ CustomNodeComponent.propTypes = {
   }).isRequired,
 }
 
-export default Mindmap
+Mindmaproom.propTypes = {
+  data: PropTypes.object.isRequired,
+  onDataUpdate: PropTypes.func.isRequired
+};
+
+export default Mindmaproom
