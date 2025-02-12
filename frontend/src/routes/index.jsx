@@ -9,8 +9,8 @@ import MindmapPage from "../pages/MindmapPage.jsx"
 const routes = [
   {
     path: "/",
-    element: <PrivateRoute element={<MainPage setRefreshTrigger={undefined} />} />,
-
+    // element: <PrivateRoute element={<MainPage setRefreshTrigger={undefined} />} />,
+    element: <PrivateRoute element={<MainPage />} />,
     title: "메인페이지",
     requireAuth: true,
   },

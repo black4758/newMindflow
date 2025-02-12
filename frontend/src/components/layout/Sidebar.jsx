@@ -2,18 +2,14 @@ import { useState, useEffect } from "react"
 import { Menu, Search, ExternalLink, Network } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
-import { useDispatch, useSelector } from "react-redux"
-import { useLocation } from "react-router-dom" 
-import { setCurrentChatRoom, resetCurrentChatRoom } from "../../store/slices/roomSlice.js"
+import { useSelector } from "react-redux"
 
-const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
+const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
 
   const userId = useSelector((state) => state.auth.user.userId)
   const [chatRooms, setChatRooms] = useState([])
-
-  const dispatch = useDispatch()
 
   const handleChatRooms = async () => {
     try {
@@ -31,10 +27,10 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
 
   //대화 목록을 클릭했을 시의 핸들러
   const handleChatRoomClick = (roomId) => {
-    dispatch(setCurrentChatRoom(roomId))
+    onChatRoomSelect(roomId)
 
-    if (location.pathname !== '/') {
-      navigate('/')
+    if (location.pathname !== "/") {
+      navigate("/")
     }
   }
 
@@ -53,7 +49,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
             <button
               className="p-1 rounded hover:bg-gray-200 transition-colors"
               onClick={() => {
-                dispatch(resetCurrentChatRoom())
+                onChatRoomSelect(null)
                 navigate("/", { state: { refresh: Date.now() } })
               }}
             >
@@ -76,9 +72,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
                 .filter((chatRoom) => {
                   const now = new Date()
                   const chatDate = new Date(chatRoom.createdAt)
-                  return chatDate.getFullYear() === now.getFullYear() &&
-                          chatDate.getMonth() === now.getMonth() &&
-                          chatDate.getDate() === now.getDate()
+                  return chatDate.getFullYear() === now.getFullYear() && chatDate.getMonth() === now.getMonth() && chatDate.getDate() === now.getDate()
                 })
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .map((chatRoom) => (
@@ -129,9 +123,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger }) => {
                   const chatDate = new Date(chatRoom.createdAt)
                   const now = new Date()
 
-                  const isToday = chatDate.getFullYear() === now.getFullYear() &&
-                  chatDate.getMonth() === now.getMonth() &&
-                  chatDate.getDate() === now.getDate()
+                  const isToday = chatDate.getFullYear() === now.getFullYear() && chatDate.getMonth() === now.getMonth() && chatDate.getDate() === now.getDate()
 
                   const diffDats = (now - chatDate) / (1000 * 60 * 60 * 24)
                   return diffDats <= 7 && !isToday

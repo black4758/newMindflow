@@ -18,13 +18,12 @@ const socket = io("http://localhost:5001", {
 
 // MainPage 컴포넌트 정의
 // setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
-const MainPage = ({ setRefreshTrigger }) => {
+const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
   const location = useLocation()
 
   // ===== Refs =====
   const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref
   const messagesEndRef = useRef(null) // 새 메시지 추가시 자동 스크롤을 위한 ref
-
   const containerRef = useRef(null) // 채팅 메시지 컨테이너의 DOM 요소를 참조하기 위한 ref
   // - 스크롤 위치 감지
   // - 무한 스크롤 구현에 사용
@@ -58,7 +57,6 @@ const MainPage = ({ setRefreshTrigger }) => {
 
   // Redux에서 필요한 상태 가져오기
   const userId = useSelector((state) => state.auth.user.userId)
-  const currentChatRoom = useSelector((state) => state.chatRoom.currentChatRoom)
 
   // ===== 상수 정의 =====
   // 지원하는 AI 모델 목록
@@ -221,6 +219,7 @@ const MainPage = ({ setRefreshTrigger }) => {
       })
 
       setChatRoomId(response.data.chatRoomId)
+      onChatRoomSelect(response.data.chatRoomId)
       // 모든 모델의 스트리밍 텍스트 초기화
       setModelStreamingTexts({
         chatgpt: "",
@@ -241,7 +240,7 @@ const MainPage = ({ setRefreshTrigger }) => {
     e.preventDefault()
     if (!userInput.trim()) return
 
-    setIsLoading(true) //로딩 시작작
+    setIsLoading(true) //로딩 시작
 
     // 사용자 메시지를 즉시 화면에 표시
     const userMessage = {
@@ -440,10 +439,10 @@ const MainPage = ({ setRefreshTrigger }) => {
             value={userInput}
             onChange={handleInputChange}
             rows={1}
-            disabled={isLoading || !model}
-            placeholder={isLoading || !model ? "메시지 전송 중..." : "메시지를 입력하세요"}
+            disabled={isLoading}
+            placeholder={isLoading ? "메시지 전송 중..." : "메시지를 입력하세요"}
             className={`w-full px-4 py-2 pr-12 rounded-lg bg-[#e0e0e0] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FFD26F] resize-none overflow-y-auto ${
-              isLoading || !model ? "opacity-50 cursor-not-allowed" : ""
+              isLoading ? "opacity-50 cursor-not-allowed" : ""
             }`}
             style={{ minHeight: "40px", maxHeight: "120px", lineHeight: "24px" }}
             onKeyDown={(e) => {
