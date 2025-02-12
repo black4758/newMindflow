@@ -36,9 +36,6 @@ services:
       - backend/.env
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - SERVER_HOST=mindflow.ddns.net
-      - SERVER_PORT=8453
-      - OAUTH2_REDIRECT_BASE_URL=https://mindflow.ddns.net
     ports:
       - "8453:8453"
 
