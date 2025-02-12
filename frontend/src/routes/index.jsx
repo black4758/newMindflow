@@ -1,6 +1,6 @@
 import { PrivateRoute } from "./PrivateRoute.jsx"
 import { PublicRoute } from "./PublicRoute.jsx"
-import MainPage from "../pages/Mainpage.jsx"
+import MainPage from "../pages/MainPage.jsx"
 import Login from "../pages/Login.jsx"
 import Signup from "../pages/Signup.jsx"
 import Profile from "../pages/Profile.jsx"
@@ -45,7 +45,7 @@ const routes = [
     requireAuth: true,
   },
   {
-    path: "/mindmap/:chatRoomId/detail",
+    path: "/mindmap/:chatRoomId/:id",
     element: <PrivateRoute element={<MindmapPage />} />,
     title: "마인드맵상세페이지",
     requireAuth: true,

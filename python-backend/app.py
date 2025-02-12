@@ -248,7 +248,6 @@ def save_conversation_summary(chat_room_id, memory_content):
 
 
 
-
 def serialize_message(message):
     if hasattr(message, 'to_dict'):  # 객체에 to_dict 메서드가 있는 경우
         message_dict = message.to_dict()
@@ -366,7 +365,13 @@ class MassageAPI(Resource):
             chat_room_id = data.get('chatRoomId')
             model = data.get('model')
             user_input = data.get('userInput')
+
+            creator_id = data.get('creatorId')
+            # creator_id = 'REDACTED123'
+
             detail_model = data.get('detailModel')
+            account_id = data.get('accountId')
+            # account_id = 'REDACTED123'
 
             # 메모리 초기화
             # global memory
@@ -406,11 +411,13 @@ class MassageAPI(Resource):
             task = create_mindmap.delay(  
                     # account_id=data.get('accountId'),
                     # user_id=data.get('userId'),
-                    account_id="REDACTED123", 
-                    chat_room_id=data.get('chatRoomId'), 
+                    account_id=data.get('accountId'), 
+                    chat_room_id= str(data.get('chatRoomId')), 
                     chat_id="chat_id", 
                     question=user_input,
-                    answer_sentences=sentences_with_ids
+                    answer_sentences=sentences_with_ids,
+                    creator_id=creator_id
+                    # creator_id='1'
                 )
             print(f"Celery task created with id: {task.id}")
 

@@ -30,4 +30,7 @@ public class Topic {
 
     @Property("created_at")
     private LocalDateTime createdAt;
+
+    @Property("creator_id")
+    private Long creatorId;
 }

@@ -17,6 +17,7 @@ public class CorsConfig {
         // 허용할 origin 설정 (React 앱 주소)
         config.addAllowedOrigin("http://localhost:5173");
         config.addAllowedOrigin("http://localhost:5174");
+        config.addAllowedOrigin("http://i12d203.p.REDACTED.io");
 
         // 자격증명 허용
         config.setAllowCredentials(true);
