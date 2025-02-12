@@ -12,4 +12,5 @@ public interface ChatRoomService {
     ChatRoom getChatRoomById(Long id);
     String getTitle(String input);
     List<ChatRoomResponse> findAllByCreatorId(long creatorId);
+    void deleteChatRoomById(Long id);
 }

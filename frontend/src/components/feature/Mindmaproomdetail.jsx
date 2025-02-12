@@ -3,9 +3,9 @@ import { ForceGraph2D } from "react-force-graph"
 import ForceGraph3D from "react-force-graph-3d"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
-import { fetchMindmapData, deleteNode, splitNode } from '../../api/mindmap'
+import { fetchMindmapData, deleteNode } from '../../api/mindmap'
 import PropTypes from "prop-types"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import * as d3 from "d3"
 
 
@@ -20,7 +20,8 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Mindmap = ({ data }) => {
+const Mindmaproomdetail = ({ data }) => {
+  const { chatRoomId, id } = useParams();
   const [is3D, setIs3D] = useState(getViewMode())
   const graphRef = useRef()
   const navigate = useNavigate()
@@ -58,29 +59,73 @@ const Mindmap = ({ data }) => {
   }, [data]);
 
   const processedData = useMemo(() => {
-    // 노드의 깊이(depth) 계산 함수
+    if (!id || !localData.nodes || !localData.relationships) {
+      return { nodes: [], links: [] };
+    }
+
+    // 선택된 노드의 루트 노드 찾기
+    const findRootNode = (nodeId, visited = new Set()) => {
+      if (visited.has(nodeId)) return null;
+      visited.add(nodeId);
+
+      const isRoot = !localData.relationships.some(rel => rel.target === nodeId);
+      if (isRoot) return nodeId;
+
+      const parentRels = localData.relationships.filter(rel => rel.target === nodeId);
+      
+      for (const rel of parentRels) {
+        const rootId = findRootNode(rel.source, visited);
+        if (rootId) return rootId;
+      }
+      
+      return null;
+    };
+
+    // 선택된 노드와 같은 루트를 가진 모든 노드 찾기
+    const rootNodeId = findRootNode(id);
+    const connectedNodes = new Set();
+    
+    const findAllConnectedNodes = (nodeId) => {
+      if (connectedNodes.has(nodeId)) return;
+      connectedNodes.add(nodeId);
+
+      localData.relationships
+        .filter(rel => rel.source === nodeId)
+        .forEach(rel => findAllConnectedNodes(rel.target));
+    };
+
+    if (!rootNodeId) return { nodes: [], links: [] };
+    
+    findAllConnectedNodes(rootNodeId);
+
+    // 필터링된 노드와 관계 생성
+    const filteredNodes = localData.nodes.filter(node => connectedNodes.has(node.id));
+    const filteredRelationships = localData.relationships.filter(rel => 
+      connectedNodes.has(rel.source) && connectedNodes.has(rel.target)
+    );
+
+    // 이후 Mindmap.jsx의 processedData 로직과 동일하게 처리
     const calculateDepth = (nodeId, visited = new Set()) => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
 
-      const relationships = localData.relationships.filter(rel => rel.source === nodeId);
+      const relationships = filteredRelationships.filter(rel => rel.source === nodeId);
       if (relationships.length === 0) return 0;
 
       const childDepths = relationships.map(rel => calculateDepth(rel.target, visited));
       return 1 + Math.max(...childDepths);
     };
 
-    // 노드의 레벨(level) 계산 함수
     const calculateLevel = (nodeId, parentId = null, level = 0, visited = new Set()) => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = localData.nodes.find(n => n.id === nodeId);
+      const node = filteredNodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = localData.relationships
+      const children = filteredRelationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -89,93 +134,23 @@ const Mindmap = ({ data }) => {
       });
     };
 
-    // 기존 루트 노드 찾기
-    const originalRootNodes = localData.nodes
-      .filter(node => !localData.relationships.some(rel => rel.target === node.id));
+    // 루트 노드부터 레벨 계산 시작
+    calculateLevel(rootNodeId);
 
-    // chatRoomId별로 루트 노드 그룹화
-    const rootNodeGroups = originalRootNodes.reduce((groups, node) => {
-      const chatRoomId = node.chatRoomId || 'default';
-      if (!groups[chatRoomId]) {
-        groups[chatRoomId] = [];
-      }
-      groups[chatRoomId].push(node);
-      return groups;
-    }, {});
-
-    // 새로운 노드와 관계 배열 생성
-    let newNodes = [...localData.nodes];
-    let newRelationships = [...localData.relationships];
-
-    // 각 chatRoom 그룹별로 새로운 루트 노드 생성
-    Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
-      if (groupNodes.length >= 1) {
-        // 새로운 루트 노드 생성
-        const newRootNode = {
-          id: `root_${chatRoomId}`,
-          title: `Chat Room ${chatRoomId}`,
-          content: `Group of ${groupNodes.length} root nodes`,
-          chatRoomId: chatRoomId,
-          isRoot: true,
-          level: 0
-        };
-
-        // 새로운 루트 노드 추가
-        newNodes.push(newRootNode);
-
-        // 기존 루트 노드들을 새로운 루트 노드와 연결
-        groupNodes.forEach(node => {
-          newRelationships.push({
-            source: newRootNode.id,
-            target: node.id,
-            type: 'HAS_SUBTOPIC'
-          });
-        });
-      }
-    });
-
-    // 색상 배열 정의
-    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
-    const rootColor = '#FF6B6B';
-
-    // 노드에 색상 할당
-    const nodes = newNodes.map(node => {
-      const isRoot = node.id.startsWith('root_') || 
-        (!newRelationships.some(rel => rel.target === node.id) && 
-         !rootNodeGroups[node.chatRoomId]?.length > 1);
-      return {
+    return {
+      nodes: filteredNodes.map(node => ({
         ...node,
-        color: isRoot ? rootColor : colors[node.level % colors.length],
-        isRoot
-      };
-    });
-
-    // 링크 처리
-    const links = newRelationships.map(rel => ({
-      source: rel.source,
-      target: rel.target,
-      type: rel.type
-    }));
-
-    // cross-link node objects
-    links.forEach(link => {
-      const a = nodes.find(node => node.id === link.source);
-      const b = nodes.find(node => node.id === link.target);
-
-      !a.neighbors && (a.neighbors = []);
-      !b.neighbors && (b.neighbors = []);
-      a.neighbors.push(b);
-      b.neighbors.push(a);
-
-      !a.links && (a.links = []);
-      !b.links && (b.links = []);
-      a.links.push(link);
-      b.links.push(link);
-    });
-
-    return { nodes, links };
-  }, [localData, is3D]);
-  //}, [is3D]); // 노드의 멀어짐 해결책책
+        color: node.id === id ? '#FF6B6B' : 
+               node.id === rootNodeId ? '#4299E1' : 
+               '#718096'
+      })),
+      links: filteredRelationships.map(rel => ({
+        source: rel.source,
+        target: rel.target,
+        type: rel.type
+      }))
+    };
+  }, [localData, id]);
 
   // 루트 노드까지의 경로를 찾는 함수 추가
   const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
@@ -328,10 +303,10 @@ const Mindmap = ({ data }) => {
     };
   }, []);
 
-  // 분리 버튼 클릭 핸들러를 별도로 생성
-  const handleSplitButtonClick = useCallback(async (node) => {
+  // 노드 분리 핸들러 수정
+  const handleNodeSplit = useCallback(async () => {
     try {
-      if (!node) {
+      if (!selectedNodeForEdit) {
         console.error('선택된 노드가 없습니다.');
         return;
       }
@@ -339,7 +314,7 @@ const Mindmap = ({ data }) => {
       // 먼저 UI에서 노드를 분리
       setLocalData(prevData => {
         const updatedRelationships = prevData.relationships.filter(rel => 
-          !(rel.target === node.id)
+          !(rel.target === selectedNodeForEdit.id)
         );
 
         return {
@@ -349,23 +324,20 @@ const Mindmap = ({ data }) => {
       });
 
       // UI 업데이트 후 서버에 분리 요청
-      await splitNode(node.id);
-      setFixedNode(null);
+      await splitNode(selectedNodeForEdit.id);
+      setSelectedNodeForEdit(null);
       setShowNodeModal(false);
     } catch (error) {
       console.error('노드 분리 중 오류 발생:', error);
       setLocalData(data);
       alert('노드 분리에 실패했습니다.');
     }
-  }, [data]);
+  }, [selectedNodeForEdit, data]);
 
   // 노드 삭제 핸들러 수정
   const handleNodeDelete = useCallback(async () => {
     try {
-      if (!fixedNode) {
-        console.error('선택된 노드가 없습니다.');
-        return;
-      }
+      if (!fixedNode) return;
 
       // 먼저 UI에서 노드를 제거
       setLocalData(prevData => {
@@ -383,7 +355,6 @@ const Mindmap = ({ data }) => {
       // UI 업데이트 후 서버에 삭제 요청
       await deleteNode(fixedNode.id);
       setFixedNode(null);
-      setShowNodeModal(false);
     } catch (error) {
       console.error('노드 삭제 중 오류 발생:', error);
       // 삭제 실패 시 원래 데이터로 복구
@@ -752,6 +723,14 @@ const Mindmap = ({ data }) => {
         {is3D ? '2D로 보기' : '3D로 보기'}
       </button>
 
+      {/* 뒤로가기 버튼 추가 */}
+      <button 
+        className="absolute top-4 right-4 z-50 bg-gray-500 text-white px-4 py-2 rounded-lg"
+        onClick={() => navigate(`/mindmap/${chatRoomId}`)}
+      >
+        뒤로 가기
+      </button>
+
       {/* 조건부 렌더링으로 2D/3D 그래프 전환 */}
       {is3D ? (
         <ForceGraph3D
@@ -926,7 +905,7 @@ const Mindmap = ({ data }) => {
           {!fixedNode.id.startsWith('root_') && (
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => handleSplitButtonClick(fixedNode)}
+                onClick={() => handleNodeSplit(fixedNode)}
                 className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
               >
                 분리
@@ -979,11 +958,11 @@ CustomNodeComponent.propTypes = {
   }).isRequired,
 }
 
-Mindmap.propTypes = {
+Mindmaproomdetail.propTypes = {
   data: PropTypes.shape({
     nodes: PropTypes.array,
     relationships: PropTypes.array
   })
 };
 
-export default Mindmap
+export default Mindmaproomdetail

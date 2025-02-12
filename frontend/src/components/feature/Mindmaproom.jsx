@@ -3,9 +3,9 @@ import { ForceGraph2D } from "react-force-graph"
 import ForceGraph3D from "react-force-graph-3d"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
-import { fetchMindmapData } from '../../api/mindmap'
+import { fetchMindmapData, deleteNode } from '../../api/mindmap'
 import PropTypes from "prop-types"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation, useParams } from "react-router-dom"
 import * as d3 from "d3"
 
 
@@ -20,10 +20,12 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Mindmap = () => {
+const Mindmaproom = ({ data, onDataUpdate }) => {
+  const { chatRoomId } = useParams();
+  const navigate = useNavigate();
   const [is3D, setIs3D] = useState(getViewMode())
   const graphRef = useRef()
-  const navigate = useNavigate()
+  const location = useLocation()
   const [highlightNodes, setHighlightNodes] = useState(new Set())
   const [highlightLinks, setHighlightLinks] = useState(new Set())
   const [hoverNode, setHoverNode] = useState(null)
@@ -33,33 +35,47 @@ const Mindmap = () => {
   const [isNodeFocused, setIsNodeFocused] = useState(false)
   const [showLegend, setShowLegend] = useState(false)
   const [hoverLegend, setHoverLegend] = useState(false)
-  const [mindmapdata, setMindmapdata] = useState({ nodes: [], relationships: [] });
+  const [localData, setLocalData] = useState(data);
+  const [lastClickedNode, setLastClickedNode] = useState(null);
+  const [doubleClickTimerRef] = useState(useRef(null));
+  const [fixedNode, setFixedNode] = useState(null);
+  const [fixedPosition, setFixedPosition] = useState({ x: 0, y: 0 });
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [hoverTimeoutRef] = useState(useRef(null));
+  const [showNodeModal, setShowNodeModal] = useState(false);
+  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
     setViewMode(is3D);
   }, [is3D]);
 
+  // 데이터가 변경될 때 localData 업데이트
   useEffect(() => {
-    const loadMindmapData = async () => {
-      try {
-        const data = await fetchMindmapData();
-        setMindmapdata(data);
-      } catch (error) {
-        console.error('Error loading mindmap data:', error);
-      }
-    };
-    
-    loadMindmapData();
-  }, []);
+    setLocalData(data);
+  }, [data]);
 
+  // 현재 chatRoomId에 해당하는 데이터만 필터링
   const processedData = useMemo(() => {
+    // localData를 사용하도록 변경
+    const filteredNodes = localData.nodes.filter(node => 
+      node.chatRoomId === chatRoomId
+    );
+
+    // 필터링된 노드들의 ID Set 생성
+    const filteredNodeIds = new Set(filteredNodes.map(node => node.id));
+
+    // 필터링된 노드들 간의 관계만 추출
+    const filteredRelationships = localData.relationships.filter(rel =>
+      filteredNodeIds.has(rel.source) && filteredNodeIds.has(rel.target)
+    );
+
     // 노드의 깊이(depth) 계산 함수
     const calculateDepth = (nodeId, visited = new Set()) => {
       if (visited.has(nodeId)) return 0;
       visited.add(nodeId);
 
-      const relationships = mindmapdata.relationships.filter(rel => rel.source === nodeId);
+      const relationships = localData.relationships.filter(rel => rel.source === nodeId);
       if (relationships.length === 0) return 0;
 
       const childDepths = relationships.map(rel => calculateDepth(rel.target, visited));
@@ -71,12 +87,12 @@ const Mindmap = () => {
       if (visited.has(nodeId)) return;
       visited.add(nodeId);
 
-      const node = mindmapdata.nodes.find(n => n.id === nodeId);
+      const node = localData.nodes.find(n => n.id === nodeId);
       if (node) {
         node.level = level;
       }
 
-      const children = mindmapdata.relationships
+      const children = localData.relationships
         .filter(rel => rel.source === nodeId)
         .map(rel => rel.target);
 
@@ -85,69 +101,27 @@ const Mindmap = () => {
       });
     };
 
-    // 기존 루트 노드 찾기
-    const originalRootNodes = mindmapdata.nodes
-      .filter(node => !mindmapdata.relationships.some(rel => rel.target === node.id));
+    // 루트 노드 찾기 (필터링된 노드들 중에서)
+    const rootNodes = filteredNodes
+      .filter(node => !filteredRelationships.some(rel => rel.target === node.id))
+      .map(node => node.id);
 
-    // chatRoomId별로 루트 노드 그룹화
-    const rootNodeGroups = originalRootNodes.reduce((groups, node) => {
-      const chatRoomId = node.chatRoomId || 'default';
-      if (!groups[chatRoomId]) {
-        groups[chatRoomId] = [];
-      }
-      groups[chatRoomId].push(node);
-      return groups;
-    }, {});
-
-    // 새로운 노드와 관계 배열 생성
-    let newNodes = [...mindmapdata.nodes];
-    let newRelationships = [...mindmapdata.relationships];
-
-    // 각 chatRoom 그룹별로 새로운 루트 노드 생성
-    Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
-      if (groupNodes.length > 1) {
-        // 새로운 루트 노드 생성
-        const newRootNode = {
-          id: `root_${chatRoomId}`,
-          title: `Chat Room ${chatRoomId}`,
-          content: `Group of ${groupNodes.length} root nodes`,
-          chatRoomId: chatRoomId,
-          isRoot: true,
-          level: 0
-        };
-
-        // 새로운 루트 노드 추가
-        newNodes.push(newRootNode);
-
-        // 기존 루트 노드들을 새로운 루트 노드와 연결
-        groupNodes.forEach(node => {
-          newRelationships.push({
-            source: newRootNode.id,
-            target: node.id,
-            type: 'HAS_SUBTOPIC'
-          });
-        });
-      }
-    });
+    rootNodes.forEach(rootId => calculateLevel(rootId));
 
     // 색상 배열 정의
     const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
     const rootColor = '#FF6B6B';
 
-    // 노드에 색상 할당
-    const nodes = newNodes.map(node => {
-      const isRoot = node.id.startsWith('root_') || 
-        (!newRelationships.some(rel => rel.target === node.id) && 
-         !rootNodeGroups[node.chatRoomId]?.length > 1);
+    const nodes = filteredNodes.map(node => {
+      const isRoot = !filteredRelationships.some(rel => rel.target === node.id);
       return {
         ...node,
         color: isRoot ? rootColor : colors[node.level % colors.length],
         isRoot
-      };
+      }
     });
 
-    // 링크 처리
-    const links = newRelationships.map(rel => ({
+    const links = filteredRelationships.map(rel => ({
       source: rel.source,
       target: rel.target,
       type: rel.type
@@ -170,20 +144,20 @@ const Mindmap = () => {
     });
 
     return { nodes, links };
-  }, [mindmapdata.relationships, mindmapdata.nodes, is3D]);
-  //}, [is3D]); // 노드의 멀어짐 해결책책
+  }, [localData, chatRoomId]);
 
   // 루트 노드까지의 경로를 찾는 함수 추가
+  // findPathToRoot 함수 수정 (mindmapdata를 의존성으로 추가)
   const findPathToRoot = useCallback((nodeId, visited = new Set()) => {
     if (visited.has(nodeId)) return null;
     visited.add(nodeId);
 
     // 현재 노드가 루트 노드인지 확인
-    const isRoot = !mindmapdata.relationships.some(rel => rel.target === nodeId);
+    const isRoot = !localData.relationships.some(rel => rel.target === nodeId);
     if (isRoot) return [nodeId];
 
     // 부모 노드들 찾기
-    const parentRels = mindmapdata.relationships.filter(rel => rel.target === nodeId);
+    const parentRels = localData.relationships.filter(rel => rel.target === nodeId);
     
     for (const rel of parentRels) {
       const path = findPathToRoot(rel.source, visited);
@@ -193,7 +167,7 @@ const Mindmap = () => {
     }
     
     return null;
-  }, [mindmapdata.relationships]);
+  }, [localData.relationships]);  // mindmapdata.relationships 의존성 추가
 
   // updateHighlight 함수 수정
   const updateHighlight = useCallback(() => {
@@ -283,7 +257,19 @@ const Mindmap = () => {
     updateHighlight()
   }, [updateHighlight])
 
-  // useEffect 수정
+  // 마우스 위치 추적을 위한 상태 추가
+  useEffect(() => {
+    const handleMouseMove = (event) => {
+      setMousePosition({ x: event.clientX, y: event.clientY });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
+  // useEffect 수정: 시뮬레이션 설정 업데이트
   useEffect(() => {
     if (graphRef.current) {
       if (is3D) {
@@ -292,19 +278,18 @@ const Mindmap = () => {
         graphRef.current.d3Force("link").distance(100);    // 링크 길이 2배로 증가 (50 -> 100)
       } else {
         // 2D 모드: 확산형 배치
-        graphRef.current.d3Force("charge").strength(-800); // 반발력 2배 증가 (-400 -> -800)
+        graphRef.current.d3Force("charge").strength(-800);
         graphRef.current.d3Force("link").distance(200);    
         
-        // 연결되지 않은 노드들 간의 추가 반발력 설정
         graphRef.current.d3Force("repulsion", d3.forceManyBody().strength((node) => {
           const hasLinks = processedData.links.some(
             link => link.source === node || link.target === node
           );
-          return hasLinks ? -800 : -1600; // 연결되지 않은 노드는 2배 더 강한 반발력
+          return hasLinks ? -800 : -1600;
         }));
       }
     }
-  }, [is3D, processedData.links]); // processedData.links 의존성 추가
+  }, [is3D, processedData.links]);
 
   // 검색어에 따른 결과 필터링
   useEffect(() => {
@@ -375,172 +360,163 @@ const Mindmap = () => {
     }, {})
   }, [processedData.nodes])
 
-  // 노드 클릭/선택 핸들러 수정
-  const handleNodeFocus = useCallback((node) => {
-    // chatroom 루트 노드인 경우
-    if (node.id.startsWith('root_')) {
-      const chatRoomId = node.id.replace('root_', '');
-      // chatroom에 속한 노드들만 필터링하고 필요한 속성만 추출
-      const chatRoomNodes = processedData.nodes
-        .filter(n => n.chatRoomId === node.chatRoomId && !n.id.startsWith('root_'))
-        .map(n => ({
-          id: n.id,
-          title: n.title,
-          content: n.content,
-          chatRoomId: n.chatRoomId
-          // 필요한 다른 기본 속성들만 포함
-        }));
-      
-      const chatRoomNodeIds = new Set(chatRoomNodes.map(n => n.id));
-      
-      // 관계도 기본 속성만 추출
-      const chatRoomRelationships = processedData.links
-        .filter(rel =>
-          chatRoomNodeIds.has(rel.source.id || rel.source) && 
-          chatRoomNodeIds.has(rel.target.id || rel.target)
-        )
-        .map(rel => ({
-          source: rel.source.id || rel.source,
-          target: rel.target.id || rel.target,
-          type: rel.type
-        }));
-
-      // 직렬화 가능한 데이터만 전달
-      navigate(`/mindmap/${chatRoomId}`, {
-        state: { 
-          graphData: {
-            nodes: chatRoomNodes,
-            relationships: chatRoomRelationships
-          }
+  // 노드 클릭 핸들러 수정
+  const handleNodeClick = useCallback((node, event) => {
+    // Ctrl + 클릭으로 노드 고정/해제
+    if (event.ctrlKey) {
+      if (node.fx !== undefined && node.fy !== undefined) {
+        // 고정 해제
+        node.fx = undefined;
+        node.fy = undefined;
+        if (is3D) {
+          node.fz = undefined;
         }
-      });
+      } else {
+        // 현재 위치에 고정
+        node.fx = node.x;
+        node.fy = node.y;
+        if (is3D) {
+          node.fz = node.z;
+        }
+      }
       return;
     }
 
-    // 일반 노드 클릭 시
-    if (isNodeFocused && selectedNode?.id === node.id) {
-      // 연결된 모든 노드들의 Set 생성
-      const allConnectedNodes = new Set();
-      const initialVisibleNodes = new Set();
-      
-      // 시작 노드 추가
-      allConnectedNodes.add(node.id);
-      initialVisibleNodes.add(node.id);
-
-      // 직접 연결된 노드들 찾기 (초기에 보여질 노드들)
-      mindmapdata.relationships.forEach(rel => {
-        if (rel.source === node.id) {
-          allConnectedNodes.add(rel.target);
-          initialVisibleNodes.add(rel.target);
-        }
-        if (rel.target === node.id) {
-          allConnectedNodes.add(rel.source);
-          initialVisibleNodes.add(rel.source);
-        }
-      });
-
-      // 연결된 노드들의 모든 하위 노드들 찾기 (재귀적으로)
-      const findAllConnectedNodes = (nodeId) => {
-        mindmapdata.relationships.forEach(rel => {
-          if (rel.source === nodeId && !allConnectedNodes.has(rel.target)) {
-            allConnectedNodes.add(rel.target);
-            findAllConnectedNodes(rel.target);
-          }
-          if (rel.target === nodeId && !allConnectedNodes.has(rel.source)) {
-            allConnectedNodes.add(rel.source);
-            findAllConnectedNodes(rel.source);
-          }
-        });
-      };
-
-      // 직접 연결된 노드들의 하위 노드들 찾기
-      Array.from(allConnectedNodes).forEach(findAllConnectedNodes);
-
-      // 필터링된 데이터 생성
-      const filteredData = {
-        nodes: mindmapdata.nodes.filter(n => allConnectedNodes.has(n.id)),
-        relationships: mindmapdata.relationships.filter(rel =>
-          allConnectedNodes.has(rel.source) && allConnectedNodes.has(rel.target)
-        ),
-        initialVisibleNodes: Array.from(initialVisibleNodes),
-        centerNodeId: node.id
-      };
-
-      // state와 함께 navigate 호출 - chatRoomId를 포함한 경로로 수정
-      navigate(`/mindmap/${node.chatRoomId}/detail`, {
-        state: { graphData: filteredData },
-        replace: true
-      });
-    } else {
-      setIsNodeFocused(true);
-      setSelectedNode(node);
-      handleNodeSelect(node);
+    // 기존의 더블클릭 및 클릭 로직
+    if (lastClickedNode && lastClickedNode.id === node.id) {
+      if (doubleClickTimerRef.current) {
+        clearTimeout(doubleClickTimerRef.current);
+        doubleClickTimerRef.current = null;
+        
+        // 더블클릭 시 상세 페이지로 이동
+        navigate(`/mindmap/${node.chatRoomId}/${node.id}`);
+        return;
+      }
     }
-  }, [isNodeFocused, selectedNode, handleNodeSelect, navigate, processedData]);
+
+    // 첫 번째 클릭 또는 단일 클릭
+    setLastClickedNode(node);
+    doubleClickTimerRef.current = setTimeout(() => {
+      doubleClickTimerRef.current = null;
+      setLastClickedNode(null);
+      
+      // 카메라 이동
+      if (graphRef.current) {
+        if (is3D) {
+          const distance = 100;
+          const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+          graphRef.current.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+            node,
+            2000
+          );
+        } else {
+          graphRef.current.centerAt(node.x, node.y, 1000);
+        }
+      }
+      
+      // 설명창 고정/해제 토글 및 위치 저장
+      setFixedNode(prev => prev?.id === node.id ? null : node);
+      setFixedPosition({ x: mousePosition.x, y: mousePosition.y });
+    }, 300);
+  }, [lastClickedNode, navigate, localData, processedData, is3D, mousePosition, graphRef]);
+
+  // 노드 분리 핸들러 수정
+  const handleNodeSplit = useCallback(async () => {
+    try {
+      if (!selectedNodeForEdit) {
+        console.error('선택된 노드가 없습니다.');
+        return;
+      }
+
+      // 먼저 UI에서 노드를 분리
+      setLocalData(prevData => {
+        const updatedRelationships = prevData.relationships.filter(rel => 
+          !(rel.target === selectedNodeForEdit.id)
+        );
+
+        return {
+          nodes: prevData.nodes,
+          relationships: updatedRelationships
+        };
+      });
+
+      // UI 업데이트 후 서버에 분리 요청
+      await splitNode(selectedNodeForEdit.id);
+      setSelectedNodeForEdit(null);
+      setShowNodeModal(false);
+    } catch (error) {
+      console.error('노드 분리 중 오류 발생:', error);
+      setLocalData(data);
+      alert('노드 분리에 실패했습니다.');
+    }
+  }, [selectedNodeForEdit, data]);
+  
+  // 노드 삭제 핸들러 수정
+  const handleNodeDelete = useCallback(async () => {
+    try {
+      if (!fixedNode) return;
+
+      // 먼저 UI에서 노드를 제거
+      setLocalData(prevData => {
+        // 삭제할 노드와 관련된 관계들을 필터링
+        const updatedRelationships = prevData.relationships.filter(rel => 
+          rel.source !== fixedNode.id && rel.target !== fixedNode.id
+        );
+
+        // 노드 배열에서 해당 노드 제거
+        const updatedNodes = prevData.nodes.filter(node => 
+          node.id !== fixedNode.id
+        );
+
+        return {
+          nodes: updatedNodes,
+          relationships: updatedRelationships
+        };
+      });
+
+      // UI 업데이트 후 서버에 삭제 요청
+      await deleteNode(fixedNode.id);
+      setFixedNode(null);
+    } catch (error) {
+      console.error('노드 삭제 중 오류 발생:', error);
+      // 삭제 실패 시 원래 데이터로 복구
+      setLocalData(data);
+      alert('노드 삭제에 실패했습니다.');
+    }
+  }, [fixedNode, data]);
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node, isHighlighted) => {
-    // chatroom 루트 노드와 직접 연결된 노드인지 확인
-    const isDirectlyConnectedToChatRoom = processedData.links.some(link => {
-      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-      const isChatRoomNode = sourceId.startsWith('root_') || targetId.startsWith('root_');
-      return isChatRoomNode && (sourceId === node.id || targetId === node.id);
-    });
-
     if (!isHighlighted) {
-      if (node.isRoot) {
-        return "rgba(255,107,107,0.6)";  // 루트 노드 색상
-      }
-      if (isDirectlyConnectedToChatRoom) {
-        return "rgba(147,51,234,0.4)";   // chatroom 노드와 연결된 노드 색상
-      }
-      return "rgba(66,153,225,0.4)";     // 일반 노드 색상
+      return node.isRoot ? "rgba(255,107,107,0.6)" : "rgba(66,153,225,0.4)";
     }
     
     if (node.isPathNode) {
-      return "rgba(245,158,11,0.9)";     // 루트까지의 경로 색상
+      return "rgba(245,158,11,0.9)"; // 루트까지의 경로는 주황색 유지
     }
     
-    if (node.isRoot) {
-      return "rgba(255,107,107,0.9)";    // 하이라이트된 루트 노드 색상
-    }
-    
-    if (isDirectlyConnectedToChatRoom) {
-      return "rgba(147,51,234,0.9)";     // 하이라이트된 chatroom 연결 노드 색상
-    }
-    
-    return "rgba(66,153,225,0.9)";       // 하이라이트된 일반 노드 색상
+    return node.isRoot ? "rgba(255,107,107,0.9)" : "rgba(66,153,225,0.9)";
   };
 
   // 링크 색상을 관계 타입에 따라 설정
   const getLinkColor = (link, isHighlighted) => {
-    // chatroom 루트 노드와 연결된 링크 확인
-    const isChatRoomLink = 
-      (typeof link.source === 'object' && link.source.id.startsWith('root_')) ||
-      (typeof link.target === 'object' && link.target.id.startsWith('root_')) ||
-      (typeof link.source === 'string' && link.source.startsWith('root_')) ||
-      (typeof link.target === 'string' && link.target.startsWith('root_'));
-
-    if (isChatRoomLink) {
-      return isHighlighted ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)";
-    }
-
     if (!isHighlighted) {
-      return "#ffffff";
+      return "#ffffff"; // 하이라이트되지 않은 링크는 원래 설정 유지
     }
     
     if (link.isPathLink) {
-      return "rgba(245,158,11,0.9)";
+      return "rgba(245,158,11,0.9)"; // 루트까지의 경로
     }
     
+    // 관계 타입에 따른 색상
     switch (link.type) {
       case "RELATED_TO":
-        return "rgba(52,211,153,0.9)";
+        return "rgba(52,211,153,0.9)"; // 초록색
       case "HAS_SUBTOPIC":
-        return "rgba(99,102,241,0.9)";
+        return "rgba(99,102,241,0.9)"; // 인디고색
       case "COMPARE_TO":
-        return "rgba(236,72,153,0.9)";
+        return "rgba(236,72,153,0.9)"; // 핑크색
       default:
         return "rgba(255,255,255,0.8)";
     }
@@ -649,6 +625,14 @@ const Mindmap = () => {
         {is3D ? '2D로 보기' : '3D로 보기'}
       </button>
 
+      {/* 뒤로가기 버튼 추가 */}
+      <button 
+        className="absolute top-4 right-4 z-50 bg-gray-500 text-white px-4 py-2 rounded-lg"
+        onClick={() => navigate('/mindmap')}
+      >
+        뒤로 가기
+      </button>
+
       {/* 조건부 렌더링으로 2D/3D 그래프 전환 */}
       {is3D ? (
         <ForceGraph3D
@@ -741,17 +725,36 @@ const Mindmap = () => {
           linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 4 : 0)}
           linkDirectionalParticleSpeed={0.005}
           onNodeHover={(node) => {
-            setHoverNode(node)
+            // 이전 타이머가 있다면 취소
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+
             if (node) {
-              // 호버 시 커서 변경
-              document.body.style.cursor = "pointer"
+              setHoverNode(node);
+              document.body.style.cursor = "pointer";
             } else {
-              document.body.style.cursor = "default"
+              // 새로운 타이머 설정 및 참조 저장
+              hoverTimeoutRef.current = setTimeout(() => {
+                setHoverNode(prev => {
+                  if (document.querySelector('.fixed:hover')) {
+                    return prev;
+                  }
+                  return null;
+                });
+                hoverTimeoutRef.current = null;
+              }, 100);
+              document.body.style.cursor = "default";
             }
           }}
           onNodeDragEnd={(node) => {
-            node.fx = node.x
-            node.fy = node.y
+            // 노드 드래그 후 고정 기능 주석 처리
+            // node.fx = node.x
+            // node.fy = node.y
+            // if (is3D) {
+            //   node.fz = node.z
+            // }
           }}
           d3Force="charge"
           d3ForceStrength={-30}  // 집중형 배치를 위한 약한 반발력
@@ -766,7 +769,7 @@ const Mindmap = () => {
             ctx.fillStyle = color
             ctx.fillRect(node.x - width / 2, node.y - height / 2, width, height)
           }}
-          onNodeClick={handleNodeFocus}
+          onNodeClick={handleNodeClick}
         />
       ) : (
         <ForceGraph2D
@@ -827,17 +830,33 @@ const Mindmap = () => {
           linkDirectionalParticleWidth={(link) => (highlightLinks.has(link) ? 6 : 0)}
           linkDirectionalParticleSpeed={0.005}
           onNodeHover={(node) => {
-            setHoverNode(node)
+            // 이전 타이머가 있다면 취소
+            if (hoverTimeoutRef.current) {
+              clearTimeout(hoverTimeoutRef.current);
+              hoverTimeoutRef.current = null;
+            }
+
             if (node) {
-              // 호버 시 커서 변경
-              document.body.style.cursor = "pointer"
+              setHoverNode(node);
+              document.body.style.cursor = "pointer";
             } else {
-              document.body.style.cursor = "default"
+              // 새로운 타이머 설정 및 참조 저장
+              hoverTimeoutRef.current = setTimeout(() => {
+                setHoverNode(prev => {
+                  if (document.querySelector('.fixed:hover')) {
+                    return prev;
+                  }
+                  return null;
+                });
+                hoverTimeoutRef.current = null;
+              }, 100);
+              document.body.style.cursor = "default";
             }
           }}
           onNodeDragEnd={(node) => {
-            node.fx = node.x
-            node.fy = node.y
+            // 노드 드래그 후 고정 기능 주석 처리
+            // node.fx = node.x
+            // node.fy = node.y
           }}
           d3Force="charge"
           d3ForceStrength={-200} // 확산형 배치를 위한 강한 반발력
@@ -852,22 +871,57 @@ const Mindmap = () => {
             ctx.fillStyle = color
             ctx.fillRect(node.x - width / 2, node.y - height / 2, width, height)
           }}
-          onNodeClick={handleNodeFocus}
+          onNodeClick={handleNodeClick}
         />
       )}
 
-      {/* 호버 시 보여줄 상세 정보 팝업 */}
-      {hoverNode && (
+      {/* 호버 노드 설명창 */}
+      {hoverNode && !fixedNode && (
         <div
-          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs"
+          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs node-info-popup"
           style={{
-            right: '2rem', // right: 4와 동일
-            bottom: '4rem', // bottom: 4 + 버튼 높이 + 여백
+            left: mousePosition.x + 10,
+            top: mousePosition.y + 10,
             zIndex: 1000,
+            backgroundColor: 'rgba(255, 255, 255, 0.5)', // 배경색에 투명도 적용
           }}
         >
           <h3 className="font-bold text-lg mb-2">{hoverNode.title}</h3>
-          <p className="text-gray-600">{hoverNode.content}</p>
+          <p className="text-gray-600 mb-4">{hoverNode.content}</p>
+        </div>
+      )}
+
+      {/* 고정된 노드 설명창 추가 */}
+      {fixedNode && (
+        <div
+          className="fixed bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-xs node-info-popup"
+          style={{
+            right: '2rem',
+            bottom: '4rem',
+            zIndex: 1000,
+          }}
+        >
+          <h3 className="font-bold text-lg mb-2">{fixedNode.title}</h3>
+          <p className="text-gray-600 mb-4">{fixedNode.content}</p>
+          {!fixedNode.id.startsWith('root_') && (
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setSelectedNodeForEdit(fixedNode);
+                  handleNodeSplit();
+                }}
+                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+              >
+                분리
+              </button>
+              <button
+                onClick={() => handleNodeDelete()}
+                className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+              >
+                삭제
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -900,4 +954,9 @@ CustomNodeComponent.propTypes = {
   }).isRequired,
 }
 
-export default Mindmap
+Mindmaproom.propTypes = {
+  data: PropTypes.object.isRequired,
+  onDataUpdate: PropTypes.func.isRequired
+};
+
+export default Mindmaproom

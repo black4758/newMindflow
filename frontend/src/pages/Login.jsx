@@ -29,6 +29,7 @@ const Login = () => {
       // 로그인 성공
       if (response.status === 200) {
         dispatch(login(response.data))
+        alert("로그인 성공")
         navigate("/")
       }
     } catch (error) {
