@@ -15,3 +15,4 @@ COPY . .
 
 # Gunicorn을 eventlet로 실행 (WebSocket 지원)
 CMD ["gunicorn", "-k", "eventlet", "-b", "0.0.0.0:5001", "app:app"]
+
