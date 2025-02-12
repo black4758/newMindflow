@@ -1,6 +1,7 @@
 package com.swissclassic.mindflow_server.mindmap.repository;
 
 import com.swissclassic.mindflow_server.mindmap.model.entity.Topic;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
@@ -72,6 +73,7 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
 """)
     List<Map<String, Object>> getMindMapByUserAndChatRoom(String accountId, String chatRoomId);
 
-
-
+    @Transactional
+    @Query("MATCH (n:YourLabel {userId: $userId}) DETACH DELETE n")
+    void deleteAllByUserId(Long userId);
 }
