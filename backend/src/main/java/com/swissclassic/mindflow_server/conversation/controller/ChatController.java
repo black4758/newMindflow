@@ -51,8 +51,9 @@ public class ChatController {
                 chatRequest.getChatRoomId(),
                 chatRequest.getUserInput(),
                 answer.getResponse(),
-                answer.getAnswerSentences(),  // Pass the full answer sentences
-                chatRequest.getCreatorId()
+                chatRequest.getModel(),
+                chatRequest.getDetailModel(),
+                (chatRequest.getCreatorId())
         );
         return answer;
     }
@@ -61,37 +62,20 @@ public class ChatController {
         return aiServerService.getAllChatResponse(chatRequest);
     }
 
-
-
-    // 여기는 말만 summary지 실제로는 대화를 저장함
     @PostMapping("/choiceModel")
+
     FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest  conversationSummaryRequest){
+        ChatRoom room =roomService.createChatRoom(roomService.getTitle(conversationSummaryRequest.getUserInput()),conversationSummaryRequest.getCreatorId());
+        long RoomId=(room.getId());
 
-        ChatRoom room = roomService.createChatRoom(
-                roomService.getTitle(conversationSummaryRequest.getUserInput()),
-                conversationSummaryRequest.getCreatorId()
-        );
-        long roomId = room.getId();
-
-        // Flask의 응답 형식과 동일하게 AnswerSentence 리스트 생성
-        List<ChatApiResponse.AnswerSentence> answerSentences = Arrays.stream(
-                        conversationSummaryRequest.getAnswer().split("\n"))
-                .filter(line -> !line.trim().isEmpty())
-                .map(line -> {
-                    ChatApiResponse.AnswerSentence sentence = new ChatApiResponse.AnswerSentence();
-                    sentence.setSentenceId(UUID.randomUUID().toString());
-                    sentence.setContent(line.trim());
-                    return sentence;
-                })
-                .collect(Collectors.toList());
-
-        // 수정된 saveChatLog 메서드 호출
         chatLogService.saveChatLog(
                 roomId,
                 conversationSummaryRequest.getUserInput(),
                 conversationSummaryRequest.getAnswer(),
-                answerSentences,  // 새로 생성한 AnswerSentence 리스트
-                conversationSummaryRequest.getCreatorId()
+               conversationSummaryRequest.getLlmProviders(),
+                conversationSummaryRequest.getModelVersion()
+                ,
+                (conversationSummaryRequest.getCreatorId())
         );
 
 

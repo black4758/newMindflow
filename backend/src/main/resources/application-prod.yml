@@ -17,6 +17,7 @@ spring:
 
     neo4j:
         uri: bolt://neo4j:7687
+
         authentication:
             username: neo4j
             password: REDACTEDREDACTED
@@ -58,4 +59,4 @@ spring:
 
 python:
     server:
-       url: http://flask:5000
+       url: http://flask:5001

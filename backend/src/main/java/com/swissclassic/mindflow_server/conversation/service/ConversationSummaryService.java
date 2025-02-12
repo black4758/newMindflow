@@ -4,4 +4,5 @@ import com.swissclassic.mindflow_server.conversation.model.entity.ConversationSu
 
 public interface ConversationSummaryService {
     void saveConversationSummary(ConversationSummary conversationSummary);
+    void deleteConversationSummaryByChatRoomId(long chatRoomId);
 }

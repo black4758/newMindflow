@@ -22,19 +22,26 @@ public class ChatLogServiceImpl implements ChatLogService{
     }
 
     @Override
-    public void saveChatLog(long chatRoomId, String userInput, String responseSentences,
-                            List<ChatApiResponse.AnswerSentence> answerSentences, long userId) {
+    public void saveChatLog(long chatRoomId, String userInput, String responseSentences,String llmProviders,String modelVersion, long userId) {
+        // 응답 문장을 AnswerSentence 객체 리스트로 변환
+        String[] lines = responseSentences.split("\n");
+        List<ChatLog.AnswerSentence> answerSentences = new ArrayList<>();
+        for (String line : lines) {
+            line = line.trim();
+            System.out.println(line);
+            if (!line.isEmpty()) {
+                answerSentences.add(new ChatLog.AnswerSentence(line));
+            }
+        }
+
+        // 대화 로그 Document 생성
         ChatLog chatLog = new ChatLog();
         chatLog.setChatRoomId(chatRoomId);
         chatLog.setUserId(userId);
         chatLog.setQuestion(userInput);
-
-        // Convert Flask's answer sentences to ChatLog answer sentences
-        List<ChatLog.AnswerSentence> logSentences = answerSentences.stream()
-                .map(s -> new ChatLog.AnswerSentence(s.getSentenceId(), s.getContent()))
-                .collect(Collectors.toList());
-
-        chatLog.setAnswerSentences(logSentences);
+        chatLog.setAnswerSentences(answerSentences);
+        chatLog.setLlmProviders(llmProviders);
+        chatLog.setModelVersion(modelVersion);
         chatLog.setCreateAT(LocalDateTime.now());
         chatLog.setProcessed(false);
 
@@ -43,5 +50,15 @@ public class ChatLogServiceImpl implements ChatLogService{
     @Override
     public List<ChatLog> getMessagesByChatRoomId(long chatRoomId) {
         return chatLogRepository.findByChatRoomId(chatRoomId); // chatRoomId로 조회
+    }
+
+    @Override
+    public  List<ChatLog> findBySentenceContent(String searchKeyword){
+        return chatLogRepository.findBySentenceContent(searchKeyword);
+    }
+
+    @Override
+    public void deleteChatLogsByChatRoomId(long chatRoomId) {
+        chatLogRepository.deleteByChatRoomId(chatRoomId);
     }
 }

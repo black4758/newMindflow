@@ -5,13 +5,11 @@ import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
 import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
+import com.swissclassic.mindflow_server.conversation.service.ConversationSummaryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,6 +20,7 @@ import java.util.List;
 public class ChatRoomController {
     private final ChatRoomService chatRoomService;
     private final ChatLogService chatLogService;
+    private final ConversationSummaryService conversationSummaryService;
 
     @GetMapping("my-rooms/{creatorId}")
     public ResponseEntity<List<ChatRoomResponse>> getChatRoomsByCreatorId(@PathVariable long creatorId) {
@@ -32,5 +31,15 @@ public class ChatRoomController {
     public ResponseEntity<List<ChatLog>> getChatLogsByChatRoomId(@PathVariable long chatRoomId) {
         List<ChatLog> chatLogs = chatLogService.getMessagesByChatRoomId(chatRoomId);
         return ResponseEntity.ok(chatLogs); // 200 OK 응답과 함께 데이터 반환
+    }
+
+    @DeleteMapping("delete/{chatRoomId}")
+    public ResponseEntity<Void> deleteChatRoomByChatRoomId(@PathVariable long chatRoomId) {
+        // chatRoomId로 해당하는 챗룸을 삭제하는 서비스 호출
+        chatLogService.deleteChatLogsByChatRoomId(chatRoomId);
+        conversationSummaryService.deleteConversationSummaryByChatRoomId(chatRoomId);
+        chatRoomService.deleteChatRoomById(chatRoomId);
+        // 삭제가 완료된 후 204 No Content 반환
+        return ResponseEntity.noContent().build();
     }
 }
