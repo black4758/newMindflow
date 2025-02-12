@@ -86,7 +86,7 @@ public class TopicService {
 
     // 주제 분리
     @Transactional
-    public Long seperateTopic(String elementId) {
+    public Long seperateTopic(String elementId, Long creatorId) {
         log.info("Starting topic separation for elementId: {}", elementId);
 
         // 1. 선택한 노드의 mongo_ref와 chatRoomId 가져오기
@@ -94,19 +94,29 @@ public class TopicService {
         log.info("Found TopicRefs - mongoRef: {}, chatRoomId: {}",
                 refs.getMongo_ref(), refs.getChat_room_id());
 
-        // 2. 새로운 채팅방 생성
+        // MongoDB에서 원본 대화 내용 가져오기
+        ChatLog chatLog = chatLogService.findByMongoRef(refs.getMongo_ref());
+        if (chatLog == null) {
+            log.error("Original chat log not found for mongoRef: {}", refs.getMongo_ref());
+            throw new RuntimeException("Original chat log not found");
+        }
+
+        log.info("------------------------------------------------------------------------------");
+
+        // 2. 새로운 채팅방 생성 - getTitle 사용하고 creatorId 전달
+        String newTitle = chatRoomService.getTitle(chatLog.getQuestion());
         ChatRoom newChatRoom = chatRoomService.createChatRoom(
-                "분리된 주제",
-                1L
+                newTitle,
+                creatorId
         );
         Long newChatRoomId = newChatRoom.getId();
-        log.info("Created new chat room with ID: {}", newChatRoomId);
+        log.info("Created new chat room with ID: {} and title: {}", newChatRoomId, newTitle);
 
         log.info("-------------------------------------------------------------------------------");
 
         // ChatController의 /choiceModel처럼 ConversationSummary 저장
         try {
-            ChatLog chatLog = chatLogService.findByMongoRef(refs.getMongo_ref());
+
             if (chatLog != null) {
                 ConversationSummary summary = new ConversationSummary();
                 summary.setChatRoomId(newChatRoomId);

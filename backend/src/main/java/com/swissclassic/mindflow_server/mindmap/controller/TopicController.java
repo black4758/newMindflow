@@ -45,11 +45,12 @@ public class TopicController {
 
 
     // 주제 분리
-    @PostMapping("/seperateTopic/{elementId}")
+    @PostMapping("/seperateTopic/{elementId}/{creatorId}")
     @Operation(summary = "마인드맵 주제 분리",
             description = "선택한 노드와 자식 노드들을 새로운 주제로 분리합니다.")
-    public ResponseEntity<?> separateTopic(@PathVariable String elementId) {
-        Long newChatRoomId = topicService.seperateTopic(elementId);
+    public ResponseEntity<?> separateTopic(@PathVariable String elementId,
+                                           @PathVariable Long creatorId) {
+        Long newChatRoomId = topicService.seperateTopic(elementId, creatorId);
 
         URI redirectUri = ServletUriComponentsBuilder
                 .fromPath("/api/chatroom/messages/{chatRoomId}")
