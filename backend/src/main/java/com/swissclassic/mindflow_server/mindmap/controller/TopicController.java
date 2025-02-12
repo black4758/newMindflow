@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/mindmaps")
@@ -48,20 +49,13 @@ public class TopicController {
     @PostMapping("/seperateTopic/{elementId}/{creatorId}")
     @Operation(summary = "마인드맵 주제 분리",
             description = "선택한 노드와 자식 노드들을 새로운 주제로 분리합니다.")
-    public ResponseEntity<?> separateTopic(@PathVariable String elementId,
-                                           @PathVariable Long creatorId) {
+    public ResponseEntity<Map<String, Long>> separateTopic(@PathVariable String elementId,
+                                                           @PathVariable Long creatorId) {
         Long newChatRoomId = topicService.seperateTopic(elementId, creatorId);
 
-        URI redirectUri = ServletUriComponentsBuilder
-                .fromPath("/api/chatroom/messages/{chatRoomId}")
-                .buildAndExpand(newChatRoomId)
-                .toUri();
-
-        return ResponseEntity.status(HttpStatus.SEE_OTHER)
-                .location(redirectUri)
-                .build();
+        return ResponseEntity.ok()
+                .body(Map.of("newChatRoomId", newChatRoomId));
     }
-
 }
 
 
