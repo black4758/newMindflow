@@ -57,6 +57,7 @@ public class TopicService {
         dto.setAccountId((String) result.get("accountId"));
         dto.setNodes((List<TopicDTO.NodeDTO>) result.get("nodes"));
         dto.setRelationships((List<TopicDTO.RelationshipDTO>) result.get("relationships"));
+        dto.setUserId(userId);
 
         return dto;
     }
@@ -75,6 +76,7 @@ public class TopicService {
         dto.setChatRoomId((String) result.get("chatRoomId"));
         dto.setNodes((List<TopicDTO.NodeDTO>) result.get("nodes"));
         dto.setRelationships((List<TopicDTO.RelationshipDTO>) result.get("relationships"));
+        dto.setUserId(userId);
 
         return dto;
     }
