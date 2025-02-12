@@ -15,7 +15,7 @@ spring:
       uri: mongodb://REDACTED:REDACTED@localhost:27018/mindflow_db?authSource=admin
 
   neo4j:
-    uri: bolt://localhost:7687
+    uri: bolt://localhost:7688
     authentication:
       username: neo4j
       password: REDACTEDREDACTED

@@ -8,13 +8,13 @@ services:
     ports:
       - "3307:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping"]
+      test: [ "CMD", "mysqladmin", "ping" ]
       interval: 5s
       retries: 10
       start_period: 10s
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql 
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
   springboot:
     build:
@@ -26,57 +26,60 @@ services:
       mysql:
         condition: service_healthy
       mongo:
-        condition: service_healthy  
+        condition: service_healthy
       neo4j:
         condition: service_healthy
       redis:
         condition: service_healthy
     env_file:
       - .env
-      - backend/.env 
+      - backend/.env
     environment:
-      - SPRING_PROFILES_ACTIVE=prod 
+      - SPRING_PROFILES_ACTIVE=prod
+      - SERVER_HOST=mindflow.ddns.net
+      - SERVER_PORT=8453
+      - OAUTH2_REDIRECT_BASE_URL=https://mindflow.ddns.net
     ports:
       - "8453:8453"
 
   mongo:
-      image: mongo:8.0
-      container_name: mongo
-      restart: always
-      env_file:
+    image: mongo:8.0
+    container_name: mongo
+    restart: always
+    env_file:
       - .env
-      environment:
-        - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-        - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
-      ports:
-        - "27018:27017"
-      healthcheck:
-        test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-        interval: 20s
-        timeout: 10s
-        retries: 5
-        start_period: 40s
-      volumes:
-        - mongo_data:/data/db
-        - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - mongo_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
 
   neo4j:
     image: neo4j:5.15-enterprise
     container_name: neo4j
     restart: always
     ports:
-        - "7475:7474"
-        - "7688:7687"
+      - "7475:7474"
+      - "7688:7687"
     environment:
-        NEO4J_AUTH: "neo4j/REDACTEDREDACTED"
-        NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
-        NEO4J_initial_dbms_default__database: "mindmap"
+      NEO4J_AUTH: "neo4j/REDACTEDREDACTED"
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+      NEO4J_initial_dbms_default__database: "mindmap"
     healthcheck:
-        test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "REDACTEDREDACTED", "RETURN 1"]
-        interval: 10s
-        timeout: 10s
-        retries: 5
-        start_period: 20s
+      test: [ "CMD", "cypher-shell", "-u", "neo4j", "-p", "REDACTEDREDACTED", "RETURN 1" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs
@@ -133,7 +136,7 @@ services:
     ports:
       - "6380:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 5
