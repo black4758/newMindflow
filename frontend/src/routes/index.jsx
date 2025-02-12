@@ -45,7 +45,7 @@ const routes = [
     requireAuth: true,
   },
   {
-    path: "/mindmap/:chatRoomId/detail",
+    path: "/mindmap/:chatRoomId/:id",
     element: <PrivateRoute element={<MindmapPage />} />,
     title: "마인드맵상세페이지",
     requireAuth: true,
