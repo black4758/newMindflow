@@ -281,10 +281,10 @@ const Mindmap = ({ data }) => {
         // 루트 노드(chatroom)인 경우
         if (node.isRoot) {
           const chatRoomId = node.id.replace('root_', '');
-          navigate(`/mindmap/${chatRoomId}`);
+          navigate(`/mindmap/room/${chatRoomId}`);
         } else {
           // 일반 노드인 경우
-          navigate(`/mindmap/${node.chatRoomId}/${node.id}`);
+          navigate(`/mindmap/node/${node.id}`);
         }
         
         setLastClickedNode(null);

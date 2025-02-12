@@ -1,5 +1,6 @@
 import axios from 'axios';
 // import testchatroomData from './testchatroom.json';
+import { store } from '../store/store';  // store.js에서 store import
 
 // 개발 환경에서는 mock 서버 URL 사용
 const BASE_URL = process.env.NODE_ENV === 'development' 
@@ -8,7 +9,18 @@ const BASE_URL = process.env.NODE_ENV === 'development'
 
 export const fetchMindmapData = async (chatRoomId = null) => {
   try {
-    const endpoint = '/api/mindmaps/REDACTED123';
+    // Redux store에서 auth 상태 가져오기
+    const authState = store.getState().auth;
+    // console.log('유저정보:', authState);
+    
+    // // 사용자 정보 상세 출력
+    // if (authState.user) {
+    //   console.log('User ID:', authState.user.userId);
+    //   console.log('Display Name:', authState.user.displayName);
+    //   console.log('Access Token:', authState.user.accessToken);
+    // }
+    
+    const endpoint = `/api/mindmaps/${authState.user.userId}`;
     console.log(`Fetching from: ${BASE_URL}${endpoint}`);
     
     const response = await axios.get(`${BASE_URL}${endpoint}`);
@@ -38,17 +50,15 @@ export const fetchMindmapData = async (chatRoomId = null) => {
 // 노드 분리 API
 export const splitNode = async (nodeId) => {
   try {
+    const authState = store.getState().auth;
+    // console.log('유저정보:', authState);
     const elementId = nodeId
 
     console.log(nodeId)
-    console.log(`${BASE_URL}/api/mindmaps/seperateTopic/${elementId}/2`)
-    // creatorId를 숫자로 설정 (예: 123)
-    const creatorId = 123; // 실제 사용자 ID로 변경 필요
-    
-    // elementId에서 UUID 부분만 추출 (예: e0ff3137-379d-4f62-a816-37fb9474bd92)
+    console.log(`${BASE_URL}/api/mindmaps/seperateTopic/${elementId}/${authState.user.userId}`)
     
     const response = await axios.post(
-      `${BASE_URL}/api/mindmaps/seperateTopic/${elementId}/2`
+      `${BASE_URL}/api/mindmaps/seperateTopic/${elementId}/${authState.user.userId}`
     );
     
     console.log('분리 응답:', response.data); // 새로운 채팅방 ID 반환
