@@ -12,5 +12,6 @@ public interface ChatLogService {
 
     // 주제 분리용
     void copyAndUpdateChatLog(String mongoRef, long oldChatRoomId, long newChatRoomId);
-    
+
+    ChatLog findByMongoRef(String mongoRef);
 }

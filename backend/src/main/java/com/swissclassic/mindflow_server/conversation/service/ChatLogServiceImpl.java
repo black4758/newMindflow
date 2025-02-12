@@ -87,4 +87,28 @@ public class ChatLogServiceImpl implements ChatLogService {
     }
 
 
+    @Override
+    public ChatLog findByMongoRef(String mongoRef) {
+        log.info("Finding ChatLog by mongoRef: {}", mongoRef);
+        try {
+            Query query = new Query(
+                    Criteria.where("answerSentences")
+                            .elemMatch(Criteria.where("sentenceId").is(mongoRef))
+            );
+
+            ChatLog result = mongoTemplate.findOne(query, ChatLog.class);
+
+            if (result != null) {
+                log.info("Found ChatLog with ID: {}", result.getId());
+            } else {
+                log.warn("No ChatLog found with mongoRef: {}", mongoRef);
+            }
+
+            return result;
+        } catch (Exception e) {
+            log.error("Error finding ChatLog by mongoRef: {}", mongoRef, e);
+            return null;
+        }
+    }
+
 }

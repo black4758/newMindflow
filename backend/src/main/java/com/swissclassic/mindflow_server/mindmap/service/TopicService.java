@@ -1,8 +1,12 @@
 package com.swissclassic.mindflow_server.mindmap.service;
 
+import com.swissclassic.mindflow_server.conversation.model.entity.AnswerSentence;
+import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
+import com.swissclassic.mindflow_server.conversation.model.entity.ConversationSummary;
 import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
 import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
+import com.swissclassic.mindflow_server.conversation.service.ConversationSummaryService;
 import com.swissclassic.mindflow_server.mindmap.model.dto.TopicDTO;
 import com.swissclassic.mindflow_server.mindmap.model.entity.Topic;
 import com.swissclassic.mindflow_server.mindmap.model.entity.TopicRefs;
@@ -12,9 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -24,16 +30,18 @@ public class TopicService {
     private final ChatRoomService chatRoomService;
     private final ChatLogService chatLogService;
     private final TopicRepository topicRepository;
+    private final ConversationSummaryService conversationSummaryService;
 
 
     @Autowired
     public TopicService(ChatRoomService chatRoomService,
                         ChatLogService chatLogService,
-                        TopicRepository topicRepository) {
+                        TopicRepository topicRepository,
+                        ConversationSummaryService conversationSummaryService) {
         this.chatRoomService = chatRoomService;
         this.chatLogService = chatLogService;
         this.topicRepository = topicRepository;
-
+        this.conversationSummaryService = conversationSummaryService;
     }
 
     public TopicDTO getTopicByUserId(String userId) {
@@ -93,6 +101,35 @@ public class TopicService {
         );
         Long newChatRoomId = newChatRoom.getId();
         log.info("Created new chat room with ID: {}", newChatRoomId);
+
+        log.info("-------------------------------------------------------------------------------");
+
+        // ChatController의 /choiceModel처럼 ConversationSummary 저장
+        try {
+            ChatLog chatLog = chatLogService.findByMongoRef(refs.getMongo_ref());
+            if (chatLog != null) {
+                ConversationSummary summary = new ConversationSummary();
+                summary.setChatRoomId(newChatRoomId);
+                summary.setTimestamp(String.valueOf(Instant.now()));
+
+                // /choiceModel처럼 User와 AI 대화 형식으로 저장
+                String summaryContent = String.format("User:%s\nAI:%s",
+                        chatLog.getQuestion(),
+                        chatLog.getAnswerSentences().stream()
+                                .map(AnswerSentence::getContent)
+                                .collect(Collectors.joining("\n"))
+                );
+                summary.setSummaryContent(summaryContent);
+
+                // MongoDB의 conversation_summaries 컬렉션에 저장
+                conversationSummaryService.saveConversationSummary(summary);
+                log.info("Saved conversation summary for new chat room: {}", newChatRoomId);
+            }
+        } catch (Exception e) {
+            log.error("Error saving conversation summary", e);
+        }
+
+        log.info("--------------------------------------------------------------------------");
 
         // 3. MongoDB 데이터 복사 및 업데이트
         if (refs.getMongo_ref() != null && refs.getChat_room_id() != null) {

@@ -47,8 +47,7 @@ public class TopicController {
     // 주제 분리
     @PostMapping("/seperateTopic/{elementId}")
     @Operation(summary = "마인드맵 주제 분리",
-            description = "선택한 노드와 관련 노드들을 새로운 채팅방으로 분리합니다. " +
-                    "부모 노드 3단계, 자식 노드 2단계까지 함께 복사됩니다.")
+            description = "선택한 노드와 자식 노드들을 새로운 주제로 분리합니다.")
     public ResponseEntity<?> separateTopic(@PathVariable String elementId) {
         Long newChatRoomId = topicService.seperateTopic(elementId);
 
