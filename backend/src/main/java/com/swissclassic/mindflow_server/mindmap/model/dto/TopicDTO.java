@@ -12,6 +12,9 @@ public class TopicDTO {
     private List<NodeDTO> nodes;
     private List<RelationshipDTO> relationships;
 
+    private String userId;
+
+
     // NodeDTO
     @Data
     public static class NodeDTO {
@@ -19,9 +22,12 @@ public class TopicDTO {
         private String title;
         private String content;
         private String mongoRef;
-        private String accountId;
+//        private String accountId;
         private String chatRoomId;
         private LocalDateTime createdAt;
+
+        private Long creatorId;
+        private String userId;
 
     }
 

@@ -28,17 +28,17 @@ api.interceptors.request.use(
   }
 )
 
-// 응답 인터셉터 추가
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    // 401 에러 (인증 실패) 발생 시
-    if (error.response?.status === 401) {
-      // 로그인 페이지로 리다이렉트하는 대신 에러를 던짐
-      return Promise.reject(new Error("인증이 필요합니다"))
-    }
-    return Promise.reject(error)
-  }
-)
+// // 응답 인터셉터 추가
+// api.interceptors.response.use(
+//   (response) => response,
+//   async (error) => {
+//     // 401 에러 (인증 실패) 발생 시
+//     if (error.response?.status === 401) {
+//       // 로그인 페이지로 리다이렉트하는 대신 에러를 던짐
+//       return Promise.reject(new Error("인증이 필요합니다"))
+//     }
+//     return Promise.reject(error)
+//   }
+// )
 
 export default api

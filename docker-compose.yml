@@ -110,23 +110,24 @@ services:
         - "5001:5001"
       
 
-  # celery:
-  #   build:
-  #     context: ./python-backend
-  #     dockerfile: Dockerfile
-  #   container_name: celery_container
-  #   command: celery -A tasks worker --loglevel=info
-  #   restart: always
-  #   depends_on:
-  #     - redis
-  #     - python
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     - IS_DOCKER=true
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-
+  celery:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: celery_container
+    command: celery -A tasks worker --loglevel=info
+    restart: always
+    depends_on:
+      - redis
+      - flask
+    env_file:
+      - .env
+      - python-backend/.env
+    environment:
+      - IS_DOCKER=true
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      
   redis:
     image: redis:latest
     container_name: redis

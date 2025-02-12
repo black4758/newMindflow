@@ -139,7 +139,7 @@ def main():
         time.sleep(10)
 
         # Second set of commands
-        git_bash_commands2 = ['python ASD.py']
+        git_bash_commands2 = ['python app.py']
         git_thread2 = threading.Thread(target=run_git_bash_tasks, args=(executor, git_bash_commands2), daemon=True)
         git_thread2.start()
 
