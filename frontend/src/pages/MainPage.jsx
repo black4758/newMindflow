@@ -37,8 +37,8 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
   const [isLoading, setIsLoading] = useState(false) // 응답 로딩 상태
 
   // AI 모델 관련 상태들
-  const [model, setModel] = useState("") // 선택된 AI 모델
-  const [detailModel, setDetailModel] = useState("") // 선택된 모델의 세부 버전
+  const [model, setModel] = useState("chatgpt") // 선택된 AI 모델
+  const [detailModel, setDetailModel] = useState("gpt-3.5-turbo") // 선택된 모델의 세부 버전
   const [showModelCards, setShowModelCards] = useState(false) // 모델 선택 UI 표시 여부
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false) // 모델 선택 드롭다운 상태
 
@@ -70,6 +70,13 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
   }
 
   // ===== useEffect 훅 =====
+  // 채팅방 ID 변경 감지지
+  useEffect(() => {
+    if (currentChatRoom) {
+      setChatRoomId(currentChatRoom)
+    }
+  }, [currentChatRoom])
+
   useEffect(() => {
     const loadChatRoomMessages = async () => {
       // currentChatRoom이 null이면 메시지 초기화
@@ -250,8 +257,8 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
     setMessages((prev) => [...prev, userMessage])
 
     try {
-      // currentChatRoom이 null이거나 model이 없으면 새로운 대화 시작
-      if (!currentChatRoom || !model) {
+      // currentChatRoom이 null이면 새로운 대화 시작
+      if (!currentChatRoom) {
         // 첫 메시지일 때는 모델 선택 카드를 즉시 표시
         setFirstUserInput(userInput)
         setShowModelCards(true)
@@ -265,18 +272,17 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
       } else {
         // 이후 메시지: 선택된 모델과 대화
         const response = await api.post("/api/messages/send", {
-          chatRoomId: chatRoomId,
+          chatRoomId: currentChatRoom,
           model: model,
           userInput,
           creatorId: userId,
           detailModel,
         })
 
-        const { chat_room_id, response: aiResponse } = response.data
+        const { response: aiResponse } = response.data
 
         // 스트리밍 텍스트를 최종 응답으로 바로 교체
         setStreamingText(aiResponse)
-        setChatRoomId(chat_room_id)
 
         // 스트리밍 애니메이션 효과 제거를 위한 약간의 지연
         requestAnimationFrame(() => {
