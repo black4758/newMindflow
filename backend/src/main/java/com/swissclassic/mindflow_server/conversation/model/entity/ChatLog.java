@@ -23,7 +23,7 @@ public class ChatLog {
     private long chatRoomId;
 
     private String question;
-    @Field(name = "user_id")
+
     private long userId;
     private List<AnswerSentence> answerSentences;
     @Field(name = "created_at")
