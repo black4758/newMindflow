@@ -41,7 +41,14 @@ const AppLayout = () => {
   return (
     <div className="flex h-screen bg-[#353a3e]">
       {/* 사이드바 컴포넌트 - 모달 열기/닫기 함수 전달 */}
-      <Sidebar onOpenModal={() => setIsOpen(!isOpen)} refreshTrigger={refreshTrigger} setRefreshTrigger={setRefreshTrigger} onChatRoomSelect={handleChatRoomSelect} currentChatRoom={currentChatRoom} />
+      <Sidebar 
+      onOpenModal={() => setIsOpen(!isOpen)} 
+      refreshTrigger={refreshTrigger} 
+      setRefreshTrigger={setRefreshTrigger} 
+      onChatRoomSelect={handleChatRoomSelect} 
+      currentChatRoom={currentChatRoom} 
+      setCurrentChatRoo={setCurrentChatRoom} 
+      />
       <div className="flex-1 flex flex-col">
         {/* 상단 네비게이션 바 */}
         <Navbar />

@@ -1,21 +1,18 @@
 import { useState, useEffect, useRef } from "react"
-import { Menu, Search, ExternalLink, Network, ScrollText } from "lucide-react"
+import { Menu, Search, ExternalLink, Network, MoreHorizontal } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
 
-const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom }) => {
+const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, setCurrentChatRoom }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
   const userId = useSelector((state) => state.auth.user.userId)
 
   // 채팅방 관련 상태
   const [allChatRooms, setAllChatRooms] = useState([]) // 모든 채팅방 저장
-  const [displayedRooms, setDisplayedRooms] = useState([]) // 화면에 표시할 채팅방
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
-  const ITEMS_PER_PAGE = 30 // 한 번에 보여줄 채팅방 수
+
 
   // 스크롤 감지를 위한 ref
   const containerRef = useRef(null)
@@ -25,16 +22,17 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     setIsLoading(true)
     try {
       const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
-      const newRooms = response.data
-      setAllChatRooms(newRooms)
-      setDisplayedRooms(newRooms.slice(0, ITEMS_PER_PAGE))
-      setHasMore(newRooms.length > ITEMS_PER_PAGE)
-      console.log("전체 채팅방 수:", newRooms.length)
+      setAllChatRooms(response.data)
     } catch (error) {
       console.log(error)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // 채팅방 삭제
+  const handleDeleteRooms = async (currentChatRoom, setCurrentChatRoom) => {
+
   }
 
   // 채팅방 분류 함수
@@ -62,46 +60,8 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     }
   }
 
-  // 스크롤 이벤트 핸들러
-  const handleScroll = () => {
-    if (!containerRef.current || isLoading || !hasMore) return
-
-    const { scrollTop, scrollHeight, clientHeight } = containerRef.current
-    if (scrollHeight - scrollTop <= clientHeight * 1.5) {
-      const nextPage = page + 1
-      const start = (nextPage - 1) * ITEMS_PER_PAGE
-      const end = nextPage * ITEMS_PER_PAGE
-
-      // 추가로 표시할 채팅방이 있는 경우 업데이트
-      if (start < allChatRooms.length) {
-        const newDisplayedRooms = [...displayedRooms, ...allChatRooms.slice(start, end)]
-        setDisplayedRooms(newDisplayedRooms)
-        setPage(nextPage)
-
-        setHasMore(end < allChatRooms.length)
-
-        console.log("현재 표시 중인 채팅방 수:", newDisplayedRooms.length) // 디버깅용
-        console.log("다음 페이지:", nextPage)
-      } else {
-        setHasMore(false)
-      }
-    }
-  }
-
-  // 스크롤 이벤트 리스너
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (container) {
-      container.addEventListener("scroll", handleScroll)
-      return () => container.removeEventListener("scroll", handleScroll)
-    }
-  }, [allChatRooms, isLoading, hasMore, page])
-
   // 초기 로딩
   useEffect(() => {
-    setPage(1)
-    setHasMore(true)
     handleChatRooms()
   }, [refreshTrigger])
 
@@ -149,21 +109,30 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
           <div className="mb-6">
             <h2 className="text-[#ffffff] mb-2">오늘</h2>
             <div className="flex flex-col gap-2">
-              {categorizeRooms(displayedRooms).todayRooms.map((chatRoom) => (
-                <button
-                  key={`today-${chatRoom.id}`}
-                  onClick={() => handleChatRoomClick(chatRoom.id)}
-                  className={`
-                    relative w-full px-4 py-2 rounded-full
-                    ${currentChatRoom === chatRoom.id ? "bg-gray-700" : "bg-gray-800"}
-                    text-white transition-all duration-300
-                    overflow-hidden hover:bg-gray-700
-                    hover:shadow-neon group
-                  `}
-                >
-                  <span className="relative z-10">{chatRoom.title}</span>
-                  <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
-                </button>
+              {categorizeRooms(allChatRooms).todayRooms.map((chatRoom) => (
+                <div key={`today-${chatRoom.id}`} className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleChatRoomClick(chatRoom.id)}
+                    className={`
+                      relative w-full px-4 py-2 rounded-full
+                      ${currentChatRoom === chatRoom.id ? "bg-gray-700" : "bg-gray-800"}
+                      text-white transition-all duration-300
+                      overflow-hidden hover:bg-gray-700
+                      hover:shadow-neon group
+                    `}
+                  >
+                    <span className="relative z-10">{chatRoom.title}</span>
+                    <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log("클릭")
+                    }}
+                    className="p-1 hover:bg-gray-600 rounded-full"
+                  >
+                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -172,21 +141,30 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
           <div>
             <h2 className="text-[#ffffff] mb-2">지난 7일</h2>
             <div className="flex flex-col gap-2">
-              {categorizeRooms(displayedRooms).recentRooms.map((chatRoom) => (
-                <button
-                  key={`recent-${chatRoom.id}`}
-                  onClick={() => handleChatRoomClick(chatRoom.id)}
-                  className={`
-                  relative w-full px-4 py-2 rounded-full
-                  ${currentChatRoom === chatRoom.id ? "bg-gray-700" : "bg-gray-800"}
-                  text-white transition-all duration-300
-                  overflow-hidden hover:bg-gray-700
-                  hover:shadow-neon group
-                `}
-                >
-                  <span className="relative z-10">{chatRoom.title}</span>
-                  <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
-                </button>
+              {categorizeRooms(allChatRooms).recentRooms.map((chatRoom) => (
+                <div key={`recent-${chatRoom.id}`} className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleChatRoomClick(chatRoom.id)}
+                    className={`
+                    relative w-full px-4 py-2 rounded-full
+                    ${currentChatRoom === chatRoom.id ? "bg-gray-700" : "bg-gray-800"}
+                    text-white transition-all duration-300
+                    overflow-hidden hover:bg-gray-700
+                    hover:shadow-neon group
+                  `}
+                  >
+                    <span className="relative z-10">{chatRoom.title}</span>
+                    <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log("클릭")
+                    }}
+                    className="p-1 hover:bg-gray-600 rounded-full"
+                  >
+                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                  </button>
+                </ div>
               ))}
             </div>
           </div>

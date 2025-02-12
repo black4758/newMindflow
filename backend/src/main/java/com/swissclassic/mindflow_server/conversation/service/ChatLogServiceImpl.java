@@ -32,7 +32,7 @@ public class ChatLogServiceImpl implements ChatLogService{
             if (!line.isEmpty()) {
                 answerSentences.add(new ChatLog.AnswerSentence(line));
             }
-        }
+        }`
 
         // 대화 로그 Document 생성
         ChatLog chatLog = new ChatLog();
