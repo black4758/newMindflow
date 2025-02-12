@@ -4,6 +4,8 @@ import com.swissclassic.mindflow_server.account.model.dto.*;
 import com.swissclassic.mindflow_server.account.model.entity.User;
 import com.swissclassic.mindflow_server.account.repository.UserRepository;
 import com.swissclassic.mindflow_server.account.service.PasswordResetService;
+import com.swissclassic.mindflow_server.conversation.repository.ChatLogRepository;
+import com.swissclassic.mindflow_server.mindmap.repository.TopicRepository;
 import com.swissclassic.mindflow_server.util.JwtUtils;
 import com.swissclassic.mindflow_server.account.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +41,12 @@ public class AuthenticationController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ChatLogRepository chatLogRepository;
+
+    @Autowired
+    private TopicRepository topicRepository;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -188,7 +196,7 @@ public class AuthenticationController {
      * @apiNote 현재 부분적으로 구현됨. MongoDB와 Neo4j 데이터 삭제 구현 필요.
      */
     @DeleteMapping("/delete/{userId}")
-    @Operation(summary = "회원 탈퇴 (일부 구현됨)", description = "사용자 계정과 관련된 모든 데이터를 삭제합니다.")
+    @Operation(summary = "회원 탈퇴", description = "사용자 계정과 관련된 모든 데이터를 삭제합니다.")
     @Transactional
     public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
         Authentication auth = SecurityContextHolder.getContext()
@@ -206,8 +214,10 @@ public class AuthenticationController {
         }
         // 계정 정보 삭제
         userRepository.delete(user);
-        // TODO: mongodb 삭제
-        // TODO: neo4j 삭제
+        // mongodb 삭제
+        chatLogRepository.deleteAllByUserId(userId);
+        // neo4j 삭제
+        topicRepository.deleteAllByUserId(userId);
 
         return ResponseEntity.status(HttpStatus.OK)
                              .body("Deleting account successful.");

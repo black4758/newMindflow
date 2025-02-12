@@ -39,10 +39,12 @@ public class ChatController {
     @Operation(description = "gemini-2.0-flash-exp")
     public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
 
+
         ChatApiResponse answer = aiServerService.getChatResponse(chatRequest);
 
 //        log.info("Flask 에서 도착한 Answer Sentences: {}", answer.getAnswerSentences());
         log.info("Flask chat_room_id: {}", answer.getChatRoomId());
+
 
         chatLogService.saveChatLog(
                 chatRequest.getChatRoomId(),
@@ -65,7 +67,6 @@ public class ChatController {
     public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
         return aiServerService.getAllChatResponse(chatRequest);
     }
-
 
 
     // 여기는 말만 summary지 실제로는 대화를 저장함
@@ -110,6 +111,7 @@ public class ChatController {
                 conversationSummaryRequest.getCreatorId()
 
         );
+
 
 
         ConversationSummary conversationSummary = new ConversationSummary();

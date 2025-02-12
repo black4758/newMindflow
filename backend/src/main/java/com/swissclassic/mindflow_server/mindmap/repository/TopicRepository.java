@@ -1,7 +1,10 @@
 package com.swissclassic.mindflow_server.mindmap.repository;
 
 import com.swissclassic.mindflow_server.mindmap.model.entity.Topic;
+
 import com.swissclassic.mindflow_server.mindmap.model.entity.TopicRefs;
+
+import jakarta.transaction.Transactional;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.stereotype.Repository;
@@ -73,7 +76,6 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
 """)
     List<Map<String, Object>> getMindMapByUserAndChatRoom(String userId, String chatRoomId);
 
-
     @Query("""
             MATCH (n)-[r:HAS_SUBTOPIC*0..]->(m) 
             WHERE elementId(n) = $elementId 
@@ -112,4 +114,9 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
         RETURN COUNT(node) as updatedNodes
     """)
     void separateTopicAndUpdateChatRoom(String elementId, String newChatRoomId);
+
+    @Transactional
+    @Query("MATCH (n:YourLabel {userId: $userId}) DETACH DELETE n")
+    void deleteAllByUserId(Long userId);
+
 }
