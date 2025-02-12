@@ -14,10 +14,10 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
 
     @Query("""
         MATCH (n:Topic)
-        WHERE n.account_id = $accountId
+        WHERE n.creator_id = $userId
         OPTIONAL MATCH (n)-[r]->(m:Topic)
         RETURN {
-            accountId: $accountId, 
+            userId: $userId, 
             nodes: collect(DISTINCT {
                 id: elementId(n),
                 title: n.title,
@@ -40,14 +40,14 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
             )
         } AS result
     """)
-    List<Map<String, Object>> getTopicByUserId(String accountId);
+    List<Map<String, Object>> getTopicByUserId(String userId);
 
     @Query("""
     MATCH (n:Topic)
-    WHERE n.account_id = $accountId AND n.chat_room_id = $chatRoomId
+    WHERE n.creator_id = $userId AND n.chat_room_id = $chatRoomId
     OPTIONAL MATCH (n)-[r]->(m:Topic)
     RETURN {
-        accountId: $accountId, 
+        userId: $userId, 
         chatRoomId: $chatRoomId,
         nodes: collect(DISTINCT {
             id: elementId(n),
@@ -71,7 +71,7 @@ public interface TopicRepository extends Neo4jRepository<Topic, String> {
         )
     } AS result
 """)
-    List<Map<String, Object>> getMindMapByUserAndChatRoom(String accountId, String chatRoomId);
+    List<Map<String, Object>> getMindMapByUserAndChatRoom(String userId, String chatRoomId);
 
 
     @Query("""
