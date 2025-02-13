@@ -18,6 +18,7 @@ public class CorsConfig {
         config.addAllowedOrigin("http://localhost:5173");
         config.addAllowedOrigin("http://localhost:5174");
         config.addAllowedOrigin("http://i12d203.p.REDACTED.io");
+        config.addAllowedOrigin("https://mindflow.ddns.net");
 
         // 자격증명 허용
         config.setAllowCredentials(true);
