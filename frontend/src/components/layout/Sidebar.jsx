@@ -4,14 +4,24 @@ import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
 
-const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, setCurrentChatRoom }) => {
+const Sidebar = ({ 
+  onOpenModal, 
+  refreshTrigger, 
+  onChatRoomSelect, 
+  currentChatRoom, 
+  chatSemaphore,
+  mindSemaphore
+
+}) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  
+  
   const navigate = useNavigate()
   const userId = useSelector((state) => state.auth.user.userId)
 
   // 채팅방 관련 상태
   const [allChatRooms, setAllChatRooms] = useState([]) // 모든 채팅방 저장
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false) // 사이드바 로딩 상태태
 
 
   // 스크롤 감지를 위한 ref
@@ -120,6 +130,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                       overflow-hidden hover:bg-gray-700
                       hover:shadow-neon group
                     `}
+                    disabled={chatSemaphore}
                   >
                     <span className="relative z-10">{chatRoom.title}</span>
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
@@ -129,6 +140,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                       console.log("클릭")
                     }}
                     className="p-1 hover:bg-gray-600 rounded-full"
+                    disabled={chatSemaphore}
                   >
                     <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
                   </button>
@@ -152,6 +164,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                     overflow-hidden hover:bg-gray-700
                     hover:shadow-neon group
                   `}
+                  disabled={chatSemaphore}
                   >
                     <span className="relative z-10">{chatRoom.title}</span>
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
@@ -161,6 +174,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                       console.log("클릭")
                     }}
                     className="p-1 hover:bg-gray-600 rounded-full"
+                    disabled={chatSemaphore}
                   >
                     <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
                   </button>
