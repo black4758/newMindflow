@@ -1,9 +1,11 @@
 import axios from "axios"
 import { store } from "../store/store"
 
+const baseURL = process.env.REACT_APP_API_BASE_URL;
+
 // axios 인스턴스 생성
 const api = axios.create({
-  baseURL: "http://localhost:8453", // API의 기본 URL 설정
+  baseURL: baseURL, // .env에서 가져온 URL 사용
   withCredentials: true, // 쿠키를 요청에 포함시킬지 여부 설정
   headers: {
     "Content-Type": "application/json", // 요청의 Content-Type을 JSON으로 설정

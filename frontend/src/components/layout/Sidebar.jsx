@@ -40,10 +40,10 @@ const Sidebar = ({
     }
   }
 
-  // 채팅방 삭제
-  const handleDeleteRooms = async (currentChatRoom, setCurrentChatRoom) => {
+  // // 채팅방 삭제
+  // const handleDeleteRooms = async (currentChatRoom, setCurrentChatRoom) => {
 
-  }
+  // }
 
   // 채팅방 분류 함수
   const categorizeRooms = (rooms) => {

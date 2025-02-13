@@ -10,6 +10,9 @@ export default defineConfig({
       usePolling: true
     }
   },
+  define: {
+    'process.env.REACT_APP_API_BASE_URL': JSON.stringify(process.env.REACT_APP_API_BASE_URL),
+  },
   optimizeDeps: {
     include: ['lucide-react']
   }
