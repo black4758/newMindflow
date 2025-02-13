@@ -1,4 +1,3 @@
-
 import json
 import os
 import uuid
@@ -407,13 +406,6 @@ class MassageAPI(Resource):
             
             print("문장 아이디 부여: ", sentences_with_ids)
             
-
-            # Celery 태스크 생성 전에 작업 시작을 알림
-            socketio.emit('mindmap_status', {
-                'status': 'started',
-                'chat_room_id': chat_room_id,
-                'message': 'Mindmap generation started'
-            })
 
             task = create_mindmap.delay(  
                     # account_id=data.get('accountId'),

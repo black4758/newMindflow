@@ -19,7 +19,7 @@ spring:
     authentication:
       username: neo4j
       password: REDACTEDREDACTED
-    database: mindmapf
+    database: mindmap
 
   security:
     oauth2:

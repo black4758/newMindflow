@@ -8,14 +8,8 @@ from langchain_anthropic import ChatAnthropic
 from neo4j import GraphDatabase
 
 from celery_config import celery
-from flask_socketio import SocketIO, emit
-from flask import Flask
 
 load_dotenv()
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'REDACTED'
-socketio = SocketIO(app, cors_allowed_origins="*",host='0.0.0.0')
 
 try:
     # bolt:// 프로토콜 사용 및 데이터베이스 이름 지정
@@ -95,7 +89,8 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
    - 상위 개념은 포괄적으로, 하위 개념은 구체적으로 작성
    - 새로운 노드 생성 시 기존 노드와의 중복성 검사
    - 각 노드는 반드시 하나의 답변 문장에 대응되어야 함
-   - 각 노드의 mongo_ref 속성에 값이 없다면(중요) 해당 답변 문장들의 sentenceId 값을 저장(중요!!)
+   - 각 노드의 mongo_ref 속성에 값이 없다면(중요) 해당 답변 문장의 sentenceId 값을 저장(중요!!)
+   - mongo_ref는 단일 값을 가져야함.
 
 5. Cypher 쿼리 작성 규칙:
    - 우선 MATCH로 연관된 기존 노드 검색
@@ -148,7 +143,7 @@ def get_mindmap_structure(creator_id, chat_room_id):
             target: {
                 id: elementId(m),
                 title: m.title,
-                content: m.content 
+                content: m.content
             }
         }) as structure
         """, chat_room_id=chat_room_id)
@@ -181,7 +176,7 @@ def escape_cypher_quotes(text):
 
 
 @celery.task
-def create_mindmap(self, account_id, chat_room_id, chat_id, question, answer_sentences, creator_id):
+def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences, creator_id):
     print(f"Task received with chat_room_id: {chat_room_id}")
     try:
         print(f"""
@@ -194,14 +189,6 @@ def create_mindmap(self, account_id, chat_room_id, chat_id, question, answer_sen
         - sentences: {len(answer_sentences)}개
         """)
 
-        # Socket.IO로 처리 중 상태를 React에 알림
-        socketio.emit('mindmap_status', {
-            'status': 'processing',
-            'chat_room_id': chat_room_id,
-            'message': 'Analyzing conversation structure'
-        })
-
-
         # 마인드맵 구조 가져오기
         current_structure = get_mindmap_structure(creator_id, chat_room_id)
 
@@ -213,17 +200,10 @@ def create_mindmap(self, account_id, chat_room_id, chat_id, question, answer_sen
                         "account_id": account_id, 
                         "chat_room_id": chat_room_id, 
                         "creator_id": creator_id,
-                        # "mongo_ref": answer_sentences
                     }
 
-        # 처리 상태 업데이트
-        socketio.emit('mindmap_status', {
-            'status': 'processing',
-            'chat_room_id': chat_room_id,
-            'message': 'Generating mindmap'
-        })
-
         # 쿼리 생성 및 실행
+
         print("Cypher 쿼리 생성 시작")
         query = query_chain.invoke(query_data)
         print(f"""생성된 Cypher 쿼리:{query}""")
@@ -232,41 +212,19 @@ def create_mindmap(self, account_id, chat_room_id, chat_id, question, answer_sen
         with neo4j_driver.session(database="mindmap") as session:
             session.run(query)
         print("마인드맵 생성 작업 완료")
-
-
-        # 완료 상태를 React에 알림
-        socketio.emit('mindmap_status', {
-            'status': 'completed',
-            'chat_room_id': chat_room_id,
-            'message': 'Mindmap created successfully'
-        })
-
-
-        
         return True
     except Exception as e:
-
-
         print(f"""마인드맵 생성 오류:
-            - Error Type: {type(e).__name__}
-            - Error Message: {str(e)}
-            - Input Data: 
-            account_id: {account_id}
-            chat_room_id: {chat_room_id}
-            chat_id: {chat_id}
-            question: {question}
-            answer_sentences: {answer_sentences}
-            """)
-        
-        
-        # 에러 상태를 React에 알림
-        socketio.emit('mindmap_status', {
-            'status': 'error',
-            'chat_room_id': chat_room_id,
-            'message': f'Error generating mindmap: {str(e)}'
-        })
-        
-        raise e
+- Error Type: {type(e).__name__}
+- Error Message: {str(e)}
+- Input Data: 
+  account_id: {account_id}
+  chat_room_id: {chat_room_id}
+  chat_id: {chat_id}
+  question: {question}
+  answer_sentences: {answer_sentences}
+""")
+        return False
 
 
 @celery.task
