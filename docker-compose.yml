@@ -32,7 +32,6 @@ services:
       redis:
         condition: service_healthy
     env_file:
-      - .env
       - backend/.env
     environment:
       - SPRING_PROFILES_ACTIVE=prod

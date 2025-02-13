@@ -12,7 +12,7 @@ spring:
   
   data:
     mongodb:
-      uri: mongodb://REDACTED:REDACTED@mongo:27017/mindflow_db?authSource=mindflow_db
+      uri: mongodb://REDACTED:REDACTED@mongo:27017/mindflow_db?authSource=admin
       database: mindflow_db
 
   neo4j:
