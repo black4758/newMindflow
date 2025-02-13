@@ -1,26 +1,76 @@
-import { useState, useEffect } from "react"
-import { Menu, Search, ExternalLink, Network } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Menu, Search, ExternalLink, Network, MoreHorizontal } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
 
-const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect }) => {
+const Sidebar = ({ 
+  onOpenModal, 
+  refreshTrigger, 
+  onChatRoomSelect, 
+  currentChatRoom, 
+  chatSemaphore,
+  mindSemaphore
+
+}) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
+  
+  
   const navigate = useNavigate()
-
   const userId = useSelector((state) => state.auth.user.userId)
-  const [chatRooms, setChatRooms] = useState([])
 
+  // 채팅방 관련 상태
+  const [allChatRooms, setAllChatRooms] = useState([]) // 모든 채팅방 저장
+  const [isLoading, setIsLoading] = useState(false) // 사이드바 로딩 상태태
+
+
+  // 스크롤 감지를 위한 ref
+  const containerRef = useRef(null)
+
+  // 채팅방 목록 불러오기
   const handleChatRooms = async () => {
+    setIsLoading(true)
     try {
       const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
-      setChatRooms(response.data)
-      console.log(response.data)
+      setAllChatRooms(response.data)
     } catch (error) {
       console.log(error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
+  // // 채팅방 삭제
+  // const handleDeleteRooms = async (currentChatRoom, setCurrentChatRoom) => {
+
+  // }
+
+  // 채팅방 분류 함수
+  const categorizeRooms = (rooms) => {
+    if (!rooms || rooms.length === 0) return { todayRooms: [], recentRooms: [] }
+
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    const todayRooms = rooms.filter((room) => {
+      const chatDate = new Date(room.createdAt)
+      return chatDate >= today
+    })
+
+    const recentRooms = rooms.filter((room) => {
+      const chatDate = new Date(room.createdAt)
+      // today 이전의 채팅방만 최근 7일에 표시
+      return chatDate >= weekAgo && chatDate < today
+    })
+
+    return {
+      todayRooms,
+      recentRooms,
+    }
+  }
+
+  // 초기 로딩
   useEffect(() => {
     handleChatRooms()
   }, [refreshTrigger])
@@ -64,110 +114,76 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
 
       {/* Navigation Sections */}
       {!isCollapsed && (
-        <div className="space-y-8">
+        <div ref={containerRef} className="space-y-8 overflow-y-auto flex-1">
+          {/* 오늘 채팅방 */}
           <div className="mb-6">
             <h2 className="text-[#ffffff] mb-2">오늘</h2>
             <div className="flex flex-col gap-2">
-              {chatRooms
-                .filter((chatRoom) => {
-                  const now = new Date()
-                  const chatDate = new Date(chatRoom.createdAt)
-                  return chatDate.getFullYear() === now.getFullYear() && chatDate.getMonth() === now.getMonth() && chatDate.getDate() === now.getDate()
-                })
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                .map((chatRoom) => (
+              {categorizeRooms(allChatRooms).todayRooms.map((chatRoom) => (
+                <div key={`today-${chatRoom.id}`} className="flex items-center gap-2">
                   <button
-                    key={chatRoom.id}
                     onClick={() => handleChatRoomClick(chatRoom.id)}
-                    className="
-                    relative 
-                    w-full 
-                    px-4 
-                    py-2 
-                    rounded-full 
-                    bg-gray-800 
-                    text-white
-                    transition-all 
-                    duration-300
-                    overflow-hidden
-                    hover:bg-gray-700
-                    hover:shadow-neon
-                    group
-                  "
+                    className={`
+                      relative w-full px-4 py-2 rounded-full
+                      ${currentChatRoom === chatRoom.id ? "bg-gray-700" : "bg-gray-800"}
+                      text-white transition-all duration-300
+                      overflow-hidden hover:bg-gray-700
+                      hover:shadow-neon group
+                    `}
+                    disabled={chatSemaphore}
                   >
                     <span className="relative z-10">{chatRoom.title}</span>
-                    <div
-                      className="
-                      absolute 
-                      top-0 
-                      -left-full 
-                      w-full 
-                      h-full 
-                      bg-gradient-to-r 
-                      from-transparent 
-                      via-white/10 
-                      to-transparent
-                      group-hover:animate-neon-shine
-                    "
-                    ></div>
+                    <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
-                ))}
+                  <button
+                    onClick={() => {
+                      console.log("클릭")
+                    }}
+                    className="p-1 hover:bg-gray-600 rounded-full"
+                    disabled={chatSemaphore}
+                  >
+                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
 
+          {/* 최근 7일 채팅방 */}
           <div>
             <h2 className="text-[#ffffff] mb-2">지난 7일</h2>
             <div className="flex flex-col gap-2">
-              {chatRooms
-                .filter((chatRoom) => {
-                  const chatDate = new Date(chatRoom.createdAt)
-                  const now = new Date()
-
-                  const isToday = chatDate.getFullYear() === now.getFullYear() && chatDate.getMonth() === now.getMonth() && chatDate.getDate() === now.getDate()
-
-                  const diffDats = (now - chatDate) / (1000 * 60 * 60 * 24)
-                  return diffDats <= 7 && !isToday
-                })
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                .map((chatRoom) => (
+              {categorizeRooms(allChatRooms).recentRooms.map((chatRoom) => (
+                <div key={`recent-${chatRoom.id}`} className="flex items-center gap-2">
                   <button
-                    key={chatRoom.id}
                     onClick={() => handleChatRoomClick(chatRoom.id)}
-                    className="
-                    relative 
-                    w-full 
-                    px-4 
-                    py-2 
-                    rounded-full 
-                    bg-gray-800 
-                    text-white
-                    transition-all 
-                    duration-300
-                    overflow-hidden
-                    hover:bg-gray-700
-                    hover:shadow-neon
-                    group
-                  "
+                    className={`
+                    relative w-full px-4 py-2 rounded-full
+                    ${currentChatRoom === chatRoom.id ? "bg-gray-700" : "bg-gray-800"}
+                    text-white transition-all duration-300
+                    overflow-hidden hover:bg-gray-700
+                    hover:shadow-neon group
+                  `}
+                  disabled={chatSemaphore}
                   >
                     <span className="relative z-10">{chatRoom.title}</span>
-                    <div
-                      className="
-                      absolute 
-                      top-0 
-                      -left-full 
-                      w-full 
-                      h-full 
-                      bg-gradient-to-r 
-                      from-transparent 
-                      via-white/10 
-                      to-transparent
-                      group-hover:animate-neon-shine
-                    "
-                    ></div>
+                    <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
-                ))}
+                  <button
+                    onClick={() => {
+                      console.log("클릭")
+                    }}
+                    className="p-1 hover:bg-gray-600 rounded-full"
+                    disabled={chatSemaphore}
+                  >
+                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                  </button>
+                </ div>
+              ))}
             </div>
           </div>
+          {/* 로딩 인디케이터 */}
+          {isLoading && <div className="text-center py-2 text-white">로딩 중...</div>}
         </div>
       )}
     </div>

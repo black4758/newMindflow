@@ -13,10 +13,14 @@ const AppLayout = () => {
   const [isOpen, setIsOpen] = useState(false)
   // 채팅방 ID 상태
   const [currentChatRoom, setCurrentChatRoom] = useState(null)
+
+  const [chatSemaphore, setChatSemaphore] = useState(false) // 채팅 임계구역
+  const [mindSemaphore, setMindSemaphore] = useState(false) // 마인드맵 임계구역
+
   // 현재 라우트 위치 정보를 가져오는 훅
   const location = useLocation()
 
-  // 채팅방 업데이트트 핸들러(Sidebar)
+  // 채팅방 업데이트 핸들러(Sidebar)
   const handleChatRoomSelect = (roomId) => {
     setCurrentChatRoom(roomId)
   }
@@ -41,7 +45,18 @@ const AppLayout = () => {
   return (
     <div className="flex h-screen bg-[#353a3e]">
       {/* 사이드바 컴포넌트 - 모달 열기/닫기 함수 전달 */}
-      <Sidebar onOpenModal={() => setIsOpen(!isOpen)} refreshTrigger={refreshTrigger} setRefreshTrigger={setRefreshTrigger} onChatRoomSelect={handleChatRoomSelect} currentChatRoom={currentChatRoom} />
+      <Sidebar 
+      onOpenModal={() => setIsOpen(!isOpen)} 
+      refreshTrigger={refreshTrigger} 
+      setRefreshTrigger={setRefreshTrigger} 
+      onChatRoomSelect={handleChatRoomSelect} 
+      currentChatRoom={currentChatRoom} 
+      setCurrentChatRoo={setCurrentChatRoom}
+      chatSemaphore={chatSemaphore}
+      setChatSemaphore={setChatSemaphore}
+      mindSemaphore={mindSemaphore}
+      setMindSemaphore={setMindSemaphore}
+      />
       <div className="flex-1 flex flex-col">
         {/* 상단 네비게이션 바 */}
         <Navbar />
@@ -56,15 +71,17 @@ const AppLayout = () => {
                 key={route.path}
                 path={route.path}
                 element={
-                  route.path === "/"
-                    ? React.cloneElement(route.element, {
+                  React.cloneElement(route.element, {
                         element: React.cloneElement(route.element.props.element, {
                           setRefreshTrigger: setRefreshTrigger,
                           currentChatRoom: currentChatRoom,
                           onChatRoomSelect: handleChatRoomSelect,
+                          chatSemaphore: chatSemaphore,
+                          setChatSemaphore: setChatSemaphore,
+                          mindSemaphore: mindSemaphore,
+                          setMindSemaphore: setMindSemaphore,
                         }),
                       })
-                    : route.element
                 }
               />
             ))}
