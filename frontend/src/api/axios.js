@@ -1,7 +1,7 @@
 import axios from "axios"
 import { store } from "../store/store"
 
-const baseURL = process.env.REACT_APP_API_BASE_URL;
+const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 // axios 인스턴스 생성
 const api = axios.create({

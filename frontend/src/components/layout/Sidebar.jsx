@@ -117,7 +117,7 @@ const Sidebar = ({
         <div ref={containerRef} className="space-y-8 overflow-y-auto flex-1">
           {/* 오늘 채팅방 */}
           <div className="mb-6">
-            <h2 className="text-[#ffffff] mb-2">오늘</h2>
+            <h2 className="text-[#ffffff] mb-2">오늘4</h2>
             <div className="flex flex-col gap-2">
               {categorizeRooms(allChatRooms).todayRooms.map((chatRoom) => (
                 <div key={`today-${chatRoom.id}`} className="flex items-center gap-2">
