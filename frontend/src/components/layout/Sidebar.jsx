@@ -14,8 +14,18 @@ const Sidebar = ({
 
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
+
+  const [menuStates, setMenuStates] = useState({})
+
+  const toggleMenu = (roomId) => {
+    setMenuStates(prev => ({
+      ...prev,
+      [roomId]: !prev[roomId]
+    }))
+  }
   
   
+
   const navigate = useNavigate()
   const userId = useSelector((state) => state.auth.user.userId)
 
@@ -137,7 +147,7 @@ const Sidebar = ({
                   </button>
                   <button
                     onClick={() => {
-                      console.log("클릭")
+                      toggleMenu(chatRoom.id)
                     }}
                     className="p-1 hover:bg-gray-600 rounded-full"
                     disabled={chatSemaphore}
@@ -171,7 +181,7 @@ const Sidebar = ({
                   </button>
                   <button
                     onClick={() => {
-                      console.log("클릭")
+                      toggleMenu(chatRoom.id)
                     }}
                     className="p-1 hover:bg-gray-600 rounded-full"
                     disabled={chatSemaphore}
