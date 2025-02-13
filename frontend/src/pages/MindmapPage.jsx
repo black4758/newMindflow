@@ -28,21 +28,21 @@ const MindmapPage = () => {
     loadMindmapData();
   }, [chatRoomId]);
 
-  const handleDataUpdate = async () => {
-    const updatedData = await fetchMindmapData(chatRoomId);
-    setMindmapData(updatedData);
-  };
+  // const handleDataUpdate = async () => {
+  //   const updatedData = await fetchMindmapData(chatRoomId);
+  //   setMindmapData(updatedData);
+  // };
 
   if (loading) return <div>로딩 중...</div>;
   if (error) return <div>에러가 발생했습니다.</div>;
   if (!mindmapData) return null;
 
   // URL 패턴에 따라 적절한 컴포넌트 렌더링
-  if (chatRoomId && id) {
-    // /mindmap/:chatRoomId/:id 패턴
+  if (id) {
+    // /mindmap/node/:id 패턴
     return <Mindmaproomdetail data={mindmapData} />;
   } else if (chatRoomId) {
-    // /mindmap/:chatRoomId 패턴
+    // /mindmap/room/:chatRoomId 패턴
     return <Mindmaproom data={mindmapData} />;
   } else {
     // /mindmap/ 패턴

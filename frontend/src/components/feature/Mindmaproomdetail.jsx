@@ -256,10 +256,10 @@ const Mindmaproomdetail = ({ data }) => {
         // 루트 노드(chatroom)인 경우
         if (node.isRoot) {
           const chatRoomId = node.id.replace('root_', '');
-          navigate(`/mindmap/${chatRoomId}`);
+          navigate(`/mindmap/room/${chatRoomId}`);
         } else {
           // 일반 노드인 경우
-          navigate(`/mindmap/${node.chatRoomId}/${node.id}`);
+          navigate(`/mindmap/node/${node.id}`);
         }
         
         setLastClickedNode(null);
@@ -633,6 +633,11 @@ const Mindmaproomdetail = ({ data }) => {
     setSearchTerm(e.target.value);
   };
 
+  // 현재 노드 정보 찾기
+  const currentNode = useMemo(() => {
+    return data.nodes.find(node => node.id === id);
+  }, [data.nodes, id]);
+
   return (
     <div className="relative w-full h-full">
       {/* 검색창 컨테이너 수정 */}
@@ -723,12 +728,12 @@ const Mindmaproomdetail = ({ data }) => {
         {is3D ? '2D로 보기' : '3D로 보기'}
       </button>
 
-      {/* 뒤로가기 버튼 추가 */}
+      {/* 뒤로가기 버튼 - 현재 노드의 chatRoomId 사용 */}
       <button 
         className="absolute top-4 right-4 z-50 bg-gray-500 text-white px-4 py-2 rounded-lg"
-        onClick={() => navigate(`/mindmap/${chatRoomId}`)}
+        onClick={() => navigate(`/mindmap/room/${currentNode?.chatRoomId}`)}
       >
-        뒤로 가기
+        {currentNode?.chatRoomId} chatroom
       </button>
 
       {/* 조건부 렌더링으로 2D/3D 그래프 전환 */}
