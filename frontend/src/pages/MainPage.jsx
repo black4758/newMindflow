@@ -9,7 +9,10 @@ import { useLocation } from "react-router-dom"
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정
 // - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
-const socket = io(process.env.REACT_APP_SOCKET_BASE_URL, {
+
+const baseURL = import.meta.env.VITE_APP_SOCKET_BASE_URL
+
+const socket = io(baseURL, {
   transports: ["websocket"], // WebSocket 프로토콜만 사용
   reconnection: true, // 연결 끊김 시 재연결 시도
   reconnectionAttempts: 5, // 최대 재연결 시도 횟수
@@ -18,7 +21,7 @@ const socket = io(process.env.REACT_APP_SOCKET_BASE_URL, {
 
 // MainPage 컴포넌트 정의
 // setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
-const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSemaphore, setChatSemaphore }) => {
+const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSemaphore, setChatSemaphore }) => {
   const location = useLocation()
 
   // ===== Refs =====
@@ -80,7 +83,7 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSe
       try {
         // API를 통해 채팅 내역 가져오기
         const response = await api.get(`/api/chatroom/messages/${currentChatRoom}`)
-
+        console.log("응답: ", response.data)
         // 서버 응답 데이터를 UI에 표시할 수 있는 형식으로 변환
         const formattedMessages = response.data.flatMap((message) => [
           // 첫 번째 요소: 사용자의 질문
@@ -90,6 +93,8 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSe
           },
           // 두 번째 요소: AI의 답변
           {
+            model: message.llmProviders,
+            detailModel: message.modelVersion,
             // answerSentences 배열의 각 문장(sentence)에서 content를 추출하여
             // 하나의 문자열로 결합 (공백으로 구분)
             text: message.answerSentences.map((sentence) => sentence.content).join(" "),
@@ -98,32 +103,36 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSe
         ])
 
         setMessages(formattedMessages)
+
+        const lastMessage = response.data[response.data.length - 1]
+
+        setModel(lastMessage.llmProviders)
+        setDetailModel(lastMessage.modelVersion)
+        console.log("현재 모델: ", model, detailModel)
       } catch (error) {
         console.error("채팅 메세지 로딩 실패:", error)
       }
     }
 
     loadChatRoomMessages()
-  }, [currentChatRoom])
+  }, [currentChatRoom, refreshTrigger])
 
-  // 새 창 버튼을 눌렀을 때 location.state 변경 감지하여 초기화
   useEffect(() => {
-    // location.state?.refresh -> Sidebar에서 설정한 state 값: Date.now()
-    if (location.state?.refresh) {
-      setMessages([])
-      setModel("")
-      setDetailModel("")
-      setShowModelCards(false)
-      setStreamingText("")
-      onChatRoomSelect(null)
+    if (currentChatRoom === null) {
+      // currentChatRoom이 null로 변경되었을 때의 로직
+      setMessages([]) // 메시지 초기화
+      setModel("") // 모델 초기화
+      setDetailModel("") // 세부 모델 초기화
+      setShowModelCards(false) // 모델 카드 숨기기
+      setStreamingText("") // 스트리밍 텍스트 초기화
       setModelStreamingTexts({
         chatgpt: "",
         claude: "",
         google: "",
         clova: "",
-      })
+      }) // 모델 스트리밍 텍스트 초기화
     }
-  }, [location.state?.refresh])
+  }, [currentChatRoom, refreshTrigger])
 
   // textarea 높이 자동 조절
   useEffect(() => {
@@ -225,8 +234,8 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSe
       console.log("API Response:", response) // 응답 확인용 로그 추가
 
       onChatRoomSelect(response.data.chatRoomId)
-      // 모든 모델의 스트리밍 텍스트 초기화
 
+      // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chatRoomId) {
         onChatRoomSelect(response.data.chatRoomId)
         setModelStreamingTexts({
@@ -359,6 +368,7 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSe
     }
   }, [hasMore])
 
+  // 무한스크롤 로직
   const loadMoreMessages = async () => {
     // 현재 활성화된 채팅방이 없으면 함수 종료
     if (!currentChatRoom) return
