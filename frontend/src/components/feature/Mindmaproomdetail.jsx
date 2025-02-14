@@ -910,6 +910,14 @@ const Mindmaproomdetail = ({ data }) => {
           {!fixedNode.id.startsWith('root_') && (
             <div className="flex justify-end gap-2">
               <button
+                onClick={() => {
+                  navigate('/');  // 임시로로 메인 페이지로 이동
+                }}
+                className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
+              >
+                링크
+              </button>
+              <button
                 onClick={() => handleNodeSplit(fixedNode)}
                 className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
               >

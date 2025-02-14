@@ -5,14 +5,14 @@ import Login from "../pages/Login.jsx"
 import Signup from "../pages/Signup.jsx"
 import Profile from "../pages/Profile.jsx"
 import MindmapPage from "../pages/MindmapPage.jsx"
+import LandingPage from "../pages/LandingPage.jsx"
 
 const routes = [
   {
     path: "/",
-    // element: <PrivateRoute element={<MainPage setRefreshTrigger={undefined} />} />,
-    element: <PrivateRoute element={<MainPage />} />,
-    title: "메인페이지",
-    requireAuth: true,
+    element: <LandingPage />,
+    title: "랜딩페이지",
+    requireAuth: false,
   },
   {
     path: "/login/",
@@ -25,6 +25,13 @@ const routes = [
     element: <PublicRoute element={<Signup />} />,
     title: "회원가입페이지",
     requireAuth: false,
+  },
+  {
+    path: "/main",
+    // element: <PrivateRoute element={<MainPage setRefreshTrigger={undefined} />} />,
+    element: <PrivateRoute element={<MainPage />} />,
+    title: "메인페이지",
+    requireAuth: true,
   },
   {
     path: "/profile/",

@@ -328,6 +328,101 @@ const Mindmap = ({ data }) => {
     };
   }, []);
 
+  // 노드 위치 보존 함수 추가
+  const preserveNodePositions = useCallback((currentNodes) => {
+    const positions = {};
+    currentNodes.forEach(node => {
+      positions[node.id] = {
+        x: node.x,
+        y: node.y,
+        z: is3D ? node.z : undefined,
+        vx: node.vx,
+        vy: node.vy,
+        vz: is3D ? node.vz : undefined
+      };
+    });
+    return positions;
+  }, [is3D]);
+
+  // 노드 위치 복원 함수 추가
+  const restoreNodePositions = useCallback((nodes, savedPositions) => {
+    return nodes.map(node => {
+      const pos = savedPositions[node.id];
+      if (pos) {
+        return {
+          ...node,
+          x: pos.x,
+          y: pos.y,
+          z: is3D ? pos.z : undefined,
+          vx: pos.vx,
+          vy: pos.vy,
+          vz: is3D ? pos.vz : undefined
+        };
+      }
+      return node;
+    });
+  }, [is3D]);
+
+  // 카메라 위치 저장 함수 수정
+  const preserveCameraPosition = useCallback(() => {
+    if (!graphRef.current) return null;
+
+    try {
+      if (is3D) {
+        const pos = graphRef.current.cameraPosition();
+        return {
+          ...pos,
+          lookAt: graphRef.current.controls().target,
+          is3D: true
+        };
+      } else {
+        const transform = graphRef.current.zoom().transform;
+        if (!transform) {
+          // 2D 기본값 반환
+          return { x: 0, y: 0, k: 1, is3D: false };
+        }
+        return { 
+          x: transform.x, 
+          y: transform.y, 
+          k: transform.k,
+          is3D: false 
+        };
+      }
+    } catch (error) {
+      console.warn('카메라 위치 저장 중 오류:', error);
+      // 기본값 반환
+      return is3D 
+        ? { x: 0, y: 0, z: 0, lookAt: { x: 0, y: 0, z: 0 }, is3D: true }
+        : { x: 0, y: 0, k: 1, is3D: false };
+    }
+  }, [is3D]);
+
+  // 카메라 위치 복원 함수 수정
+  const restoreCameraPosition = useCallback((position) => {
+    if (!position || !graphRef.current) return;
+
+    try {
+      if (position.is3D) {
+        const { x, y, z, lookAt } = position;
+        graphRef.current.cameraPosition(
+          { x, y, z },
+          lookAt,
+          3000
+        );
+      } else {
+        const { x, y, k } = position;
+        if (graphRef.current.zoom) {
+          const zoom = graphRef.current.zoom();
+          if (zoom && zoom.transform) {
+            zoom.transform({ x, y, k });
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('카메라 위치 복원 중 오류:', error);
+    }
+  }, []);
+
   // 분리 버튼 클릭 핸들러를 별도로 생성
   const handleSplitButtonClick = useCallback(async (node) => {
     try {
@@ -336,28 +431,55 @@ const Mindmap = ({ data }) => {
         return;
       }
 
-      // 먼저 UI에서 노드를 분리
+      // 현재 상태 저장
+      const savedNodePositions = preserveNodePositions(processedData.nodes);
+      const savedCameraPosition = preserveCameraPosition();
+
+      // 시뮬레이션 즉시 중지
+      if (graphRef.current) {
+        // Force Graph의 시뮬레이션 중지
+        graphRef.current.d3Force('link').distance(0);  // 링크 거리를 0으로
+        graphRef.current.d3Force('charge').strength(0);  // 전하 힘을 0으로
+        graphRef.current.d3Force('center', null);  // 중심 힘 제거
+      }
+
+      // 낙관적 업데이트
       setLocalData(prevData => {
         const updatedRelationships = prevData.relationships.filter(rel => 
           !(rel.target === node.id)
         );
 
+        const nodesWithPositions = restoreNodePositions(prevData.nodes, savedNodePositions);
+        
+        // 노드 위치 고정
+        nodesWithPositions.forEach(node => {
+          node.fx = node.x;
+          node.fy = node.y;
+          if (is3D) node.fz = node.z;
+        });
+
         return {
-          nodes: prevData.nodes,
+          nodes: nodesWithPositions,
           relationships: updatedRelationships
         };
       });
 
-      // UI 업데이트 후 서버에 분리 요청
+      // 서버 요청
       await splitNode(node.id);
+
+      // 카메라 위치 복원
+      restoreCameraPosition(savedCameraPosition);
+
       setFixedNode(null);
       setShowNodeModal(false);
+
     } catch (error) {
       console.error('노드 분리 중 오류 발생:', error);
-      setLocalData(data);
+      const newData = await fetchMindmapData();
+      setLocalData(newData);
       alert('노드 분리에 실패했습니다.');
     }
-  }, [data]);
+  }, [processedData, is3D, preserveNodePositions, preserveCameraPosition, restoreNodePositions, restoreCameraPosition]);
 
   // 노드 삭제 핸들러 수정
   const handleNodeDelete = useCallback(async () => {
@@ -367,30 +489,38 @@ const Mindmap = ({ data }) => {
         return;
       }
 
-      // 먼저 UI에서 노드를 제거
+      // 현재 상태 저장
+      const savedNodePositions = preserveNodePositions(processedData.nodes);
+      const savedCameraPosition = preserveCameraPosition();
+
+      // 낙관적 업데이트
       setLocalData(prevData => {
         const updatedNodes = prevData.nodes.filter(node => node.id !== fixedNode.id);
         const updatedRelationships = prevData.relationships.filter(rel => 
           rel.source !== fixedNode.id && rel.target !== fixedNode.id
         );
 
+        const nodesWithPositions = restoreNodePositions(updatedNodes, savedNodePositions);
         return {
-          nodes: updatedNodes,
+          nodes: nodesWithPositions,
           relationships: updatedRelationships
         };
       });
 
-      // UI 업데이트 후 서버에 삭제 요청
+      // 서버 요청
       await deleteNode(fixedNode.id);
+
       setFixedNode(null);
       setShowNodeModal(false);
+
     } catch (error) {
       console.error('노드 삭제 중 오류 발생:', error);
-      // 삭제 실패 시 원래 데이터로 복구
-      setLocalData(data);
+      // 에러 발생 시에만 서버에서 새로운 데이터를 가져옴
+      const newData = await fetchMindmapData();
+      setLocalData(newData);
       alert('노드 삭제에 실패했습니다.');
     }
-  }, [fixedNode, data]);
+  }, [fixedNode, processedData, preserveNodePositions, preserveCameraPosition, restoreNodePositions]);
 
   // 노드 색상을 원래대로 되돌리기
   const getNodeColor = (node) => {
@@ -472,7 +602,7 @@ const Mindmap = ({ data }) => {
         graphRef.current.centerAt(xCenter, yCenter, 1000);
       }
     }
-  }, [is3D, processedData.nodes]); // processedData.nodes 의존성 추가
+  }, [is3D]); // processedData.nodes 의존성 추가
 
   // 키보드 이벤트 핸들러 추가
   useEffect(() => {
@@ -662,6 +792,23 @@ const Mindmap = ({ data }) => {
     setSearchTerm(e.target.value);
   };
 
+  // 2D/3D 전환 버튼 클릭 핸들러 수정
+  const handleDimensionToggle = useCallback(() => {
+    // 모든 노드의 고정 해제
+    setLocalData(prevData => ({
+      ...prevData,
+      nodes: prevData.nodes.map(node => ({
+        ...node,
+        fx: undefined,
+        fy: undefined,
+        fz: undefined
+      }))
+    }));
+    
+    // 2D/3D 모드 전환
+    setIs3D(!is3D);
+  }, [is3D]);
+
   return (
     <div className="relative w-full h-full">
       {/* 검색창 컨테이너 수정 */}
@@ -747,7 +894,7 @@ const Mindmap = ({ data }) => {
       {/* 2D/3D 전환 버튼 */}
       <button
         className="absolute bottom-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg"
-        onClick={() => setIs3D(!is3D)}
+        onClick={handleDimensionToggle}
       >
         {is3D ? '2D로 보기' : '3D로 보기'}
       </button>
@@ -759,7 +906,7 @@ const Mindmap = ({ data }) => {
           graphData={processedData}
           nodeThreeObject={nodeThreeObject}
           nodeThreeObjectExtend={false}
-          width={window.innerWidth - 256}
+          width={window.innerWidth - 296}
           height={window.innerHeight - 64}
           backgroundColor="#353A3E"
           nodeColor={getNodeColor}
@@ -820,7 +967,7 @@ const Mindmap = ({ data }) => {
         <ForceGraph2D
           ref={graphRef}
           graphData={processedData}
-          width={window.innerWidth - 256}
+          width={window.innerWidth - 296}
           height={window.innerHeight - 64}
           nodeRelSize={1}
           nodeVal={1}
@@ -925,6 +1072,14 @@ const Mindmap = ({ data }) => {
           {/* chatroom 노드가 아닌 경우에만 버튼 표시 */}
           {!fixedNode.id.startsWith('root_') && (
             <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  navigate('/');  // 임시로로 메인 페이지로 이동
+                }}
+                className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
+              >
+                링크
+              </button>
               <button
                 onClick={() => handleSplitButtonClick(fixedNode)}
                 className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
