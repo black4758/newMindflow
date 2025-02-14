@@ -108,7 +108,6 @@ def claude_llm_generate(user_input):
     
     prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
-    print("클러드")
     full_response = ""
     for chunk in claude_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
         if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
@@ -142,7 +141,7 @@ def google_llm_generate(user_input):
     formatted_prompt = prompt.format_messages(user_input=user_input)
     full_response = ""
 
-    for chunk in google_llm.stream("안녕 너 이모티콘 넣지마"):  # A가 google_llm이 되게끔 보장
+    for chunk in google_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
         if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
             continue
         print(chunk.content)
@@ -158,8 +157,7 @@ def chatgpt_llm_generate(user_input):
     prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
     full_response = ""
-    for chunk in chatgpt_llm.stream("안녕"):  # A가 google_llm이 되게끔 보장
-        print("gpt")
+    for chunk in chatgpt_llm.stream(formatted_prompt):
         if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
             continue
         print(chunk.content)
