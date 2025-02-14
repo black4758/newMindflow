@@ -15,7 +15,7 @@ public interface ChatLogService {
                      List<ChatApiResponse.AnswerSentence> answerSentences,
                      long userId); // 대화 저장
     List<ChatLog> getMessagesByChatRoomId(long chatRoomId);
-    List<ChatLog> findBySentenceContent(String searchKeyword);
+    List<ChatLog> findBySentenceContent(String searchKeyword,long userId);
     void deleteChatLogsByChatRoomId(long chatRoomId);
 
 
