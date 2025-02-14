@@ -26,13 +26,13 @@ public class ChatLog {
     private String modelVersion;
 
 
-//    private long chatRoomId;
-
     private String question;
+    @Field(name = "user_id")
     private long userId;
+
+    @Field(name = "answer_sentences")
     private List<AnswerSentence> answerSentences;
+    @Field(name = "created_at")
     private LocalDateTime createdAt;
-    private long llmProviderId;
-    private long modelVersionId;
     private boolean processed;
 }

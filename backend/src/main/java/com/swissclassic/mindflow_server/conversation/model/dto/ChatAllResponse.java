@@ -24,8 +24,8 @@ public class ChatAllResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ModelResponse {
-        private String response; // 각 모델의 "response" 필드 매핑
+        private String response;
         @JsonProperty("detail_model")
-        private String detailModel; // 각 모델의 "detail_model" 필드 매핑
+        private String detailModel;
     }
 }
