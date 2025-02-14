@@ -9,7 +9,7 @@ import { useLocation } from "react-router-dom"
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정
 // - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
-const socket = io(process.env.REACT_APP_SOCKET_BASE_URL, {
+const socket = io(import.meta.env.VITE_APP_SOCKET_BASE_URL, {
   transports: ["websocket"], // WebSocket 프로토콜만 사용
   reconnection: true, // 연결 끊김 시 재연결 시도
   reconnectionAttempts: 5, // 최대 재연결 시도 횟수

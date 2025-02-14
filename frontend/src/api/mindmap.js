@@ -3,7 +3,7 @@ import axios from "axios"
 import { store } from "../store/store" // store.js에서 store import
 
 // 개발 환경에서는 mock 서버 URL 사용
-const BASE_URL = process.env.REACT_APP_API_BASE_URL
+const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 export const fetchMindmapData = async (chatRoomId = null) => {
   try {
