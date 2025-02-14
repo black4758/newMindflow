@@ -12,7 +12,9 @@ const AppLayout = () => {
   // 검색 모달의 열림/닫힘 상태를 관리하는 state
   const [isOpen, setIsOpen] = useState(false)
   // 채팅방 ID 상태
-  const [currentChatRoom, setCurrentChatRoom] = useState(null)
+  const [currentChatRoom, setCurrentChatRoom] = useState(() => {
+    return localStorage.getItem("currentChatRoom") || null
+  })
 
   const [chatSemaphore, setChatSemaphore] = useState(false) // 채팅 임계구역
   const [mindSemaphore, setMindSemaphore] = useState(false) // 마인드맵 임계구역
@@ -22,6 +24,11 @@ const AppLayout = () => {
 
   // 채팅방 업데이트 핸들러(Sidebar)
   const handleChatRoomSelect = (roomId) => {
+    if (roomId) {
+      localStorage.setItem("currentChatRoom", roomId.toString())
+    } else {
+      localStorage.removeItem("currentChatRoom")
+    }
     setCurrentChatRoom(roomId)
   }
 
@@ -56,15 +63,13 @@ const AppLayout = () => {
       />
       <div className="flex-1 flex flex-col">
         {/* 상단 네비게이션 바 */}
-        <Navbar />
+        <Navbar 
+          onChatRoomSelect={handleChatRoomSelect}
+        />
         {/* 메인 컨텐츠 영역 */}
         <main className="flex-1 px-5 overflow-y-auto">
           {/* 검색 모달 컴포넌트 */}
-          <SearchModal 
-            isOpen={isOpen} 
-            onClose={() => setIsOpen(false)} 
-            onChatRoomSelect = {handleChatRoomSelect}
-          />
+          <SearchModal isOpen={isOpen} onClose={() => setIsOpen(false)} onChatRoomSelect={handleChatRoomSelect} />
           {/* 라우트에 따른 컴포넌트 렌더링 */}
           <Routes>
             {routes.map((route) => (

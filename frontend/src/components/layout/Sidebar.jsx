@@ -68,7 +68,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
         // 3. 현재 채팅방이 삭제되는 경우 추가 처리
         if (chatroomId === currentChatRoom) {
           onChatRoomSelect(null) // 현재 채팅방 선택 해제
-          navigate("/main") // 메인 페이지로 이동
+          // navigate("/main") // 메인 페이지로 이동
         }
 
         alert("삭제 완료")

@@ -9,7 +9,7 @@ import { useLocation } from "react-router-dom"
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정
 // - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
-const socket = io(process.env.REACT_APP_SOCKET_BASE_URL, {
+const socket = io(import.meta.env.VITE_APP_SOCKET_BASE_URL, {
   transports: ["websocket"], // WebSocket 프로토콜만 사용
   reconnection: true, // 연결 끊김 시 재연결 시도
   reconnectionAttempts: 5, // 최대 재연결 시도 횟수
@@ -19,7 +19,6 @@ const socket = io(process.env.REACT_APP_SOCKET_BASE_URL, {
 // MainPage 컴포넌트 정의
 // setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
 const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSemaphore, setChatSemaphore }) => {
-
   // ===== Refs =====
   const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref
   const messagesEndRef = useRef(null) // 새 메시지 추가시 자동 스크롤을 위한 ref
@@ -194,11 +193,6 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
 
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
-    console.log("Current userId:", userId)
-
-    const token = localStorage.getItem("accessToken")
-    console.log("현재 토큰:", token)
-
     if (!userId) {
       console.error("유효하지 않은 사용자 ID")
       return
@@ -234,6 +228,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
 
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chatRoomId) {
+        localStorage.setItem("currentChatRoom", response.data.chatRoomId.toString())
         onChatRoomSelect(response.data.chatRoomId)
         setModelStreamingTexts({
           chatgpt: "",
