@@ -22,7 +22,6 @@ const socket = io(baseURL, {
 // MainPage 컴포넌트 정의
 // setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
 const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSemaphore, setChatSemaphore }) => {
-  const location = useLocation()
 
   // ===== Refs =====
   const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref

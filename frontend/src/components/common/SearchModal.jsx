@@ -5,7 +5,7 @@ import { X } from "lucide-react"
 import PropTypes from "prop-types"
 import axios from "axios"
 
-const SearchModal = ({ isOpen, onClose }) => {
+const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
   const [searchInput, setSearchInput] = useState("")
   const [SearchResults, setSearchResults] = useState([])
 
@@ -46,6 +46,11 @@ const SearchModal = ({ isOpen, onClose }) => {
     }
   }
 
+  const handleResultClick = (chatRoomId) => {
+    onChatRoomSelect(chatRoomId)
+    onClose()
+  }
+
   if (!isOpen) return null
 
   return createPortal(
@@ -66,6 +71,7 @@ const SearchModal = ({ isOpen, onClose }) => {
             {SearchResults.map((result, index) => (
               <button
                 key={index}
+                onClick={() => handleResultClick(result.chatRoomId)}
                 className="block 
         w-full 
         text-left 
@@ -81,7 +87,8 @@ const SearchModal = ({ isOpen, onClose }) => {
         hover:shadow-neon
         animate-neon-shine"
               >
-                {result}
+                {result.answerSentences[0]?.content}
+                {result.answerSentences.length > 1 && "..."}
               </button>
             ))}
           </div>
@@ -95,6 +102,7 @@ const SearchModal = ({ isOpen, onClose }) => {
 SearchModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  onChatRoomSelect: PropTypes.func.isRequired,
 }
 
 export default SearchModal

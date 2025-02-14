@@ -60,7 +60,11 @@ const AppLayout = () => {
         {/* 메인 컨텐츠 영역 */}
         <main className="flex-1 px-5 overflow-y-auto">
           {/* 검색 모달 컴포넌트 */}
-          <SearchModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
+          <SearchModal 
+            isOpen={isOpen} 
+            onClose={() => setIsOpen(false)} 
+            onChatRoomSelect = {handleChatRoomSelect}
+          />
           {/* 라우트에 따른 컴포넌트 렌더링 */}
           <Routes>
             {routes.map((route) => (
