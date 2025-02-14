@@ -120,6 +120,8 @@ wsproto==1.2.0
 yarl==1.18.3
 zstandard==0.23.0
 flask-socketio
-gevent
+# gevent
 eventlet  
 gunicorn
+httpx[http2]
+uvicorn
