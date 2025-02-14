@@ -46,6 +46,8 @@ public class SecurityConfig {
         return http
                 // CSRF 비활성화 (새로운 방식)
                 .csrf(AbstractHttpConfigurer::disable)
+                // CorsConfig의 설정 반영
+                .cors(cors -> cors.configure(http))
                 // 세션 관리 설정 (새로운 방식)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // 요청 인증 규칙 설정

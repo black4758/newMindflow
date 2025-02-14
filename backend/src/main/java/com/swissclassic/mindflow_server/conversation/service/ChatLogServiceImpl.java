@@ -69,8 +69,8 @@ public class ChatLogServiceImpl implements ChatLogService {
     }
 
     @Override
-    public  List<ChatLog> findBySentenceContent(String searchKeyword){
-        return chatLogRepository.findBySentenceContent(searchKeyword);
+    public  List<ChatLog> findBySentenceContent(String searchKeyword,long userId){
+        return chatLogRepository.findBySentenceContent(searchKeyword,userId);
     }
 
     @Override

@@ -13,8 +13,8 @@ public class ChatLogController {
     @Autowired
     private ChatLogService service;
 
-    @GetMapping("/search")
-    public List<ChatLog> search(@RequestParam String keyword) {
-        return service.findBySentenceContent(keyword);
+    @GetMapping("/search/{keyword}/{creatorId}")
+    public List<ChatLog> search(@RequestParam String keyword,long creatorId) {
+        return service.findBySentenceContent(keyword,creatorId);
     }
 }
