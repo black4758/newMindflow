@@ -9,10 +9,7 @@ import { useLocation } from "react-router-dom"
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정
 // - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
-
-const baseURL = import.meta.env.VITE_APP_SOCKET_BASE_URL
-
-const socket = io(baseURL, {
+const socket = io(process.env.REACT_APP_SOCKET_BASE_URL, {
   transports: ["websocket"], // WebSocket 프로토콜만 사용
   reconnection: true, // 연결 끊김 시 재연결 시도
   reconnectionAttempts: 5, // 최대 재연결 시도 횟수
@@ -82,7 +79,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       try {
         // API를 통해 채팅 내역 가져오기
         const response = await api.get(`/api/chatroom/messages/${currentChatRoom}`)
-        console.log("응답: ", response.data)
+
         // 서버 응답 데이터를 UI에 표시할 수 있는 형식으로 변환
         const formattedMessages = response.data.flatMap((message) => [
           // 첫 번째 요소: 사용자의 질문
@@ -116,6 +113,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     loadChatRoomMessages()
   }, [currentChatRoom, refreshTrigger])
 
+  // 새 창 버튼을 눌렀을 때 location.state 변경 감지하여 초기화
   useEffect(() => {
     if (currentChatRoom === null) {
       // currentChatRoom이 null로 변경되었을 때의 로직
