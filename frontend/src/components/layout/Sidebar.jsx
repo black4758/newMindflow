@@ -43,7 +43,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     setIsLoading(true)
     try {
       const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
-      console.log("채팅방 목록 로딩 완료:", response.data)
+      // console.log("채팅방 목록 로딩 완료:", response.data)
       setAllChatRooms(response.data)
     } catch (error) {
       console.error("채팅방 목록 로딩 실패:", error)
@@ -127,7 +127,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   }, [chatSemaphore])
 
   useEffect(() => {
-    console.log("채팅방 목록 상태 변경:", allChatRooms)
+    // console.log("채팅방 목록 상태 변경:", allChatRooms)
   }, [allChatRooms])
 
   return (
