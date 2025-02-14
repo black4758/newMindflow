@@ -9,7 +9,7 @@ import { useLocation } from "react-router-dom"
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정
 // - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
-const socket = io("http://localhost:5001", {
+const socket = io(import.meta.env.VITE_APP_SOCKET_BASE_URL, {
   transports: ["websocket"], // WebSocket 프로토콜만 사용
   reconnection: true, // 연결 끊김 시 재연결 시도
   reconnectionAttempts: 5, // 최대 재연결 시도 횟수
@@ -18,7 +18,7 @@ const socket = io("http://localhost:5001", {
 
 // MainPage 컴포넌트 정의
 // setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
-const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
+const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSemaphore, setChatSemaphore }) => {
   const location = useLocation()
 
   // ===== Refs =====
@@ -34,16 +34,14 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
   const [userInput, setUserInput] = useState("") // 현재 사용자 입력
   const [firstUserInput, setFirstUserInput] = useState("") // 첫 질문 저장
   const [streamingText, setStreamingText] = useState("") // AI 응답 스트리밍 텍스트
-  const [isLoading, setIsLoading] = useState(false) // 응답 로딩 상태
 
   // AI 모델 관련 상태들
-  const [model, setModel] = useState("") // 선택된 AI 모델
-  const [detailModel, setDetailModel] = useState("") // 선택된 모델의 세부 버전
+  const [model, setModel] = useState("chatgpt") // 선택된 AI 모델
+  const [detailModel, setDetailModel] = useState("gpt-3.5-turbo") // 선택된 모델의 세부 버전
   const [showModelCards, setShowModelCards] = useState(false) // 모델 선택 UI 표시 여부
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false) // 모델 선택 드롭다운 상태
 
   // 채팅방 관련 상태
-  const [chatRoomId, setChatRoomId] = useState(null) // 현재 채팅방 ID
   const [page, setPage] = useState(1) // 무한 스크롤을 위한 현재 페이지 번호 (1부터 시작)
   const [hasMore, setHasMore] = useState(true) // 더 불러올 이전 메시지가 있는지 여부를 나타내는 플래그
 
@@ -70,6 +68,7 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
   }
 
   // ===== useEffect 훅 =====
+
   useEffect(() => {
     const loadChatRoomMessages = async () => {
       // currentChatRoom이 null이면 메시지 초기화
@@ -109,13 +108,14 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
 
   // 새 창 버튼을 눌렀을 때 location.state 변경 감지하여 초기화
   useEffect(() => {
+    // location.state?.refresh -> Sidebar에서 설정한 state 값: Date.now()
     if (location.state?.refresh) {
       setMessages([])
       setModel("")
       setDetailModel("")
       setShowModelCards(false)
       setStreamingText("")
-      setChatRoomId(0)
+      onChatRoomSelect(null)
       setModelStreamingTexts({
         chatgpt: "",
         claude: "",
@@ -190,6 +190,9 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
   const handleModelSelect = async (modelName) => {
     console.log("Current userId:", userId)
 
+    const token = localStorage.getItem("accessToken")
+    console.log("현재 토큰:", token)
+
     if (!userId) {
       console.error("유효하지 않은 사용자 ID")
       return
@@ -215,23 +218,36 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
         userInput: firstUserInput,
         answer: streamingText, // 스트리밍으로 받은 텍스트 사용
         creatorId: userId,
-        detail_model: detailModelList[modelName][0], // 기본 detail_model 사용
+        llmProviders: modelName,
+        modelVersion: detailModelList[modelName][0], // 기본 detail_model 사용
       })
 
-      setChatRoomId(response.data.chatRoomId)
+      console.log("API Response:", response) // 응답 확인용 로그 추가
+
       onChatRoomSelect(response.data.chatRoomId)
       // 모든 모델의 스트리밍 텍스트 초기화
-      setModelStreamingTexts({
-        chatgpt: "",
-        claude: "",
-        google: "",
-        clova: "",
-      })
+
+      if (response.data && response.data.chatRoomId) {
+        onChatRoomSelect(response.data.chatRoomId)
+        setModelStreamingTexts({
+          chatgpt: "",
+          claude: "",
+          google: "",
+          clova: "",
+        })
+        setRefreshTrigger((prev) => !prev)
+      } else {
+        console.error("포멧 에러:", response)
+      }
 
       // 채팅방이 생성된 후 사이드바에 새로운 채팅방을 생성했다고 알림
       setRefreshTrigger((prev) => !prev)
     } catch (error) {
-      console.error("모델 선택 오류:", error)
+      console.error("모델 선택 오류:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      })
     }
   }
 
@@ -240,8 +256,7 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
     e.preventDefault()
     if (!userInput.trim()) return
 
-    setIsLoading(true) //로딩 시작
-
+    setChatSemaphore(true) //임계 구역 설정: 채팅입력, 채팅방 변경 방지
     // 사용자 메시지를 즉시 화면에 표시
     const userMessage = {
       text: userInput,
@@ -250,11 +265,12 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
     setMessages((prev) => [...prev, userMessage])
 
     try {
-      // currentChatRoom이 null이거나 model이 없으면 새로운 대화 시작
-      if (!currentChatRoom || !model) {
+      // currentChatRoom이 null이면 새로운 대화 시작
+      if (!currentChatRoom) {
         // 첫 메시지일 때는 모델 선택 카드를 즉시 표시
         setFirstUserInput(userInput)
         setShowModelCards(true)
+
         setModelStreamingTexts({
           chatgpt: "",
           claude: "",
@@ -265,18 +281,17 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
       } else {
         // 이후 메시지: 선택된 모델과 대화
         const response = await api.post("/api/messages/send", {
-          chatRoomId: chatRoomId,
+          chatRoomId: currentChatRoom,
           model: model,
           userInput,
           creatorId: userId,
           detailModel,
         })
 
-        const { chat_room_id, response: aiResponse } = response.data
+        const { response: aiResponse } = response.data
 
         // 스트리밍 텍스트를 최종 응답으로 바로 교체
         setStreamingText(aiResponse)
-        setChatRoomId(chat_room_id)
 
         // 스트리밍 애니메이션 효과 제거를 위한 약간의 지연
         requestAnimationFrame(() => {
@@ -293,7 +308,7 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
       console.error("메시지 전송 오류:", error)
       setStreamingText("")
     } finally {
-      setIsLoading(false) // 로딩 종료료
+      setChatSemaphore(false) // 임계 구역 해제
       setUserInput("")
     }
   }
@@ -310,6 +325,9 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
   const changeModel = (modelName) => {
     setModel(modelName)
     setDetailModel(detailModelList[modelName][0])
+    if (chatSemaphore) {
+      setChatSemaphore(false)
+    } //임계 해제
   }
   // **세부 모델 변경 처리**
   const changeDetailModel = (detailModelName) => {
@@ -341,14 +359,6 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
     }
   }, [hasMore])
 
-  /**
-   * 이전 메시지들을 페이지네이션 방식으로 불러오는 함수
-   * 스크롤이 상단에 도달했을 때 호출되어 이전 대화 내용을 로드함
-   * 이렇게 페이지 번호를 사용하는 이유:
-      모든 메시지를 한 번에 가져오면 데이터가 너무 많아질 수 있음
-      사용자가 필요한 만큼만 점진적으로 로드하여 성능 최적화
-      서버의 부하를 분산시킬 수 있음
-   */
   const loadMoreMessages = async () => {
     // 현재 활성화된 채팅방이 없으면 함수 종료
     if (!currentChatRoom) return
@@ -439,10 +449,10 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
             value={userInput}
             onChange={handleInputChange}
             rows={1}
-            disabled={isLoading}
-            placeholder={isLoading ? "메시지 전송 중..." : "메시지를 입력하세요"}
+            disabled={chatSemaphore || showModelCards}
+            placeholder={showModelCards ? "모델을 선택해주세요" : chatSemaphore ? "메시지 전송 중..." : "메시지를 입력하세요"}
             className={`w-full px-4 py-2 pr-12 rounded-lg bg-[#e0e0e0] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FFD26F] resize-none overflow-y-auto ${
-              isLoading ? "opacity-50 cursor-not-allowed" : ""
+              chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""
             }`}
             style={{ minHeight: "40px", maxHeight: "120px", lineHeight: "24px" }}
             onKeyDown={(e) => {
@@ -452,7 +462,11 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect }) => {
               }
             }}
           />
-          <button type="submit" className={`absolute right-2 top-[8px] text-gray-600 hover:text-[#FBFBFB] ${isLoading || !model ? "opacity-50 cursor-not-allowed" : ""}`}>
+          <button
+            type="submit"
+            disabled={chatSemaphore || showModelCards}
+            className={`absolute right-2 top-[8px] text-gray-600 hover:text-[#FBFBFB] ${chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
             <ArrowUpCircle size={24} />
           </button>
         </form>

@@ -39,15 +39,15 @@ const routes = [
     requireAuth: true,
   },
   {
-    path: "/mindmap/:chatRoomId",
+    path: "/mindmap/room/:chatRoomId",
     element: <PrivateRoute element={<MindmapPage />} />,
     title: "마인드맵룸상세페이지",
     requireAuth: true,
   },
   {
-    path: "/mindmap/:chatRoomId/:id",
+    path: "/mindmap/node/:id",
     element: <PrivateRoute element={<MindmapPage />} />,
-    title: "마인드맵상세페이지",
+    title: "마인드맵노드상세페이지",
     requireAuth: true,
   },
 ]

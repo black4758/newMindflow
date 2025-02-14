@@ -1,7 +1,7 @@
 spring:
   profiles:
     include: dotenv
-    active: dev # dev #, prod
+    active: prod
   mail:
     host: ${SMTP_HOST}
     port: ${SMTP_PORT}
@@ -26,7 +26,7 @@ mail:
 
 
 jwt:
-  secret: dyAeHubOOc8KaOfYB6XEQoEj1QzRlVgtjNL8PYs1A1tymZvvqkcEU7L1imkKHeDa
+  secret: ${JWT_SECRET}
   expiration: 3600000 # 1시간 (밀리초 단위)
   refresh:
     expiration: 1296000000 # 15일 (밀리초 단위)
