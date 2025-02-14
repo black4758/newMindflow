@@ -9,7 +9,13 @@ from neo4j import GraphDatabase
 
 from celery_config import celery
 
+from flask_socketio import SocketIO
+
+# tasks.py의 상단에 socketio 인스턴스 생성
+socketio = SocketIO(message_queue='redis://redis:6379/0')
+
 load_dotenv()
+
 
 try:
     # bolt:// 프로토콜 사용 및 데이터베이스 이름 지정
@@ -202,8 +208,14 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
                         "creator_id": creator_id,
                     }
 
-        # 쿼리 생성 및 실행
+        # 마인드맵 생성 상태
+        socketio.emit('mindmap_status', {
+            'status': 'generating',
+            'message': '마인드맵을 생성하고 있습니다',
+            'chatRoomId': chat_room_id
+        })
 
+        # 쿼리 생성 및 실행
         print("Cypher 쿼리 생성 시작")
         query = query_chain.invoke(query_data)
         print(f"""생성된 Cypher 쿼리:{query}""")
@@ -212,6 +224,14 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         with neo4j_driver.session(database="mindmap") as session:
             session.run(query)
         print("마인드맵 생성 작업 완료")
+
+        # 완료 상태
+        socketio.emit('mindmap_status', {
+            'status': 'completed',
+            'message': '마인드맵 생성이 완료되었습니다',
+            'chatRoomId': chat_room_id
+        })
+
         return True
     except Exception as e:
         print(f"""마인드맵 생성 오류:
@@ -224,6 +244,14 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
   question: {question}
   answer_sentences: {answer_sentences}
 """)
+        
+        # 에러 상태
+        socketio.emit('mindmap_status', {
+            'status': 'error',
+            'message': f'마인드맵 생성 중 오류가 발생했습니다: {str(e)}',
+            'chatRoomId': chat_room_id
+        })
+
         return False
 
 
