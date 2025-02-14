@@ -40,10 +40,6 @@ const Signup = () => {
     // }
 
     try {
-      console.log("바이");
-      console.log("API Base URL:", api.defaults.baseURL); 
-
-
       const response = await api.post("/api/auth/register", {
         accountId,
         username,
