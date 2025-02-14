@@ -26,7 +26,7 @@ const AppLayout = () => {
   }
 
   // 현재 경로가 인증 페이지인지 확인
-  const isAuthPage = ["/login", "/signup"].includes(location.pathname)
+  const isAuthPage = ["/login", "/signup", "/"].includes(location.pathname)
 
   // 인증 페이지일 경우 간단한 레이아웃 반환
   if (isAuthPage) {
@@ -45,17 +45,14 @@ const AppLayout = () => {
   return (
     <div className="flex h-screen bg-[#353a3e]">
       {/* 사이드바 컴포넌트 - 모달 열기/닫기 함수 전달 */}
-      <Sidebar 
-      onOpenModal={() => setIsOpen(!isOpen)} 
-      refreshTrigger={refreshTrigger} 
-      setRefreshTrigger={setRefreshTrigger} 
-      onChatRoomSelect={handleChatRoomSelect} 
-      currentChatRoom={currentChatRoom} 
-      setCurrentChatRoo={setCurrentChatRoom}
-      chatSemaphore={chatSemaphore}
-      setChatSemaphore={setChatSemaphore}
-      mindSemaphore={mindSemaphore}
-      setMindSemaphore={setMindSemaphore}
+      <Sidebar
+        onOpenModal={() => setIsOpen(!isOpen)}
+        refreshTrigger={refreshTrigger}
+        setRefreshTrigger={setRefreshTrigger}
+        onChatRoomSelect={handleChatRoomSelect}
+        currentChatRoom={currentChatRoom}
+        chatSemaphore={chatSemaphore}
+        mindSemaphore={mindSemaphore}
       />
       <div className="flex-1 flex flex-col">
         {/* 상단 네비게이션 바 */}
@@ -70,19 +67,16 @@ const AppLayout = () => {
               <Route
                 key={route.path}
                 path={route.path}
-                element={
-                  React.cloneElement(route.element, {
-                        element: React.cloneElement(route.element.props.element, {
-                          setRefreshTrigger: setRefreshTrigger,
-                          currentChatRoom: currentChatRoom,
-                          onChatRoomSelect: handleChatRoomSelect,
-                          chatSemaphore: chatSemaphore,
-                          setChatSemaphore: setChatSemaphore,
-                          mindSemaphore: mindSemaphore,
-                          setMindSemaphore: setMindSemaphore,
-                        }),
-                      })
-                }
+                element={React.cloneElement(route.element, {
+                  refreshTrigger,
+                  setRefreshTrigger,
+                  currentChatRoom,
+                  onChatRoomSelect: handleChatRoomSelect,
+                  chatSemaphore,
+                  setChatSemaphore,
+                  mindSemaphore,
+                  setMindSemaphore,
+                })}
               />
             ))}
           </Routes>

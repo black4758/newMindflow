@@ -47,7 +47,7 @@ const Signup = () => {
         email,
         displayName,
       })
-
+    
       if (response.status === 200) {
         alert("회원가입이 완료되었습니다. 로그인해주세요.")
         navigate("/login")
@@ -55,13 +55,18 @@ const Signup = () => {
     } catch (error) {
       if (error.response?.status === 409) {
         setError("이미 존재하는 아이디입니다.")
+      } else if (error.response?.status === 400) {
+        if (error.response.data.includes("Username is already taken")) {
+          setError("이미 존재하는 사용자 이름입니다.")
+        } else {
+          setError("입력하신 정보를 다시 확인해주세요.")
+        }
       } else {
         setError("회원가입에 실패했습니다. 다시 시도해주세요.")
       }
       console.error("회원가입 실패", error)
     }
   }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#353a3e] py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
