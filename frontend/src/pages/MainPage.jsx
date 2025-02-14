@@ -78,7 +78,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       try {
         // API를 통해 채팅 내역 가져오기
         const response = await api.get(`/api/chatroom/messages/${currentChatRoom}`)
-
+        console.log("고쳐야할거: ", response)
         // 서버 응답 데이터를 UI에 표시할 수 있는 형식으로 변환
         const formattedMessages = response.data.flatMap((message) => [
           // 첫 번째 요소: 사용자의 질문
@@ -88,8 +88,8 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
           },
           // 두 번째 요소: AI의 답변
           {
-            model: message.llmProviders,
-            detailModel: message.modelVersion,
+            model: message.model,
+            detailModel: message.detailModel,
             // answerSentences 배열의 각 문장(sentence)에서 content를 추출하여
             // 하나의 문자열로 결합 (공백으로 구분)
             text: message.answerSentences.map((sentence) => sentence.content).join(" "),
@@ -101,8 +101,8 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
 
         const lastMessage = response.data[response.data.length - 1]
 
-        setModel(lastMessage.llmProviders)
-        setDetailModel(lastMessage.modelVersion)
+        setModel(lastMessage.model)
+        setDetailModel(lastMessage.detailModel)
         console.log("현재 모델: ", model, detailModel)
       } catch (error) {
         console.error("채팅 메세지 로딩 실패:", error)
@@ -227,9 +227,9 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       onChatRoomSelect(response.data.chatRoomId)
 
       // 모든 모델의 스트리밍 텍스트 초기화
-      if (response.data && response.data.chatRoomId) {
-        localStorage.setItem("currentChatRoom", response.data.chatRoomId.toString())
-        onChatRoomSelect(response.data.chatRoomId)
+      if (response.data && response.data.chat_room_id) {
+        localStorage.setItem("currentChatRoom", response.data.chatRoomId)
+        onChatRoomSelect(response.data.chat_room_id)
         setModelStreamingTexts({
           chatgpt: "",
           claude: "",
@@ -288,7 +288,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
           creatorId: userId,
           detailModel,
         })
-
+        console.log("샌드",response.data)
         const { response: aiResponse } = response.data
 
         // 스트리밍 텍스트를 최종 응답으로 바로 교체
@@ -368,7 +368,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     try {
       // 현재 페이지 번호를 기준으로 이전 메시지들을 서버에서 가져옴
       const response = await api.get(`/api/chatroom/messages/${currentChatRoom}?page=${page}`)
-
+      console.log("loadMoreMessage 응답: ", response)
       // 서버로부터 받은 메시지 데이터를 UI에 맞게 변환
       const newMessages = response.data.flatMap((message) => [
         {
