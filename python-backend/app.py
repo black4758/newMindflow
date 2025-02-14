@@ -175,7 +175,7 @@ def generate_model_responses(user_input):
     return {
 
         'clova': {
-            'response':chatgpt_llm_generate(user_input),
+            'response':clova_llm_generate(user_input),
             'detail_model':"HCX-003"
         },
         'chatgpt':{
@@ -183,11 +183,11 @@ def generate_model_responses(user_input):
             'detail_model':"gpt-3.5-turbo"
         },
         'claude': {
-           'response': chatgpt_llm_generate(user_input),
+           'response': claude_llm_generate(user_input),
             'detail_model':"claude-3-5-sonnet-latest"
         },        
         'google':{
-            'response':chatgpt_llm_generate(user_input),
+            'response':google_llm_generate(user_input),
             'detail_model':"gemini-2.0-flash-exp"
         } 
     }
