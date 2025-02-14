@@ -479,7 +479,7 @@ const MainPage = ({ setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSe
                   </span>
                   <span className="text-gray-800 capitalize text-sm">{modelName}</span>
                 </div>
-                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">응답을 생성하는 중...</span>}</p>
+                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">마인드맵 생성중...</span>}</p>
               </div>
             ))}
           </div>
