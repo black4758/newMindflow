@@ -6,6 +6,8 @@ import { useSelector } from "react-redux"
 import { io } from "socket.io-client"
 import { useLocation } from "react-router-dom"
 
+import { useNavigate } from 'react-router-dom';
+
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정
 // - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
@@ -55,6 +57,14 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     google: "",
     clova: "",
   })
+
+  // 마인드맵 상태
+  const [mindmapStatus, setMindmapStatus] = useState({
+    status: 'completed',
+    message: ''
+  });
+
+  const navigate = useNavigate();
 
   // Redux에서 필요한 상태 가져오기
   const userId = useSelector((state) => state.auth.user.userId)
@@ -186,14 +196,34 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       console.error("Socket error:", error)
     })
 
+
+    // 마인드맵 상태 이벤트 리스너
+    socket.on('mindmap_status', (data) => {
+      console.log('Received mindmap status:', data);
+      console.log('Current chatRoom:', currentChatRoom);
+      console.log('Data chatRoomId:', data.chatRoomId);
+      
+      // chatRoomId 타입 일치 확인 (문자열로 통일)
+      if (String(data.chatRoomId) === String(currentChatRoom)) {
+        console.log('Updating mindmap status to:', data.status);
+        setMindmapStatus({
+          status: data.status,
+          message: data.message
+        });
+      }
+    });
+
+
     // 컴포넌트 언마운트시 이벤트 리스너 제거
     return () => {
       socket.off("stream")
       socket.off("all_stream")
       socket.off("stream_end")
       socket.off("error")
+      
+      socket.off('mindmap_status');
     }
-  }, [handleStreamEndCallback])
+  }, [handleStreamEndCallback, currentChatRoom])
 
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
@@ -413,6 +443,19 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     }
   }, [handleScroll])
 
+
+  // 마인드맵 조회 핸들러
+  const handleMindmapView = async () => {
+    try {
+      console.log('마인드맵 조회!!!!!!!!!!!!!')
+      console.log('마인드맵 페이지로 이동:', currentChatRoom);
+      navigate(`/mindmap/room/${currentChatRoom}`);
+
+    } catch (error) {
+      console.error('마인드맵 페이지 이동 실패:', error);
+    }
+  };
+
   // **렌더링**
   return (
     <div className="h-full flex flex-col p-4 relative" id="modal-root">
@@ -444,7 +487,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
                   </span>
                   <span className="text-gray-800 capitalize text-sm">{modelName}</span>
                 </div>
-                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">응답을 생성하는 중...</span>}</p>
+                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">마인드맵 생성중...</span>}</p>
               </div>
             ))}
           </div>
@@ -524,6 +567,27 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
             )}
           </div>
         )}
+
+      {/* 마인드맵 버튼 */}
+      {(mindmapStatus.status === 'completed') ? (
+        <button 
+          onClick={handleMindmapView}
+          className="h-[40px] px-4 rounded-lg bg-[#e0e0e0] text-gray-800 hover:bg-[#EFEFEF] flex items-center gap-2 ml-2"
+        >
+          마인드맵 조회하기
+        </button>
+      ) : (
+        <button 
+          disabled
+          className="h-[40px] px-4 rounded-lg bg-gray-200 text-gray-500 cursor-not-allowed flex items-center gap-2 ml-2"
+        >
+          <span className="animate-spin">⚙️</span>
+          {mindmapStatus.message || '마인드맵 생성중'}
+        </button>
+      )}
+
+
+
       </div>
     </div>
   )

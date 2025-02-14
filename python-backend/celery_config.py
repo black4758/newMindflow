@@ -9,10 +9,10 @@ REDIS_HOST = 'redis' if IS_DOCKER else 'localhost'
 REDIS_PORT = '6379' if IS_DOCKER else '6380'  # 로컬에서는 6380 포트 사용
 REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
 
-# Redis 호스트 설정
-REDIS_HOST = 'localhost'
-REDIS_PORT = '6380'  # 로컬에서는 6380 포트 사용
-REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+# # Redis 호스트 설정
+# REDIS_HOST = 'localhost'
+# REDIS_PORT = '6380'  # 로컬에서는 6380 포트 사용
+# REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
 
 celery = Celery('mindflow',
                 broker=REDIS_URL,
