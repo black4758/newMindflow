@@ -6,10 +6,15 @@ import { useSelector } from "react-redux"
 import { io } from "socket.io-client"
 import { useLocation } from "react-router-dom"
 
+import { useNavigate } from 'react-router-dom';
+
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정
 // - 실시간 양방향 통신을 위한 Socket.io 클라이언트 인스턴스 생성
-const socket = io(import.meta.env.VITE_APP_SOCKET_BASE_URL, {
+
+const baseURL = import.meta.env.VITE_APP_SOCKET_BASE_URL
+
+const socket = io(baseURL, {
   transports: ["websocket"], // WebSocket 프로토콜만 사용
   reconnection: true, // 연결 끊김 시 재연결 시도
   reconnectionAttempts: 5, // 최대 재연결 시도 횟수
@@ -19,6 +24,8 @@ const socket = io(import.meta.env.VITE_APP_SOCKET_BASE_URL, {
 // MainPage 컴포넌트 정의
 // setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
 const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSemaphore, setChatSemaphore }) => {
+  const location = useLocation()
+
   // ===== Refs =====
   const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref
   const messagesEndRef = useRef(null) // 새 메시지 추가시 자동 스크롤을 위한 ref
@@ -51,6 +58,14 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     clova: "",
   })
 
+  // 마인드맵 상태
+  const [mindmapStatus, setMindmapStatus] = useState({
+    status: 'completed',
+    message: ''
+  });
+
+  const navigate = useNavigate();
+
   // Redux에서 필요한 상태 가져오기
   const userId = useSelector((state) => state.auth.user.userId)
 
@@ -78,7 +93,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       try {
         // API를 통해 채팅 내역 가져오기
         const response = await api.get(`/api/chatroom/messages/${currentChatRoom}`)
-        console.log("고쳐야할거: ", response)
+        console.log("응답: ", response.data)
         // 서버 응답 데이터를 UI에 표시할 수 있는 형식으로 변환
         const formattedMessages = response.data.flatMap((message) => [
           // 첫 번째 요소: 사용자의 질문
@@ -88,8 +103,8 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
           },
           // 두 번째 요소: AI의 답변
           {
-            model: message.model,
-            detailModel: message.detailModel,
+            model: message.llmProviders,
+            detailModel: message.modelVersion,
             // answerSentences 배열의 각 문장(sentence)에서 content를 추출하여
             // 하나의 문자열로 결합 (공백으로 구분)
             text: message.answerSentences.map((sentence) => sentence.content).join(" "),
@@ -101,8 +116,8 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
 
         const lastMessage = response.data[response.data.length - 1]
 
-        setModel(lastMessage.model)
-        setDetailModel(lastMessage.detailModel)
+        setModel(lastMessage.llmProviders)
+        setDetailModel(lastMessage.modelVersion)
         console.log("현재 모델: ", model, detailModel)
       } catch (error) {
         console.error("채팅 메세지 로딩 실패:", error)
@@ -112,7 +127,6 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     loadChatRoomMessages()
   }, [currentChatRoom, refreshTrigger])
 
-  // 새 창 버튼을 눌렀을 때 location.state 변경 감지하여 초기화
   useEffect(() => {
     if (currentChatRoom === null) {
       // currentChatRoom이 null로 변경되었을 때의 로직
@@ -182,17 +196,42 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       console.error("Socket error:", error)
     })
 
+
+    // 마인드맵 상태 이벤트 리스너
+    socket.on('mindmap_status', (data) => {
+      console.log('Received mindmap status:', data);
+      console.log('Current chatRoom:', currentChatRoom);
+      console.log('Data chatRoomId:', data.chatRoomId);
+      
+      // chatRoomId 타입 일치 확인 (문자열로 통일)
+      if (String(data.chatRoomId) === String(currentChatRoom)) {
+        console.log('Updating mindmap status to:', data.status);
+        setMindmapStatus({
+          status: data.status,
+          message: data.message
+        });
+      }
+    });
+
+
     // 컴포넌트 언마운트시 이벤트 리스너 제거
     return () => {
       socket.off("stream")
       socket.off("all_stream")
       socket.off("stream_end")
       socket.off("error")
+      
+      socket.off('mindmap_status');
     }
-  }, [handleStreamEndCallback])
+  }, [handleStreamEndCallback, currentChatRoom])
 
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
+    console.log("Current userId:", userId)
+
+    const token = localStorage.getItem("accessToken")
+    console.log("현재 토큰:", token)
+
     if (!userId) {
       console.error("유효하지 않은 사용자 ID")
       return
@@ -227,9 +266,8 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       onChatRoomSelect(response.data.chatRoomId)
 
       // 모든 모델의 스트리밍 텍스트 초기화
-      if (response.data && response.data.chat_room_id) {
-        localStorage.setItem("currentChatRoom", response.data.chatRoomId)
-        onChatRoomSelect(response.data.chat_room_id)
+      if (response.data && response.data.chatRoomId) {
+        onChatRoomSelect(response.data.chatRoomId)
         setModelStreamingTexts({
           chatgpt: "",
           claude: "",
@@ -288,7 +326,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
           creatorId: userId,
           detailModel,
         })
-        console.log("샌드",response.data)
+
         const { response: aiResponse } = response.data
 
         // 스트리밍 텍스트를 최종 응답으로 바로 교체
@@ -368,7 +406,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     try {
       // 현재 페이지 번호를 기준으로 이전 메시지들을 서버에서 가져옴
       const response = await api.get(`/api/chatroom/messages/${currentChatRoom}?page=${page}`)
-      console.log("loadMoreMessage 응답: ", response)
+
       // 서버로부터 받은 메시지 데이터를 UI에 맞게 변환
       const newMessages = response.data.flatMap((message) => [
         {
@@ -405,6 +443,19 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     }
   }, [handleScroll])
 
+
+  // 마인드맵 조회 핸들러
+  const handleMindmapView = async () => {
+    try {
+      console.log('마인드맵 조회!!!!!!!!!!!!!')
+      console.log('마인드맵 페이지로 이동:', currentChatRoom);
+      navigate(`/mindmap/room/${currentChatRoom}`);
+
+    } catch (error) {
+      console.error('마인드맵 페이지 이동 실패:', error);
+    }
+  };
+
   // **렌더링**
   return (
     <div className="h-full flex flex-col p-4 relative" id="modal-root">
@@ -436,7 +487,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
                   </span>
                   <span className="text-gray-800 capitalize text-sm">{modelName}</span>
                 </div>
-                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">응답을 생성하는 중...</span>}</p>
+                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">마인드맵 생성중...</span>}</p>
               </div>
             ))}
           </div>
@@ -516,6 +567,27 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
             )}
           </div>
         )}
+
+      {/* 마인드맵 버튼 */}
+      {(mindmapStatus.status === 'completed') ? (
+        <button 
+          onClick={handleMindmapView}
+          className="h-[40px] px-4 rounded-lg bg-[#e0e0e0] text-gray-800 hover:bg-[#EFEFEF] flex items-center gap-2 ml-2"
+        >
+          마인드맵 조회하기
+        </button>
+      ) : (
+        <button 
+          disabled
+          className="h-[40px] px-4 rounded-lg bg-gray-200 text-gray-500 cursor-not-allowed flex items-center gap-2 ml-2"
+        >
+          <span className="animate-spin">⚙️</span>
+          {mindmapStatus.message || '마인드맵 생성중'}
+        </button>
+      )}
+
+
+
       </div>
     </div>
   )

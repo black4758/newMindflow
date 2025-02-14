@@ -1,4 +1,3 @@
-
 import json
 import os
 import uuid
@@ -24,6 +23,7 @@ from mysql.connector import Error
 from pymongo import MongoClient
 
 from tasks import create_mindmap
+from socket_config import app, socketio
 
 load_dotenv()
 
@@ -125,7 +125,7 @@ def clova_llm_generate(user_input):
     prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
     full_response = ""
-    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장\
+    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
         if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
             continue
         print(chunk.content)
@@ -139,18 +139,17 @@ def clova_llm_generate(user_input):
 def google_llm_generate(user_input):
     prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
-    full_response = ""
 
-    for chunk in google_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
-            continue
-        print(chunk.content)
+    answer=google_llm(formatted_prompt).content
+    parts=(answer).split(' ')
+    for part in parts:
+        print(part)
+        message = f"'{part} '"  # 공백 포함
         socketio.emit('all_stream', {
-            'content': chunk.content,
+            'content': message,
             'model_name':"google"
         })
-        full_response += chunk.content
-    return full_response
+    return answer
 
 
 def chatgpt_llm_generate(user_input):
@@ -243,9 +242,9 @@ def serialize_message(message):
     return getattr(message, 'content', '') if hasattr(message, 'content') else str(message)
 
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'REDACTED'
-socketio = SocketIO(app, cors_allowed_origins="*",host='0.0.0.0')
+# app = Flask(__name__)
+# app.config['SECRET_KEY'] = 'REDACTED'
+# socketio = SocketIO(app, cors_allowed_origins="*",host='0.0.0.0')
 
 api = Api(app, version='1.0', title='다중 AI 챗봇 API', description='다양한 AI 모델을 활용한 챗봇 API')
 
@@ -333,6 +332,11 @@ def escape_cypher_quotes(text):
 
     return escaped_text
 
+@socketio.on('join_room')
+def on_join(data):
+    room = str(data['chatRoomId'])
+    socketio.join_room(room)
+    print(f"Client joined room: {room}")
 
 @ns_chatbot.route('/message')
 class MassageAPI(Resource):
@@ -349,15 +353,13 @@ class MassageAPI(Resource):
             data = request.get_json()
             print(f"Received data: {data}")  # 데이터를 받아서 출력
             chat_room_id = data.get('chatRoomId')
-            model = data.get('model')
+            model = data.get('model', 'clova')
             user_input = data.get('userInput')
 
             creator_id = data.get('creatorId')
-            # creator_id = 'REDACTED123'
 
-            detail_model = data.get('detailModel')
+            detail_model = data.get('detailModel', 'HCX-003')
             account_id = data.get('accountId')
-            # account_id = 'REDACTED123'
 
             # 메모리 초기화
             global current_room_id
@@ -399,6 +401,13 @@ class MassageAPI(Resource):
             
             print("문장 아이디 부여: ", sentences_with_ids)
             
+            # 마인드맵 생성 시작 알림
+            socketio.emit('mindmap_status', {
+                'status': 'creating',
+                'message': '마인드맵 생성을 시작합니다',
+                'chatRoomId': chat_room_id
+            })
+
 
             task = create_mindmap.delay(  
                     # account_id=data.get('accountId'),
@@ -420,7 +429,7 @@ class MassageAPI(Resource):
                 
                 'status': 'success',
                 'chat_room_id': chat_room_id,
-                'creator_id':creator_id,
+                'user_id':creator_id,
                 'model': model,
                 'detail_model':detail_model,
                 'response': response_content_serialized,
@@ -438,9 +447,9 @@ class MassageAPI(Resource):
 
 
 def run_this():
-    with app.app_context():
-        app.run(debug=True, port=5001)
-
+    # with app.app_context():
+    #     app.run(debug=True, port=5001)
+    socketio.run(app, debug=True, port=5001)
 
 if __name__ == "__main__":
     run_this()

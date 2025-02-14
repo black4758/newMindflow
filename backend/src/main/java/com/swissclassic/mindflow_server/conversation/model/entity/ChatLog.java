@@ -19,11 +19,10 @@ public class ChatLog {
     @Field(name = "chat_room_id")
     private long chatRoomId;
 
-    @Field(name = "llm_providers")
-    String llmProviders;
+    String model;
 
-    @Field(name = "model_versions")
-    private String modelVersion;
+    @Field(name = "detail_model")
+    private String detailModel;
 
 
     private String question;
