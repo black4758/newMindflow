@@ -125,7 +125,7 @@ def clova_llm_generate(user_input):
     prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
     full_response = ""
-    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장\
+    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
         if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
             continue
         print(chunk.content)
@@ -139,18 +139,16 @@ def clova_llm_generate(user_input):
 def google_llm_generate(user_input):
     prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
-    full_response = ""
-
-    for chunk in google_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
-            continue
-        print(chunk.content)
+    answer=google_llm(formatted_prompt).content
+    parts=(answer).split(' ')
+    for part in parts:
+        print(part)
+        message = f"'{part} '"  # 공백 포함
         socketio.emit('all_stream', {
-            'content': chunk.content,
+            'content': message,
             'model_name':"google"
         })
-        full_response += chunk.content
-    return full_response
+    return answer
 
 
 def chatgpt_llm_generate(user_input):
@@ -184,10 +182,10 @@ def generate_model_responses(user_input):
            'response': claude_llm_generate(user_input),
             'detail_model':"claude-3-5-sonnet-latest"
         },        
-        # 'google':{
-        #     'response':claude_llm_generate(user_input),
-        #     'detail_model':"gemini-2.0-flash-exp"
-        # } 
+        'google':{
+            'response':google_llm_generate(user_input),
+            'detail_model':"gemini-2.0-flash-exp"
+        } 
     }
 
 
@@ -420,7 +418,7 @@ class MassageAPI(Resource):
                 
                 'status': 'success',
                 'chat_room_id': chat_room_id,
-                'creator_id':creator_id,
+                'user_id':creator_id,
                 'model': model,
                 'detail_model':detail_model,
                 'response': response_content_serialized,

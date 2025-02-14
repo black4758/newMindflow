@@ -10,8 +10,8 @@ public interface ChatLogService {
     void saveChatLog(long chatRoomId,
                      String userInput,
                      String responseSentences,
-                     String llmProviders,
-                     String modelVersion,
+                     String model,
+                     String detailModel,
                      List<ChatApiResponse.AnswerSentence> answerSentences,
                      long userId); // 대화 저장
     List<ChatLog> getMessagesByChatRoomId(long chatRoomId);
