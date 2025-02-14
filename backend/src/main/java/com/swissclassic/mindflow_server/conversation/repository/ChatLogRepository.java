@@ -14,13 +14,13 @@ import java.util.Optional;
 public interface ChatLogRepository extends MongoRepository<ChatLog, ObjectId> {
     List<ChatLog> findByChatRoomId(long chatRoomId);
 
-    @Query("{'$or': [{'question': {$regex: ?0, $options: 'i'}}, {'answerSentences.content': {$regex: ?0, $options: 'i'}}]}")
-    List<ChatLog> findBySentenceContent(String searchKeyword);
-
+//    @Query("{'$or': [{'question': {$regex: ?0, $options: 'i'}}, {'answerSentences.content': {$regex: ?0, $options: 'i'}}]}")
+//    List<ChatLog> findBySentenceContent(String searchKeyword);
+    @Query("{'$and': [{'userId': ?1}, {'$or': [{'question': {$regex: ?0, $options: 'i'}}, {'answerSentences.content': {$regex: ?0, $options: 'i'}}]}]}")
+    List<ChatLog> findBySentenceContent(String searchKeyword, long user_id);
 
     void deleteByChatRoomId(long chatRoomId);
 
-    List<ChatLog> findByChatRoomIdOrderByCreatedAtAsc(long chatRoomId);
 
     @Transactional
     void deleteAllByUserId(Long userId);
