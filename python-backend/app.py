@@ -115,6 +115,7 @@ async def llm_generate_async(user_input, llm, model_name):
 
     async def send_to_websocket(content):
         """스트리밍 데이터 즉시 전송"""
+
         socketio.emit('all_stream', {
             'content': content,
             'model_name': model_name
@@ -137,6 +138,7 @@ async def llm_generate_async(user_input, llm, model_name):
                 full_response += chunk.content
         return full_response
 
+
     return await stream_response()
 
 async def generate_model_responses_async(user_input):
@@ -145,6 +147,7 @@ async def generate_model_responses_async(user_input):
         'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-3.5-turbo"},
         'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
         'google': {'llm': google_llm, 'detail_model': "gemini-2.0-flash-exp"}
+
     }
 
     # 각 모델을 독립적인 태스크로 실행하여 스트리밍 지원
