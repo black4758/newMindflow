@@ -3,13 +3,16 @@ import { useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import PropTypes from "prop-types"
-import axios from "axios"
+import api from "../../api/axios"
+import { useSelector } from "react-redux"
 
 const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
   const [searchInput, setSearchInput] = useState("")
   const [SearchResults, setSearchResults] = useState([])
 
-  const handleSearch = async (input) => {
+  const userId = useSelector((state) => state.auth.user.userId)
+
+  const handleSearch = async () => {
     // 더미 데이터
     // const handleSearch = (input) => {
     //   const dummyData = ["커널은 맛있다", "커널은 즐겁다", "커널은 괴롭다", "커널은 분노한다"]
@@ -18,17 +21,28 @@ const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
     //   setSearchResults(results)
 
     // API 연동
-    if (input.trim() === "") {
+    if (searchInput.trim() === "") {
       setSearchResults([])
       return
     }
 
     try {
-      const response = await axios.get(`/api/chat-log/search?keyword=${input}`)
+      console.log(`요청 주소: /api/chat-log/search/${searchInput}/${userId}`)
+      const response = await api.get(`/api/chat-log/search/${searchInput}/${userId}`)
       const results = response.data
+      console.log("검색결과:   ", results)
+
+      // 결과가 HTML인 경우 처리
+      if (typeof results === "string" && results.includes("<!DOCTYPE html>")) {
+        console.error("인증 에러: HTML 응답 받음")
+        setSearchResults([])
+        return
+      }
+
       setSearchResults(results)
     } catch (error) {
       console.error("검색 오류:", error)
+      setSearchResults([])
     }
   }
 
@@ -42,7 +56,7 @@ const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
-      handleSearch(searchInput)
+      handleSearch()
     }
   }
 

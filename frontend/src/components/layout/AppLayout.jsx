@@ -5,6 +5,7 @@ import Navbar from "./Navbar"
 import Sidebar from "./Sidebar"
 import SearchModal from "../common/SearchModal"
 import routes from "../../routes"
+import { useSelector } from "react-redux"
 
 const AppLayout = () => {
   // 채팅방이 새로 생성되었는지 아닌지의 상태를 관리하는 state
@@ -15,6 +16,9 @@ const AppLayout = () => {
   const [currentChatRoom, setCurrentChatRoom] = useState(() => {
     return localStorage.getItem("currentChatRoom") || null
   })
+
+  // 현재 유저 ID
+  const userId = useSelector((state) => state.auth.user.userId)
 
   const [chatSemaphore, setChatSemaphore] = useState(false) // 채팅 임계구역
   const [mindSemaphore, setMindSemaphore] = useState(false) // 마인드맵 임계구역
@@ -36,7 +40,7 @@ const AppLayout = () => {
   const isAuthPage = ["/login", "/signup", "/"].includes(location.pathname)
 
   // 인증 페이지일 경우 간단한 레이아웃 반환
-  if (isAuthPage) {
+  if (isAuthPage || !userId) {
     return (
       <div className="h-screen bg-[#353a3e]">
         <Routes>
