@@ -27,7 +27,7 @@ const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
     }
 
     try {
-      console.log(`요청 주소: /api/chat-log/search/${searchInput}/${userId}`)
+      console.log(`요청 주소: /api/search/${searchInput}/${userId}`)
       const response = await api.get(`/api/chat-log/search/${searchInput}/${userId}`)
       const results = response.data
       console.log("검색결과:   ", results)
