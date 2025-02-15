@@ -14,7 +14,7 @@ public class ChatLogController {
     private ChatLogService service;
 
     @GetMapping("/search/{keyword}/{creatorId}")
-    public List<ChatLog> search(@RequestParam String keyword,long creatorId) {
-        return service.findBySentenceContent(keyword,creatorId);
+    public List<ChatLog> search(@PathVariable String keyword, @PathVariable long creatorId) {
+        return service.findBySentenceContent(keyword, creatorId);
     }
 }
