@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
-
+import time
 import mysql.connector
 from dotenv import load_dotenv
 from flask import Flask, request
@@ -125,8 +125,8 @@ def clova_llm_generate(user_input):
     prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
     formatted_prompt = prompt.format_messages(user_input=user_input)
     full_response = ""
-    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
+    for chunk in clova_llm.stream(formatted_prompt):  
+        if not chunk.content.strip(): 
             continue
         print(chunk.content)
         socketio.emit('all_stream', {
@@ -144,11 +144,12 @@ def google_llm_generate(user_input):
     parts=(answer).split(' ')
     for part in parts:
         print(part)
-        message = f"'{part} '"  # 공백 포함
+        message = f"{part} "  # 공백 포함
         socketio.emit('all_stream', {
             'content': message,
             'model_name':"google"
         })
+        time.sleep(0.1) 
     return answer
 
 
@@ -184,7 +185,7 @@ def generate_model_responses(user_input):
             'detail_model':"claude-3-5-sonnet-latest"
         },        
         'google':{
-            'response':chatgpt_llm_generate(user_input),
+            'response':google_llm_generate(user_input),
             'detail_model':"gemini-2.0-flash-exp"
         } 
     }
@@ -208,6 +209,7 @@ def generate_response_for_model(user_input, model_class, detail_model):
         socketio.emit('stream', {
                     'content': chunk.content
                 })
+        time.sleep(0.1) 
     memory.save_context(
         {"input": user_input},  # 사용자 입력 저장
         {"output": full_response}  # 모델 응답 저장
@@ -216,10 +218,40 @@ def generate_response_for_model(user_input, model_class, detail_model):
 
 
 
+
+def generate_response_for_google(user_input, model_class, detail_model):
+    history = memory.load_memory_variables({}).get("history", "")
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "너는 한국말로 챗봇. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("human", "{user_input}")])
+
+    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
+    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096,streaming=True)
+    answer=model(formatted_prompt).content
+    parts=(answer).split(' ')
+    for part in parts:
+        print(part)
+        message = f"{part} "  # 공백 포함
+        socketio.emit('stream', {
+            'content': message,
+        })
+        time.sleep(0.1) 
+    memory.save_context(
+        {"input": user_input},  # 사용자 입력 저장
+        {"output": answer}  # 모델 응답 저장
+        )
+    return answer
+
+
+
+
 def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
     model_classes = {"google": ChatGoogleGenerativeAI, "clova": ChatClovaX, "chatgpt": ChatOpenAI,
                      "claude": ChatAnthropic}
     model_class = model_classes.get(model)
+    if model=="google":
+         return generate_response_for_google(user_input, model_class, detail_model)
+    
     if model_class:
         return generate_response_for_model(user_input, model_class, detail_model)
     return {"error": "Invalid model"}
