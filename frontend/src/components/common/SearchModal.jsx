@@ -1,35 +1,35 @@
+import React from "react"
 import { useState } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import PropTypes from "prop-types"
-// import axios from 'axios';
+import axios from "axios"
 
-const SearchModal = ({ isOpen, onClose }) => {
+const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
   const [searchInput, setSearchInput] = useState("")
   const [SearchResults, setSearchResults] = useState([])
 
-  // const handleSearch = async (input) => {
+  const handleSearch = async (input) => {
+    // 더미 데이터
+    // const handleSearch = (input) => {
+    //   const dummyData = ["커널은 맛있다", "커널은 즐겁다", "커널은 괴롭다", "커널은 분노한다"]
 
-  // 더미 데이터
-  const handleSearch = (input) => {
-    const dummyData = ["커널은 맛있다", "커널은 즐겁다", "커널은 괴롭다", "커널은 분노한다"]
-
-    const results = dummyData.filter((item) => item.includes(input))
-    setSearchResults(results)
+    //   const results = dummyData.filter((item) => item.includes(input))
+    //   setSearchResults(results)
 
     // API 연동
-    // if (input.trin() === "") {
-    //   setSearchResults([]);
-    //   return;
-    // }
+    if (input.trim() === "") {
+      setSearchResults([])
+      return
+    }
 
-    // try {
-    //   const response = await axios.get(`api_url?query=${input}`);
-    //   const results = response.data;
-    //   setSearchResults(results);
-    // } catch (error) {
-    //   console.error("검색 오류:", error);
-    // }
+    try {
+      const response = await axios.get(`/api/chat-log/search?keyword=${input}`)
+      const results = response.data
+      setSearchResults(results)
+    } catch (error) {
+      console.error("검색 오류:", error)
+    }
   }
 
   const handleInputChange = (e) => {
@@ -37,9 +37,18 @@ const SearchModal = ({ isOpen, onClose }) => {
     setSearchInput(input)
     if (input.trim() === "") {
       setSearchResults([])
-    } else {
-      handleSearch(input)
     }
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearch(searchInput)
+    }
+  }
+
+  const handleResultClick = (chatRoomId) => {
+    onChatRoomSelect(chatRoomId)
+    onClose()
   }
 
   if (!isOpen) return null
@@ -53,7 +62,7 @@ const SearchModal = ({ isOpen, onClose }) => {
       <div className="absolute inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
         <div className="bg-gray-100 rounded-lg w-full max-w-2xl mx-auto pointer-events-auto flex-col">
           <div className="flex justify-between items-center p-4 border-b">
-            <input type="text" value={searchInput} onChange={handleInputChange} placeholder="검색 입력..." className="w-full p-2 rounded-md" />
+            <input type="text" value={searchInput} onChange={handleInputChange} placeholder="검색 입력..." className="w-full p-2 rounded-md" onKeyDown={handleKeyPress} />
             <button onClick={onClose} className="p-1 hover:bg-gray-400 rounded-full">
               <X className="w-2 p-2 text-black" />
             </button>
@@ -62,6 +71,7 @@ const SearchModal = ({ isOpen, onClose }) => {
             {SearchResults.map((result, index) => (
               <button
                 key={index}
+                onClick={() => handleResultClick(result.chatRoomId)}
                 className="block 
         w-full 
         text-left 
@@ -77,7 +87,8 @@ const SearchModal = ({ isOpen, onClose }) => {
         hover:shadow-neon
         animate-neon-shine"
               >
-                {result}
+                {result.answerSentences[0]?.content}
+                {result.answerSentences.length > 1 && "..."}
               </button>
             ))}
           </div>
@@ -91,6 +102,7 @@ const SearchModal = ({ isOpen, onClose }) => {
 SearchModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  onChatRoomSelect: PropTypes.func.isRequired,
 }
 
 export default SearchModal
