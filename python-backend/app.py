@@ -376,6 +376,13 @@ class MassageAPI(Resource):
                 print("user_input is missing")  # user_input이 없을 경우 출력
                 return make_response(json.dumps({'error': 'user_input은 필수입니다'}, ensure_ascii=False), 400)
 
+            # 마인드맵 생성 시작 알림
+            socketio.emit('mindmap_status', {
+                'status': 'creating',
+                'message': '마인드맵 생성을 시작합니다',
+                'chatRoomId': chat_room_id
+            })
+
             # 챗봇 응답 생성
             response_obj = chatbot_response(user_input, model=model, detail_model=detail_model)
 
@@ -401,12 +408,7 @@ class MassageAPI(Resource):
             
             print("문장 아이디 부여: ", sentences_with_ids)
             
-            # 마인드맵 생성 시작 알림
-            socketio.emit('mindmap_status', {
-                'status': 'creating',
-                'message': '마인드맵 생성을 시작합니다',
-                'chatRoomId': chat_room_id
-            })
+
 
 
             task = create_mindmap.delay(  
@@ -445,6 +447,47 @@ class MassageAPI(Resource):
             error_response = {'error': str(e)}
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
 
+@ns_chatbot.route('/first-mindmap')
+class FirstMindmapAPI(Resource):
+    @ns_chatbot.expect(api.model('first_mindmap', {
+        'chatRoomId': fields.Integer(required=True),
+        'userInput': fields.String(required=True),
+        'creatorId': fields.Integer(required=True),
+        'answerSentences': fields.List(fields.Nested({
+            'sentenceId': fields.String(),
+            'content': fields.String()
+        }))
+    }))
+    def post(self):
+        try:
+            data = request.get_json()
+            chat_room_id = data.get('chatRoomId')
+            user_input = data.get('userInput')
+            creator_id = data.get('creatorId')
+            answer_sentences = data.get('answerSentences')  # MongoDB에 저장된 sentenceId 사용
+            
+            # 마인드맵 생성 시작 알림
+            socketio.emit('mindmap_status', {
+                'status': 'creating',
+                'message': '마인드맵 생성을 시작합니다',
+                'chatRoomId': chat_room_id
+            })
+
+            # 마인드맵 생성 태스크 실행
+            task = create_mindmap.delay(
+                account_id=creator_id,
+                chat_room_id=str(chat_room_id),
+                chat_id="chat_id",
+                question=user_input,
+                answer_sentences=answer_sentences,
+                creator_id=creator_id
+            )
+            
+            return {'status': 'success', 'task_id': task.id}, 200
+
+        except Exception as e:
+            print(f"Error creating first mindmap: {e}")
+            return {'error': str(e)}, 500
 
 def run_this():
     # with app.app_context():
