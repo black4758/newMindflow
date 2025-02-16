@@ -1,6 +1,6 @@
 import json
 import os
-import uuid
+
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
@@ -24,6 +24,7 @@ from pymongo import MongoClient
 
 from tasks import create_mindmap
 from socket_config import app, socketio
+from nanoid import generate
 
 load_dotenv()
 
@@ -400,7 +401,7 @@ class MassageAPI(Resource):
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
             sentences_with_ids = [
                 {
-                    'sentence_id': str(uuid.uuid4()), 
+                    'sentence_id': str(generate(size=7)), 
                     'content': escape_cypher_quotes(sentence) + '.'  # Cypher 이스케이프 처리
                 } 
                 for sentence in answer_sentences
