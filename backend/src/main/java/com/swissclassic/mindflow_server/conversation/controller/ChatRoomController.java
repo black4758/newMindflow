@@ -6,6 +6,7 @@ import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
 import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
 import com.swissclassic.mindflow_server.conversation.service.ConversationSummaryService;
+import com.swissclassic.mindflow_server.mindmap.service.TopicService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ public class ChatRoomController {
     private final ChatRoomService chatRoomService;
     private final ChatLogService chatLogService;
     private final ConversationSummaryService conversationSummaryService;
+    private final TopicService topicService;
 
     @GetMapping("my-rooms/{creatorId}")
     public ResponseEntity<List<ChatRoomResponse>> getChatRoomsByCreatorId(@PathVariable long creatorId) {
@@ -40,6 +42,11 @@ public class ChatRoomController {
         conversationSummaryService.deleteConversationSummaryByChatRoomId(chatRoomId);
         chatRoomService.deleteChatRoomById(chatRoomId);
         // 삭제가 완료된 후 204 No Content 반환
+
+        // 마인드맵 삭제
+        topicService.deleteMindMapByChatRoomId(chatRoomId);
+        log.info("해당 chatRoom의 마인드맵이 삭제되었습니다!!!!!!!!");
+
         return ResponseEntity.noContent().build();
     }
 }

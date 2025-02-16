@@ -70,6 +70,8 @@ dependencies {
     implementation 'org.json:json:20210307' // 최신 버전으로 업데이트 가능
 
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
+    implementation 'com.aventrix.jnanoid:jnanoid:2.0.0'
 }
 
 dependencyManagement {

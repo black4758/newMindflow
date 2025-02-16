@@ -177,5 +177,10 @@ public class TopicService {
     }
 
 
+    public void deleteMindMapByChatRoomId(long chatRoomId) {
+        topicRepository.deleteMindMapByChatRoomId(chatRoomId);
+    }
+
+
 
 }

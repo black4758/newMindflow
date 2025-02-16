@@ -21,6 +21,8 @@ import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
+
 @Slf4j
 @RequiredArgsConstructor
 @RestController
@@ -86,8 +88,8 @@ public class ChatController {
                         .isEmpty())
                         .map(line -> {
                     ChatApiResponse.AnswerSentence sentence = new ChatApiResponse.AnswerSentence();
-                    sentence.setSentenceId(UUID.randomUUID()
-                            .toString());
+                    sentence.setSentenceId(NanoIdUtils.randomNanoId(NanoIdUtils.DEFAULT_NUMBER_GENERATOR,
+                            NanoIdUtils.DEFAULT_ALPHABET, 7));
                     sentence.setContent(line.trim());
                     return sentence;
                 })
