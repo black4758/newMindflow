@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,6 +43,17 @@ public class AiServerServiceImpl implements AiServerService {
                 .retrieve()
                 .bodyToMono(ChatAllResponse.class)
                 .block();// 응답 데이터를 문자열로 변환
+    }
+
+
+    @Override
+    public void createFirstMindmap(Map<String, Object> request) {
+        aiServerWebClient.post()
+                .uri("/chatbot/first-mindmap")
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
     }
 
 }
