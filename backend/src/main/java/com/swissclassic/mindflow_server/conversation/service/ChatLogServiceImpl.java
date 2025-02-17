@@ -36,8 +36,8 @@ public class ChatLogServiceImpl implements ChatLogService {
     public void saveChatLog(long chatRoomId,
                             String userInput,
                             String responseSentences,
-                            String llmProviders,
-                            String modelVersion,
+                            String model,
+                            String detailModel,
                             List<ChatApiResponse.AnswerSentence> answerSentences,
                             long userId) {
 
@@ -46,8 +46,8 @@ public class ChatLogServiceImpl implements ChatLogService {
         chatLog.setUserId(userId);
         chatLog.setQuestion(userInput);
 
-        chatLog.setLlmProviders(llmProviders);
-        chatLog.setModelVersion(modelVersion);
+        chatLog.setModel(model);
+        chatLog.setDetailModel(detailModel);
 
 
         // Convert Flask's answer sentences to ChatLog answer sentences
@@ -69,8 +69,8 @@ public class ChatLogServiceImpl implements ChatLogService {
     }
 
     @Override
-    public  List<ChatLog> findBySentenceContent(String searchKeyword){
-        return chatLogRepository.findBySentenceContent(searchKeyword);
+    public  List<ChatLog> findBySentenceContent(String searchKeyword,long userId){
+        return chatLogRepository.findBySentenceContent(searchKeyword,userId);
     }
 
     @Override

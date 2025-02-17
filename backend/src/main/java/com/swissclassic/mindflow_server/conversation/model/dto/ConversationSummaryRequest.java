@@ -9,6 +9,6 @@ public class ConversationSummaryRequest {
     private String userInput;
     private String answer;
     private Long creatorId;
-    String llmProviders;
-    String modelVersion;
+    String model;
+    String detailModel;
 }

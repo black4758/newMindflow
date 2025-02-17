@@ -95,8 +95,8 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
    - 상위 개념은 포괄적으로, 하위 개념은 구체적으로 작성
    - 새로운 노드 생성 시 기존 노드와의 중복성 검사
    - 각 노드는 반드시 하나의 답변 문장에 대응되어야 함
-   - 각 노드의 mongo_ref 속성에 값이 없다면(중요) 해당 답변 문장의 sentenceId 값을 저장(중요!!)
-   - mongo_ref는 단일 값을 가져야함.
+   - 각 노드의 mongo_ref 속성에 해당 답변 문장의 sentenceId 값을 저장. 단, 기존 노드에 연결 할 때 해당 노드는 붙이지 않음.(중요!!)
+                                                
 
 5. Cypher 쿼리 작성 규칙:
    - 우선 MATCH로 연관된 기존 노드 검색

@@ -11,7 +11,8 @@ export default defineConfig({
     },
   },
   define: {
-    "process.env.REACT_APP_API_BASE_URL": JSON.stringify(process.env.REACT_APP_API_BASE_URL),
+    "process.env.VITE_API_BASE_URL": JSON.stringify(process.env.VITE_API_BASE_URL),
+    "process.env.VITE_APP_SOCKET_BASE_URL": JSON.stringify(process.env.VITE_APP_SOCKET_BASE_URL),
   },
   optimizeDeps: {
     include: ["lucide-react"],

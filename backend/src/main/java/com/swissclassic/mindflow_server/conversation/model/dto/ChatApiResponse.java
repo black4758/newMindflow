@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
 
@@ -21,17 +22,16 @@ public class ChatApiResponse {
     private String detailModel;
     private String response;
 
-    private String accountId;
-
+    @JsonProperty("creator_id")
     private long creatorId;
-    
+
     // 류현석 추가
     @JsonProperty("answer_sentences")
     private List<AnswerSentence> answerSentences;
 
     @Data
     public static class AnswerSentence {
-
+        @JsonProperty("sentence_id")
         private String sentenceId;
         private String content;
     }

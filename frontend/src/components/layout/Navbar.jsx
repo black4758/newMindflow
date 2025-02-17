@@ -4,13 +4,15 @@ import { useNavigate } from "react-router-dom"
 import { useDispatch } from "react-redux"
 import { logout } from "../../store/slices/authSlice"
 
-const Navbar = () => {
+const Navbar = ({ onChatRoomSelect }) => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const [userMenu, setUserMenu] = useState(false)
   const handleLogout = async () => {
     try {
       dispatch(logout())
+      localStorage.removeItem("currentChatRoom")
+      onChatRoomSelect(null)
       navigate("/login")
     } catch (error) {
       console.error("로그아웃 실패:", error)
@@ -35,7 +37,13 @@ const Navbar = () => {
             >
               <span className="text-gray-600 hover:text-gray-100 transition-colors">프로필</span>
             </button>
-            <button onClick={() => {setUserMenu(!userMenu); handleLogout();}} className="p-2 flex items-center gap-2 whitespace-nowrap">
+            <button
+              onClick={() => {
+                setUserMenu(!userMenu)
+                handleLogout()
+              }}
+              className="p-2 flex items-center gap-2 whitespace-nowrap"
+            >
               <span className="text-gray-600 hover:text-gray-100 transition-colors">로그아웃</span>
             </button>
           </div>

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
-
+import time
 import mysql.connector
 from dotenv import load_dotenv
 from flask import Flask, request
@@ -57,9 +57,13 @@ chat_logs = db['chat_logs']
 conversation_summaries = db['conversation_summaries']
 
 
-memory = None
+google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
+clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
+chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
+claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
 
-
+memory = ConversationSummaryBufferMemory(llm=clova_llm, max_token_limit=500, human_prefix="User", ai_prefix="AI")
+current_room_id = ""
 # 첫 입력 여부를 추적하는 변수
 
 # MongoDB에서 메모리 로드 함수 수정 (디버깅 메시지 포함)
@@ -76,8 +80,6 @@ def load_memory_from_db(chat_room_id):
 # 메모리 초기화 함수 수정 (메모리가 비어 있을 경우에만 DB에서 로드)
 def initialize_memory(chat_room_id):
     # ConversationSummaryBufferMemory를 초기화할 때 메모리가 비어 있는지 확인
-    global memory
-    memory = ConversationSummaryBufferMemory(llm=clova_llm, max_token_limit=500, human_prefix="User", ai_prefix="AI")
 
     # 메모리가 비어 있을 경우에만 DB에서 기존 요약 데이터를 가져옴
     if not memory.load_memory_variables({}).get("history"):
@@ -102,107 +104,59 @@ def generate_room_title(user_input):
     # 응답 내용 반환
     return response.content.strip()
 
+import asyncio
 
-google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
-clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
-chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
-claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
-
-
-
-def generate_room_title(user_input):
-    # ChatPromptTemplate 생성
-    tile_prompt = ChatPromptTemplate.from_messages(
-        [("system", "입력을 받은걸로 짧은 키워드나 한 문장으로 제목을 만들어줘. 제목만 말해줘."), ("human", "{user_input}")])
-    # 프롬프트를 포맷팅
-    formatted_prompt = tile_prompt.format_messages(user_input=user_input)
-    # Google LLM을 사용하여 응답 생성
-    response = google_llm(formatted_prompt)
-    # 응답 내용 반환
-    return response.content.strip()
-
-def claude_llm_generate(user_input):
-    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
+async def llm_generate_async(user_input, llm, model_name):
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "너는 한국말하고 간단하게 말해"),
+        ("human", "{user_input}")
+    ])
     formatted_prompt = prompt.format_messages(user_input=user_input)
-    full_response = ""
-    for chunk in claude_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
-            continue
-        print(chunk.content)
-        socketio.emit('all_stream', {
-                        'content': chunk.content,
-                        'model_name':"claude"
-                    })
-        
-        full_response += chunk.content
-    return full_response
 
-def clova_llm_generate(user_input):
-    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
-    formatted_prompt = prompt.format_messages(user_input=user_input)
-    full_response = ""
-    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
-            continue
-        print(chunk.content)
+    async def send_to_websocket(content):
+        """스트리밍 데이터 즉시 전송"""
+
         socketio.emit('all_stream', {
-            'content': chunk.content,
-            'model_name':"clova"
+            'content': content,
+            'model_name': model_name
         })
-        full_response += chunk.content
-    return full_response
+        await asyncio.sleep(0.01)  # 너무 빠른 전송 방지
 
-def google_llm_generate(user_input):
-    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
-    formatted_prompt = prompt.format_messages(user_input=user_input)
-    full_response = ""
-    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
-            continue
-        print(chunk.content)
-        socketio.emit('all_stream', {
-            'content': chunk.content,
-            'model_name':"google"
-        })
-        full_response += chunk.content
-    return full_response
+    # Google LLM 스트리밍 처리
+    if model_name == "google":
+        answer = llm(formatted_prompt).content
+        for word in answer.split():
+            await send_to_websocket(word + " ")
+        return answer
 
-
-def chatgpt_llm_generate(user_input):
-    prompt = ChatPromptTemplate.from_messages([("system", "너는 한국말하고 간단하게 말해"), ("human", "{user_input}")])
-    formatted_prompt = prompt.format_messages(user_input=user_input)
-    full_response = ""
-    for chunk in clova_llm.stream(formatted_prompt):  # A가 google_llm이 되게끔 보장
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
-            continue
-        print(chunk.content)
-        socketio.emit('all_stream', {
-            'content': chunk.content,
-            'model_name':"chatgpt"
-        })
-        full_response += chunk.content
-    return full_response
+    # 나머지 모델 스트리밍
+    async def stream_response():
+        full_response = ""
+        for chunk in llm.stream(formatted_prompt):
+            if chunk.content.strip():
+                await send_to_websocket(chunk.content)
+                full_response += chunk.content
+        return full_response
 
 
-def generate_model_responses(user_input):
-    return {
-        'google':{
-            'response':google_llm_generate(user_input),
-            'detail_model':"gemini-2.0-flash-exp"
-        } ,
-        'clova': {
-            'response':clova_llm_generate(user_input),
-            'detail_model':"HCX-003"
-        },
-        'chatgpt':{
-            'response': chatgpt_llm_generate(user_input),
-            'detail_model':"gpt-3.5-turbo"
-        },
-        'claude': {
-           'response': claude_llm_generate(user_input),
-            'detail_model':"claude-3-5-sonnet-latest"
-        }
+    return await stream_response()
+
+async def generate_model_responses_async(user_input):
+    models = {
+        'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
+        'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-3.5-turbo"},
+        'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
+        'google': {'llm': google_llm, 'detail_model': "gemini-2.0-flash-exp"}
+
     }
+
+    # 각 모델을 독립적인 태스크로 실행하여 스트리밍 지원
+    tasks = {model: asyncio.create_task(llm_generate_async(user_input, info['llm'], model)) for model, info in models.items()}
+    
+    results = await asyncio.gather(*tasks.values())
+
+    return {model: {'response': results[i], 'detail_model': models[model]['detail_model']} for i, model in enumerate(models)}
+
 
 
 
@@ -223,6 +177,7 @@ def generate_response_for_model(user_input, model_class, detail_model):
         socketio.emit('stream', {
                     'content': chunk.content
                 })
+        time.sleep(0.1) 
     memory.save_context(
         {"input": user_input},  # 사용자 입력 저장
         {"output": full_response}  # 모델 응답 저장
@@ -231,10 +186,40 @@ def generate_response_for_model(user_input, model_class, detail_model):
 
 
 
+
+def generate_response_for_google(user_input, model_class, detail_model):
+    history = memory.load_memory_variables({}).get("history", "")
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "너는 한국말로 챗봇. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("human", "{user_input}")])
+
+    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
+    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096,streaming=True)
+    answer=model(formatted_prompt).content
+    parts=(answer).split(' ')
+    for part in parts:
+        print(part)
+        message = f"{part} "  # 공백 포함
+        socketio.emit('stream', {
+            'content': message,
+        })
+        time.sleep(0.1) 
+    memory.save_context(
+        {"input": user_input},  # 사용자 입력 저장
+        {"output": answer}  # 모델 응답 저장
+        )
+    return answer
+
+
+
+
 def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
     model_classes = {"google": ChatGoogleGenerativeAI, "clova": ChatClovaX, "chatgpt": ChatOpenAI,
                      "claude": ChatAnthropic}
     model_class = model_classes.get(model)
+    if model=="google":
+         return generate_response_for_google(user_input, model_class, detail_model)
+    
     if model_class:
         return generate_response_for_model(user_input, model_class, detail_model)
     return {"error": "Invalid model"}
@@ -273,30 +258,31 @@ message_model = api.model('message', {'chatRoomId': fields.Integer(required=Fals
 message_all = api.model('title', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
 message_title = api.model('all', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
 
-
 @ns_chatbot.route('/all')
 class AlleAPI(Resource):
-    @ns_chatbot.expect(message_all)  # 요청 스키마 정의 연결
+    @ns_chatbot.expect(message_all)
     @ns_chatbot.response(200, '성공적인 응답')
     @ns_chatbot.response(400, '필수 필드 누락')
     @ns_chatbot.response(500, '내부 서버 오류')
-    def post(self):
-
+    def post(self):  # 비동기 함수가 아님!
         try:
             data = request.get_json()
             print(data)
 
             user_input = data.get('userInput')
-            responses = generate_model_responses(user_input)
-            response_data = {'models': ['google', 'clova', 'chatgpt', 'claude'], 'user_input': user_input,
-                             'responses': responses, }
-            response_json = json.dumps(response_data, ensure_ascii=False)
+            
+            responses = asyncio.run(generate_model_responses_async(user_input))  
+
+            response_data = {
+                'models': ['google', 'clova', 'chatgpt', 'claude'],
+                'user_input': user_input,
+                'responses': responses,
+            }
+
             return response_data
 
         except Exception as e:
             error_response = {'error': str(e)}
-
-            # 에러 응답도 ensure_ascii=False로 처리
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
 
 
@@ -362,9 +348,9 @@ class MassageAPI(Resource):
     @ns_chatbot.response(500, '내부 서버 오류')
     def post(self):
         """Massage API"""
-        global memory
 
         try:
+            global memory
             data = request.get_json()
             print(f"Received data: {data}")  # 데이터를 받아서 출력
             chat_room_id = data.get('chatRoomId')
@@ -377,9 +363,15 @@ class MassageAPI(Resource):
             account_id = data.get('accountId')
 
             # 메모리 초기화
-            # global memory
-            memory = initialize_memory(chat_room_id)
-            print(f"Initialized memory: {memory}")  # 메모리 초기화 결과 출력
+            global current_room_id
+            print("dd")
+            print(current_room_id)
+            if current_room_id != chat_room_id:
+                current_room_id = chat_room_id
+                memory.clear()
+                memory = initialize_memory(chat_room_id)
+                print(memory.load_memory_variables({})["history"])
+                print(f"Initialized memory: {memory}")  # 메모리 초기화 결과 출력
 
             if not user_input:
                 print("user_input is missing")  # user_input이 없을 경우 출력
@@ -402,7 +394,7 @@ class MassageAPI(Resource):
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
             sentences_with_ids = [
                 {
-                    'sentenceId': str(uuid.uuid4()), 
+                    'sentence_id': str(uuid.uuid4()), 
                     'content': escape_cypher_quotes(sentence) + '.'  # Cypher 이스케이프 처리
                 } 
                 for sentence in answer_sentences
@@ -438,6 +430,7 @@ class MassageAPI(Resource):
                 
                 'status': 'success',
                 'chat_room_id': chat_room_id,
+                'user_id':creator_id,
                 'model': model,
                 'detail_model':detail_model,
                 'response': response_content_serialized,

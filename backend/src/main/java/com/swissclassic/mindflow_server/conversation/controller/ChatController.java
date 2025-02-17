@@ -102,8 +102,8 @@ public class ChatController {
                 conversationSummaryRequest.getUserInput(),
                 conversationSummaryRequest.getAnswer(),
 
-               conversationSummaryRequest.getLlmProviders(),
-                conversationSummaryRequest.getModelVersion()
+               conversationSummaryRequest.getModel(),
+                conversationSummaryRequest.getDetailModel()
                 ,
 //                (conversationSummaryRequest.getCreatorId())
 

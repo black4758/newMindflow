@@ -43,7 +43,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     setIsLoading(true)
     try {
       const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
-      console.log("채팅방 목록 로딩 완료:", response.data)
+      // console.log("채팅방 목록 로딩 완료:", response.data)
       setAllChatRooms(response.data)
     } catch (error) {
       console.error("채팅방 목록 로딩 실패:", error)
@@ -68,7 +68,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
         // 3. 현재 채팅방이 삭제되는 경우 추가 처리
         if (chatroomId === currentChatRoom) {
           onChatRoomSelect(null) // 현재 채팅방 선택 해제
-          navigate("/main") // 메인 페이지로 이동
+          // navigate("/main") // 메인 페이지로 이동
         }
 
         alert("삭제 완료")
@@ -127,7 +127,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   }, [chatSemaphore])
 
   useEffect(() => {
-    console.log("채팅방 목록 상태 변경:", allChatRooms)
+    // console.log("채팅방 목록 상태 변경:", allChatRooms)
   }, [allChatRooms])
 
   return (

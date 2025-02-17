@@ -5,7 +5,7 @@ const ModelCard = ({ text, isUser, model }) => {
   
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
-      <div className={`max-w-[70%] p-3 rounded-lg ${isUser ? "bg-[#e0e0e0] text-gray-800" : "bg-[#e0e0e0] text-gray-800"}`}>
+      <div className={` p-3 rounded-lg ${isUser ? "max-w-[70%] bg-[#e0e0e0] text-gray-800" : "w-[70%] bg-[#e0e0e0] text-gray-800"}`}>
         <div className="flex items-center gap-2">
           {!isUser && model && (
             <span className="flex-shrink-0 w-5 h-5">

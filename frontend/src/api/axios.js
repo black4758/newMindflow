@@ -3,7 +3,6 @@ import { store } from "../store/store"
 
 const baseURL = import.meta.env.VITE_API_BASE_URL
 
-
 console.log("테스트", baseURL)
 // axios 인스턴스 생성
 const api = axios.create({
@@ -17,12 +16,12 @@ const api = axios.create({
 // 요청 인터셉터 추가
 api.interceptors.request.use(
   (config) => {
-    const token = store.getState().auth.user.accessToken
-    // console.log("토큰 값 확인:", token) // 토큰 값 확인
+    const token = store.getState().auth.user?.accessToken
+    console.log("토큰 값 확인:", token) // 토큰 값 확인
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      // console.log("최종 헤더 확인:", config.headers) // 최종 헤더 확인
+      console.log("최종 헤더 확인:", config.headers) // 최종 헤더 확인
     }
     return config
   },
@@ -32,16 +31,16 @@ api.interceptors.request.use(
 )
 
 // // 응답 인터셉터 추가
-// api.interceptors.response.use(
-//   (response) => response,
-//   async (error) => {
-//     // 401 에러 (인증 실패) 발생 시
-//     if (error.response?.status === 401) {
-//       // 로그인 페이지로 리다이렉트하는 대신 에러를 던짐
-//       return Promise.reject(new Error("인증이 필요합니다"))
-//     }
-//     return Promise.reject(error)
-//   }
-// )
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // 401 에러 (인증 실패) 발생 시
+    if (error.response?.status === 401) {
+      // 로그인 페이지로 리다이렉트하는 대신 에러를 던짐
+      return Promise.reject(new Error("인증이 필요합니다"))
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default api
