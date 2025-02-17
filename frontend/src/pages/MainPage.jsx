@@ -327,7 +327,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
           google: "",
           clova: "",
         })
-        await api.post("/api/messages/all", { userInput })
+        await api.post("/api/messages/all", { userInput})
       } else {
         // 이후 메시지: 선택된 모델과 대화
         const response = await api.post("/api/messages/send", {
