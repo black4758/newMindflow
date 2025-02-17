@@ -9,7 +9,8 @@ import lombok.*;
 @Getter
 @Setter
 @NoArgsConstructor
-
+@AllArgsConstructor
+@Builder
 public class ChatRequest {
     private long chatRoomId;
     private long creatorId;

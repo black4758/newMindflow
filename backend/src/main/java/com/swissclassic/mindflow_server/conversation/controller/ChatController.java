@@ -18,10 +18,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -88,8 +88,8 @@ public class ChatController {
                         .isEmpty())
                         .map(line -> {
                     ChatApiResponse.AnswerSentence sentence = new ChatApiResponse.AnswerSentence();
-                    sentence.setSentenceId(UUID.randomUUID()
-                            .toString());
+                    sentence.setSentenceId(NanoIdUtils.randomNanoId(NanoIdUtils.DEFAULT_NUMBER_GENERATOR,
+                            NanoIdUtils.DEFAULT_ALPHABET, 7));
                     sentence.setContent(line.trim());
                     return sentence;
                 })
@@ -121,6 +121,18 @@ public class ChatController {
                 "User:" + conversationSummaryRequest.getUserInput() + "\nAI" + conversationSummaryRequest.getAnswer());
 
         conversationSummaryService.saveConversationSummary(conversationSummary);
+
+        // 마인드맵 생성을 위한 요청 추가
+        log.info("초기 마인드맵 생성!!!!!!!!!!!!!!!!!!!!!!!");
+        // 마인드맵 생성 요청 시 MongoDB에 저장된 sentenceId 전달
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("chatRoomId", roomId);
+        requestBody.put("userInput", conversationSummaryRequest.getUserInput());
+        requestBody.put("creatorId", conversationSummaryRequest.getCreatorId());
+        requestBody.put("answerSentences", answerSentences);  // 이미 저장된 sentenceId 사용
+
+        aiServerService.createFirstMindmap(requestBody);  // 새로운 메서드
+
 
         FirstChatRespose firstChatRespose = new FirstChatRespose();
         firstChatRespose.setChatRoomId((roomId));

@@ -1,6 +1,6 @@
 import json
 import os
-import uuid
+
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
@@ -24,6 +24,7 @@ from pymongo import MongoClient
 
 from tasks import create_mindmap
 from socket_config import app, socketio
+from nanoid import generate
 
 load_dotenv()
 
@@ -55,7 +56,7 @@ db = client['mindflow_db']
 chat_rooms = db['chat_rooms']
 chat_logs = db['chat_logs']
 conversation_summaries = db['conversation_summaries']
-
+stream_time=0.05
 
 google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
 clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
@@ -103,7 +104,6 @@ def generate_room_title(user_input):
     response = google_llm(formatted_prompt)
     # 응답 내용 반환
     return response.content.strip()
-
 import asyncio
 
 async def llm_generate_async(user_input, llm, model_name):
@@ -115,31 +115,32 @@ async def llm_generate_async(user_input, llm, model_name):
 
     async def send_to_websocket(content):
         """스트리밍 데이터 즉시 전송"""
-
         socketio.emit('all_stream', {
             'content': content,
             'model_name': model_name
         })
-        await asyncio.sleep(0.01)  # 너무 빠른 전송 방지
+        await asyncio.sleep(stream_time)
 
-    # Google LLM 스트리밍 처리
+    # ✅ Google LLM은 동기 방식이라 별도 처리
     if model_name == "google":
-        answer = llm(formatted_prompt).content
+        def sync_google_response():
+            return llm(formatted_prompt).content
+
+        answer = await asyncio.to_thread(sync_google_response)  # Google LLM을 별도 쓰레드에서 실행
         for word in answer.split():
             await send_to_websocket(word + " ")
         return answer
 
-    # 나머지 모델 스트리밍
-    async def stream_response():
-        full_response = ""
-        for chunk in llm.stream(formatted_prompt):
-            if chunk.content.strip():
-                await send_to_websocket(chunk.content)
-                full_response += chunk.content
-        return full_response
+    # ✅ 나머지 모델 (스트리밍 방식)
+    full_response = ""
+    
+   
+    async for chunk in llm.astream(formatted_prompt):
+        if chunk.content.strip():
+            await send_to_websocket(chunk.content)
+            full_response += chunk.content
 
-
-    return await stream_response()
+    return full_response
 
 async def generate_model_responses_async(user_input):
     models = {
@@ -147,54 +148,76 @@ async def generate_model_responses_async(user_input):
         'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-3.5-turbo"},
         'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
         'google': {'llm': google_llm, 'detail_model': "gemini-2.0-flash-exp"}
-
     }
 
-    # 각 모델을 독립적인 태스크로 실행하여 스트리밍 지원
-    tasks = {model: asyncio.create_task(llm_generate_async(user_input, info['llm'], model)) for model, info in models.items()}
+    async def run_model(model_name, model_info):
+        """각 모델을 독립적으로 실행하며 스트리밍"""
+        response = await llm_generate_async(user_input, model_info['llm'], model_name)
+        return model_name, {'response': response, 'detail_model': model_info['detail_model']}
+
+    tasks = [asyncio.create_task(run_model(model, info)) for model, info in models.items()]
     
-    results = await asyncio.gather(*tasks.values())
+    results = {}
 
-    return {model: {'response': results[i], 'detail_model': models[model]['detail_model']} for i, model in enumerate(models)}
+    # ✅ 한 모델이 완료되면 즉시 저장 (각각 독립적으로 실행됨)
+    for task in asyncio.as_completed(tasks):
+        model_name, result = await task
+        results[model_name] = result
+
+    return results
 
 
-
-
-def generate_response_for_model(user_input, model_class, detail_model):
+async def generate_response_for_model(user_input, model_class, detail_model):
+    # 메모리에서 history 가져오기
     history = memory.load_memory_variables({}).get("history", "")
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "너는 한국말로 챗봇. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
-        ("human", "{user_input}")])
+    
+    # 프롬프트 템플릿 준비
+    prompt = ChatPromptTemplate.from_messages([ 
+        ("system", "너는 한국말로 챗봇. 시스템은 언급하지 마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("human", "{user_input}")
+    ])
 
-    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096,streaming=True)
-    full_response = "" 
-    for chunk in model.stream(formatted_prompt):  # 실시간으로 청크 단위 출력
-        if not chunk.content.strip():  # 빈값(공백 포함)을 걸러냄
+    # 프롬프트 포맷팅
+    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)
+
+    # 모델 인스턴스 생성
+    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
+
+    full_response = ""  # 전체 응답 저장
+
+    # 비동기적으로 청크 단위로 스트리밍
+    async for chunk in model.astream(formatted_prompt):  # astream 방식으로 변경
+        if not chunk.content.strip():  # 빈 값(공백 포함)을 걸러냄
             continue
-        print(chunk.content)
+
+        print(chunk.content)  # 실시간으로 출력
+
         full_response += chunk.content  # 전체 응답에 추가
+
+        # 실시간으로 소켓에 데이터 전송
         socketio.emit('stream', {
-                    'content': chunk.content
-                })
-        time.sleep(0.1) 
+            'content': chunk.content
+        })
+        
+        await asyncio.sleep(stream_time)  # 너무 빠른 전송을 방지 (비동기 방식에 맞게 처리)
+
+    # 메모리 업데이트
     memory.save_context(
         {"input": user_input},  # 사용자 입력 저장
         {"output": full_response}  # 모델 응답 저장
-        )
+    )
+
     return full_response
-
-
 
 
 def generate_response_for_google(user_input, model_class, detail_model):
     history = memory.load_memory_variables({}).get("history", "")
-    prompt = ChatPromptTemplate.from_messages([
+    prompt = ChatPromptTemplate.from_messages([ 
         ("system", "너는 한국말로 챗봇. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
         ("human", "{user_input}")])
 
     formatted_prompt = prompt.format_messages(history=history, user_input=user_input)   
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096,streaming=True)
+    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
     answer=model(formatted_prompt).content
     parts=(answer).split(' ')
     for part in parts:
@@ -203,7 +226,7 @@ def generate_response_for_google(user_input, model_class, detail_model):
         socketio.emit('stream', {
             'content': message,
         })
-        time.sleep(0.1) 
+        time.sleep(stream_time) 
     memory.save_context(
         {"input": user_input},  # 사용자 입력 저장
         {"output": answer}  # 모델 응답 저장
@@ -211,18 +234,19 @@ def generate_response_for_google(user_input, model_class, detail_model):
     return answer
 
 
-
-
-def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
+async def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
     model_classes = {"google": ChatGoogleGenerativeAI, "clova": ChatClovaX, "chatgpt": ChatOpenAI,
                      "claude": ChatAnthropic}
     model_class = model_classes.get(model)
-    if model=="google":
-         return generate_response_for_google(user_input, model_class, detail_model)
     
+    if model == "google":
+        return generate_response_for_google(user_input, model_class, detail_model)
+
     if model_class:
-        return generate_response_for_model(user_input, model_class, detail_model)
+        return await generate_response_for_model(user_input, model_class, detail_model)  # 비동기식 호출로 수정
+    
     return {"error": "Invalid model"}
+
 
 
 def save_conversation_summary(chat_room_id, memory_content):
@@ -377,9 +401,17 @@ class MassageAPI(Resource):
                 print("user_input is missing")  # user_input이 없을 경우 출력
                 return make_response(json.dumps({'error': 'user_input은 필수입니다'}, ensure_ascii=False), 400)
 
-            # 챗봇 응답 생성
-            response_obj = chatbot_response(user_input, model=model, detail_model=detail_model)
-
+            socketio.emit('mindmap_status', {
+                'status': 'creating',
+                'message': '마인드맵 생성을 시작합니다',
+                'chatRoomId': chat_room_id
+            })
+            # 비동기 함수 호출 (await)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            # 챗봇 응답 
+            response_obj = loop.run_until_complete(chatbot_response(user_input, model=model, detail_model=detail_model))
+             
             response_content_serialized = (response_obj)
 
             answer_sentences = [
@@ -394,7 +426,7 @@ class MassageAPI(Resource):
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
             sentences_with_ids = [
                 {
-                    'sentence_id': str(uuid.uuid4()), 
+                    'sentence_id': str(generate(size=7)), 
                     'content': escape_cypher_quotes(sentence) + '.'  # Cypher 이스케이프 처리
                 } 
                 for sentence in answer_sentences
@@ -402,12 +434,7 @@ class MassageAPI(Resource):
             
             print("문장 아이디 부여: ", sentences_with_ids)
             
-            # 마인드맵 생성 시작 알림
-            socketio.emit('mindmap_status', {
-                'status': 'creating',
-                'message': '마인드맵 생성을 시작합니다',
-                'chatRoomId': chat_room_id
-            })
+
 
 
             task = create_mindmap.delay(  
@@ -446,6 +473,47 @@ class MassageAPI(Resource):
             error_response = {'error': str(e)}
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
 
+@ns_chatbot.route('/first-mindmap')
+class FirstMindmapAPI(Resource):
+    @ns_chatbot.expect(api.model('first_mindmap', {
+        'chatRoomId': fields.Integer(required=True),
+        'userInput': fields.String(required=True),
+        'creatorId': fields.Integer(required=True),
+        'answerSentences': fields.List(fields.Nested({
+            'sentenceId': fields.String(),
+            'content': fields.String()
+        }))
+    }))
+    def post(self):
+        try:
+            data = request.get_json()
+            chat_room_id = data.get('chatRoomId')
+            user_input = data.get('userInput')
+            creator_id = data.get('creatorId')
+            answer_sentences = data.get('answerSentences')  # MongoDB에 저장된 sentenceId 사용
+            
+            # 마인드맵 생성 시작 알림
+            socketio.emit('mindmap_status', {
+                'status': 'creating',
+                'message': '마인드맵 생성을 시작합니다',
+                'chatRoomId': chat_room_id
+            })
+
+            # 마인드맵 생성 태스크 실행
+            task = create_mindmap.delay(
+                account_id=creator_id,
+                chat_room_id=str(chat_room_id),
+                chat_id="chat_id",
+                question=user_input,
+                answer_sentences=answer_sentences,
+                creator_id=creator_id
+            )
+            
+            return {'status': 'success', 'task_id': task.id}, 200
+
+        except Exception as e:
+            print(f"Error creating first mindmap: {e}")
+            return {'error': str(e)}, 500
 
 def run_this():
     # with app.app_context():
