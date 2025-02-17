@@ -11,11 +11,15 @@ from celery_config import celery
 
 from flask_socketio import SocketIO
 
+import requests
+import traceback
+
 # tasks.py의 상단에 socketio 인스턴스 생성
 socketio = SocketIO(message_queue='redis://redis:6379/0')
 
 load_dotenv()
 
+SPRING_SERVER_URL = os.getenv("SPRING_SERVER_URL")
 
 try:
     # bolt:// 프로토콜 사용 및 데이터베이스 이름 지정
@@ -55,13 +59,13 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
 {answer_lines}
      
 1. 노드 생성 규칙:
-   - 모든 Topic 노드는 account_id와 chat_room_id 속성을 가져야 함
+   - 모든 Topic 노드는 chat_room_id와 chat_room_title 속성을 가져야 함
    - 첫 노드 생성시:
      CREATE (n:Topic {{
          title: '제목',
          content: '내용',
-         account_id: '{account_id}',
          chat_room_id: '{chat_room_id}',
+         chat_room_title: '{chat_room_title}',
          creator_id: '{creator_id}',
          created_at: datetime()
      }})
@@ -184,6 +188,35 @@ def escape_cypher_quotes(text):
 @celery.task
 def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences, creator_id):
     print(f"Task received with chat_room_id: {chat_room_id}")
+
+    # Spring 서버에서 채팅방 제목 조회
+    chat_room_title = None
+
+    try:
+        url = f"{SPRING_SERVER_URL}/api/messages/room-title/{chat_room_id}"
+        print(f"Spring 서버 요청 URL: {url}")  # URL 로깅
+        
+        response = requests.get(url)
+        print(f"Spring 서버 응답 상태 코드: {response.status_code}")  # 상태 코드 로깅
+        print(f"Spring 서버 응답 내용: {response.text}")  # 응답 내용 로깅
+        
+        if response.status_code == 200:
+            chat_room_title = response.text
+            print(f"설정된 채팅방 제목: {chat_room_title}")
+        else:
+            print(f"채팅방 제목 조회 실패: HTTP {response.status_code}")
+            print(f"응답 내용: {response.text}")
+    except Exception as e:
+        print(f"채팅방 제목 조회 중 예외 발생:")
+        print(f"예외 타입: {type(e)}")
+        print(f"예외 메시지: {str(e)}")
+        traceback.print_exc()  # 상세한 스택 트레이스 출력
+
+    # 채팅방 제목이 None인 경우 로그
+    if chat_room_title is None:
+        print("주의: 채팅방 제목이 None으로 설정됨")
+
+
     try:
         print(f"""
         마인드맵 생성 시작:
@@ -206,6 +239,7 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
                         "account_id": account_id, 
                         "chat_room_id": chat_room_id, 
                         "creator_id": creator_id,
+                        "chat_room_title": chat_room_title,  # 채팅방 제목 추가
                     }
 
         # 마인드맵 생성 상태
