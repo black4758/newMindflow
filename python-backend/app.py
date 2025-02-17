@@ -142,6 +142,7 @@ async def llm_generate_async(user_input, llm, model_name):
 
     return full_response
 
+
 async def generate_model_responses_async(user_input):
     models = {
         'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
