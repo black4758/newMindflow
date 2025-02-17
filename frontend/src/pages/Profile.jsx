@@ -1,17 +1,63 @@
-import { useState } from "react"
-import axios from "axios"
+import { useEffect, useState } from "react"
+import api from "../api/axios"
+import { useSelector } from "react-redux"
 
 const Profile = () => {
   // 상태 관리
-  const [name, setName] = useState("") // 사용자 이름 상태
-  const [email, setEmail] = useState("") // 사용자 이메일 상태
+  const [userName, setUserName] = useState("") // 사용자 이름
+  const [accountId, setAccountId] = useState("") // 로그인 아이디
+  const [displayName, setDisplayName] = useState("") //사용자 닉네임
+  const [email, setEmail] = useState("") // 사용자 이메일
   const [selectedButton, setSelectedButton] = useState("profile") // 현재 선택된 메뉴 상태
+
+  const userId = useSelector((state) => state.auth.user.userId)
+
+  const getUserInfo = async () => {
+    try {
+      const response = await api.post(`/api/users/profiles/${userId}`, userId)
+      const data = response.data
+      console.log("API 응답 데이터:", data)
+
+      setUserName(data.username)
+      setEmail(data.email)
+      setAccountId(data.accountId)
+      setDisplayName(data.displayName)
+
+      // API 응답 이후 상태값 출력
+      console.log("상태 업데이트 후 - 유저 정보:", {
+        userName: data.username,
+        email: data.email,
+        accountId: data.accountId,
+        displayName: data.displayName,
+      })
+    } catch (error) {
+      console.log(error)
+      setUserName("")
+      setEmail("")
+      setAccountId("")
+      setDisplayName("")
+    }
+  }
+
+  useEffect(() => {
+    getUserInfo()
+  }, [userId])
+
+  // 상태 변화를 감지하는 별도의 useEffect 추가
+  useEffect(() => {
+    console.log("상태 변화 감지 - 현재 유저 정보:", {
+      userName,
+      email,
+      accountId,
+      displayName,
+    })
+  }, [userName, email, accountId, displayName])
 
   // 프로필 폼 제출 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault()
     // 프로필 업데이트 로직 구현 예정
-    console.log("프로필 업데이트:", { name, email })
+    console.log("프로필 업데이트:", { username: userName, email, accountId, displayName, password: "REDACTED" })
   }
 
   // 선택된 메뉴에 따른 컨텐츠 렌더링
@@ -24,8 +70,7 @@ const Profile = () => {
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold text-gray-900">프로필 설정</h2>
               <button className="text-gray-500 hover:text-gray-700">
-                <span className="sr-only">닫기</span>
-                ✕
+                <span className="sr-only">닫기</span>✕
               </button>
             </div>
 
@@ -50,8 +95,8 @@ const Profile = () => {
                   <input
                     type="text"
                     id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
                   />
                 </div>
@@ -80,7 +125,7 @@ const Profile = () => {
               </div>
             </form>
           </div>
-        );
+        )
 
       // 계정 삭제 페이지
       case "notification":
@@ -89,8 +134,7 @@ const Profile = () => {
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold text-gray-900">계정 삭제</h2>
               <button className="text-gray-500 hover:text-gray-700">
-                <span className="sr-only">닫기</span>
-                ✕
+                <span className="sr-only">닫기</span>✕
               </button>
             </div>
             <div className="flex justify-end">
@@ -102,7 +146,7 @@ const Profile = () => {
               </button>
             </div>
           </div>
-        );
+        )
 
       // 결제 페이지
       case "security":
@@ -111,8 +155,7 @@ const Profile = () => {
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold text-gray-900">결제</h2>
               <button className="text-gray-500 hover:text-gray-700">
-                <span className="sr-only">닫기</span>
-                ✕
+                <span className="sr-only">닫기</span>✕
               </button>
             </div>
             <div className="flex justify-end">
@@ -124,12 +167,12 @@ const Profile = () => {
               </button>
             </div>
           </div>
-        );
+        )
 
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   return (
     <div className="h-full flex justify-center">
@@ -152,9 +195,10 @@ const Profile = () => {
               overflow-hidden
               hover:bg-gray-100
               border-[5px]
-              ${selectedButton === "profile" // 선택된 버튼 스타일 조건부 적용
-                ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" 
-                : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+              ${
+                selectedButton === "profile" // 선택된 버튼 스타일 조건부 적용
+                  ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                  : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"
               }
               group
             `}
@@ -180,10 +224,7 @@ const Profile = () => {
               overflow-hidden
               hover:bg-gray-100
               border-[5px]
-              ${selectedButton === "notification" 
-                ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" 
-                : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"
-              }
+              ${selectedButton === "notification" ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"}
               group
             `}
           >
@@ -220,10 +261,7 @@ const Profile = () => {
               overflow-hidden
               hover:bg-gray-100
               border-[5px]
-              ${selectedButton === "security" 
-                ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" 
-                : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"
-              }
+              ${selectedButton === "security" ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"}
               group
             `}
           >
@@ -246,9 +284,7 @@ const Profile = () => {
         </div>
 
         {/* 메인 컨텐츠 영역: 선택된 메뉴에 따른 컨텐츠 표시 */}
-        <div className="flex-1 p-4">
-          {renderContent()}
-        </div>
+        <div className="flex-1 p-4">{renderContent()}</div>
       </div>
     </div>
   )
