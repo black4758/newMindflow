@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from "react"
-import { ForceGraph2D } from "react-force-graph"
-import ForceGraph3D from "react-force-graph-3d"
+import { ForceGraph2D, ForceGraph3D } from "react-force-graph"
 import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
 import { fetchMindmapData, deleteNode, splitNode } from '../../api/mindmap'
@@ -20,7 +19,7 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Mindmap = ({ data }) => {
+const Mindmap = ({ data, onChatRoomSelect }) => {
   const [is3D, setIs3D] = useState(getViewMode())
   const graphRef = useRef()
   const navigate = useNavigate()
@@ -809,6 +808,38 @@ const Mindmap = ({ data }) => {
     setIs3D(!is3D);
   }, [is3D]);
 
+  // 링크 버튼 핸들러 함수 수정
+  const handleLinkButtonClick = (nodeId) => {
+    // 노드의 chatRoomId 찾기
+    const node = processedData.nodes.find(n => n.id === nodeId);
+    
+    if (!node) return;
+
+    let chatRoomId;
+    if (node.id.startsWith('root_')) {
+      // root_ 접두사가 있는 경우 제거
+      chatRoomId = node.id.replace('root_', '');
+    } else {
+      // 일반 노드의 경우 해당 노드의 chatRoomId 사용
+      chatRoomId = node.chatRoomId;
+    }
+
+    if (chatRoomId) {
+      // MainPage로 이동하면서 필요한 정보 전달
+      navigate('/main', { 
+        state: { 
+          selectedChatRoomId: chatRoomId,
+          fromMindmap: true,
+          nodeInfo: {
+            id: node.id,
+            title: node.title,
+            content: node.content
+          }
+        } 
+      });
+    }
+  };
+
   return (
     <div className="relative w-full h-full">
       {/* 검색창 컨테이너 수정 */}
@@ -1073,9 +1104,7 @@ const Mindmap = ({ data }) => {
           {!fixedNode.id.startsWith('root_') && (
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => {
-                  navigate('/');  // 임시로로 메인 페이지로 이동
-                }}
+                onClick={() => handleLinkButtonClick(fixedNode.id)}
                 className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
               >
                 링크
@@ -1138,7 +1167,8 @@ Mindmap.propTypes = {
   data: PropTypes.shape({
     nodes: PropTypes.array,
     relationships: PropTypes.array
-  })
+  }),
+  onChatRoomSelect: PropTypes.func.isRequired
 };
 
 export default Mindmap
