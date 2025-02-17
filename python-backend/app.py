@@ -118,7 +118,7 @@ async def llm_generate_async(user_input, llm, model_name):
         socketio.emit('all_stream', {
             'content': content,
             'model_name': model_name
-        },room = sessionId)
+        })
         await asyncio.sleep(stream_time)
 
     # ✅ Google LLM은 동기 방식이라 별도 처리
@@ -292,8 +292,6 @@ class AlleAPI(Resource):
         try:
             data = request.get_json()
             print(data)
-            global sessionId
-            sessionId=data.get('UserId')
             user_input = data.get('userInput')
             
             responses = asyncio.run(generate_model_responses_async(user_input))  
