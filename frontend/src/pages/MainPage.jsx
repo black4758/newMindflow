@@ -219,6 +219,28 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     }
   }, [handleStreamEndCallback, currentChatRoom])
 
+  useEffect(() => {
+    const loadInitialState = async () => {
+      // URL 파라미터나 state에서 chatRoomId 가져오기
+      const chatRoomId = location.state?.selectedChatRoomId || currentChatRoom;
+      
+      if (chatRoomId) {
+        // 채팅방 선택 상태 업데이트
+        onChatRoomSelect(chatRoomId);
+        
+        try {
+          // 채팅 내역 로딩
+          const response = await api.get(`/api/chatroom/messages/${chatRoomId}`);
+          // ... 메시지 처리 로직
+        } catch (error) {
+          console.error("채팅 메세지 로딩 실패:", error);
+        }
+      }
+    };
+
+    loadInitialState();
+  }, [location.state, currentChatRoom]);
+
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
     if (!userId) {
@@ -321,7 +343,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
           google: "",
           clova: "",
         })
-        await api.post("/api/messages/all", { userInput })
+        await api.post("/api/messages/all", { userInput})
       } else {
         // 이후 메시지: 선택된 모델과 대화
         const response = await api.post("/api/messages/send", {
