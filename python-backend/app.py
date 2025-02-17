@@ -401,20 +401,11 @@ class MassageAPI(Resource):
                 print("user_input is missing")  # user_input이 없을 경우 출력
                 return make_response(json.dumps({'error': 'user_input은 필수입니다'}, ensure_ascii=False), 400)
 
-<<<<<<< HEAD
-           
-=======
-            # 마인드맵 생성 시작 알림
             socketio.emit('mindmap_status', {
                 'status': 'creating',
                 'message': '마인드맵 생성을 시작합니다',
                 'chatRoomId': chat_room_id
             })
-
-            # 챗봇 응답 생성
-            response_obj = chatbot_response(user_input, model=model, detail_model=detail_model)
->>>>>>> b68be033cd0fbe91ef636b3ccd3792a79e4759ae
-
             # 비동기 함수 호출 (await)
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
