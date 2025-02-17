@@ -20,31 +20,31 @@ const getViewMode = () => {
 };
 
 const Mindmap = ({ data, onChatRoomSelect }) => {
-  const [is3D, setIs3D] = useState(getViewMode())
-  const graphRef = useRef()
-  const navigate = useNavigate()
-  const [hoverNode, setHoverNode] = useState(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [searchResults, setSearchResults] = useState([])
-  const [selectedNode, setSelectedNode] = useState(null)
-  const [isNodeFocused, setIsNodeFocused] = useState(false)
-  const [showLegend, setShowLegend] = useState(false)
-  const [hoverLegend, setHoverLegend] = useState(false)
-  const [localData, setLocalData] = useState(data);
-  const [showNodeModal, setShowNodeModal] = useState(false);
-  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [fixedPosition, setFixedPosition] = useState({ x: 0, y: 0 });
-  const hoverTimeoutRef = useRef(null);
-  const clickTimerRef = useRef(null);
-  const [fixedNode, setFixedNode] = useState(null);
-  const doubleClickTimerRef = useRef(null);
-  const [lastClickedNode, setLastClickedNode] = useState(null);
-  const [isGraphStable, setIsGraphStable] = useState(false);
-  const [isCameraMoving, setIsCameraMoving] = useState(false);
-  const lastCameraPositionRef = useRef(null);
-  const stabilityTimeoutRef = useRef(null);
-  const cameraTimeoutRef = useRef(null);
+  const [is3D, setIs3D] = useState(getViewMode())                                 // 2D/3D 모드 상태
+  const graphRef = useRef()                                                       // 그래프 참조
+  const navigate = useNavigate()                                                  // 라우터 네비게이션
+  const [hoverNode, setHoverNode] = useState(null)                               // 마우스 오버된 노드
+  const [searchTerm, setSearchTerm] = useState("")                               // 검색어
+  const [searchResults, setSearchResults] = useState([])                         // 검색 결과 목록
+  const [selectedNode, setSelectedNode] = useState(null)                         // 선택된 노드
+  const [isNodeFocused, setIsNodeFocused] = useState(false)                     // 노드 포커스 상태
+  const [showLegend, setShowLegend] = useState(false)                           // 범례 표시 여부
+  const [hoverLegend, setHoverLegend] = useState(false)                         // 범례에 마우스 오버 상태
+  const [localData, setLocalData] = useState(data);                             // 로컬 데이터 상태
+  const [showNodeModal, setShowNodeModal] = useState(false);                    // 노드 모달 표시 여부
+  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);         // 편집을 위해 선택된 노드
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });           // 마우스 위치
+  const [fixedPosition, setFixedPosition] = useState({ x: 0, y: 0 });           // 고정된 위치
+  const hoverTimeoutRef = useRef(null);                                         // 호버 타임아웃 참조
+  const clickTimerRef = useRef(null);                                           // 클릭 타이머 참조
+  const [fixedNode, setFixedNode] = useState(null);                            // 고정된 노드
+  const doubleClickTimerRef = useRef(null);                                    // 더블클릭 타이머 참조
+  const [lastClickedNode, setLastClickedNode] = useState(null);                // 마지막으로 클릭된 노드
+  const [isGraphStable, setIsGraphStable] = useState(false);                   // 그래프 안정화 상태
+  const [isCameraMoving, setIsCameraMoving] = useState(false);                // 카메라 이동 상태
+  const lastCameraPositionRef = useRef(null);                                  // 마지막 카메라 위치 참조
+  const stabilityTimeoutRef = useRef(null);                                    // 안정화 타임아웃 참조
+  const cameraTimeoutRef = useRef(null);                                       // 카메라 타임아웃 참조
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -112,7 +112,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
         // 새로운 루트 노드 생성
         const newRootNode = {
           id: `root_${chatRoomId}`,
-          title: `Chat Room ${chatRoomId}`,
+          title: `CR ${chatRoomId}`,
           content: `Group of ${groupNodes.length} root nodes`,
           chatRoomId: chatRoomId,
           isRoot: true,
@@ -422,7 +422,39 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     }
   }, []);
 
-  // 분리 버튼 클릭 핸들러를 별도로 생성
+  // 링크 버튼 핸들러 함수를 먼저 선언
+  const handleLinkButtonClick = useCallback((nodeId) => {
+    // 노드의 chatRoomId 찾기
+    const node = processedData.nodes.find(n => n.id === nodeId);
+    
+    if (!node) return;
+
+    let chatRoomId;
+    if (node.id.startsWith('root_')) {
+      // root_ 접두사가 있는 경우 제거
+      chatRoomId = node.id.replace('root_', '');
+    } else {
+      // 일반 노드의 경우 해당 노드의 chatRoomId 사용
+      chatRoomId = node.chatRoomId;
+    }
+
+    if (chatRoomId) {
+      // MainPage로 이동하면서 필요한 정보 전달
+      navigate('/main', { 
+        state: { 
+          selectedChatRoomId: chatRoomId,
+          fromMindmap: true,
+          nodeInfo: {
+            id: node.id,
+            title: node.title,
+            content: node.content
+          }
+        } 
+      });
+    }
+  }, [processedData.nodes, navigate]);
+
+  // 분리 버튼 클릭 핸들러
   const handleSplitButtonClick = useCallback(async (node) => {
     try {
       if (!node) {
@@ -430,55 +462,31 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
         return;
       }
 
-      // 현재 상태 저장
-      const savedNodePositions = preserveNodePositions(processedData.nodes);
-      const savedCameraPosition = preserveCameraPosition();
-
-      // 시뮬레이션 즉시 중지
-      if (graphRef.current) {
-        // Force Graph의 시뮬레이션 중지
-        graphRef.current.d3Force('link').distance(0);  // 링크 거리를 0으로
-        graphRef.current.d3Force('charge').strength(0);  // 전하 힘을 0으로
-        graphRef.current.d3Force('center', null);  // 중심 힘 제거
-      }
-
-      // 낙관적 업데이트
-      setLocalData(prevData => {
-        const updatedRelationships = prevData.relationships.filter(rel => 
-          !(rel.target === node.id)
-        );
-
-        const nodesWithPositions = restoreNodePositions(prevData.nodes, savedNodePositions);
-        
-        // 노드 위치 고정
-        nodesWithPositions.forEach(node => {
-          node.fx = node.x;
-          node.fy = node.y;
-          if (is3D) node.fz = node.z;
-        });
-
-        return {
-          nodes: nodesWithPositions,
-          relationships: updatedRelationships
-        };
-      });
-
-      // 서버 요청
-      await splitNode(node.id);
-
-      // 카메라 위치 복원
-      restoreCameraPosition(savedCameraPosition);
-
+      // 1. 서버에 분리 요청 보내고 새로운 chatRoomId 받기
+      const newChatRoomId = await splitNode(node.id);
+      
+      // 2. 상태 초기화
       setFixedNode(null);
       setShowNodeModal(false);
 
+      // 3. 새로운 chatRoomId로 main 페이지 이동
+      navigate('/main', { 
+        state: { 
+          selectedChatRoomId: newChatRoomId,
+          fromMindmap: true,
+          nodeInfo: {
+            id: node.id,
+            title: node.title,
+            content: node.content
+          }
+        } 
+      });
+
     } catch (error) {
       console.error('노드 분리 중 오류 발생:', error);
-      const newData = await fetchMindmapData();
-      setLocalData(newData);
       alert('노드 분리에 실패했습니다.');
     }
-  }, [processedData, is3D, preserveNodePositions, preserveCameraPosition, restoreNodePositions, restoreCameraPosition]);
+  }, [navigate]);
 
   // 노드 삭제 핸들러 수정
   const handleNodeDelete = useCallback(async () => {
@@ -808,38 +816,6 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     setIs3D(!is3D);
   }, [is3D]);
 
-  // 링크 버튼 핸들러 함수 수정
-  const handleLinkButtonClick = (nodeId) => {
-    // 노드의 chatRoomId 찾기
-    const node = processedData.nodes.find(n => n.id === nodeId);
-    
-    if (!node) return;
-
-    let chatRoomId;
-    if (node.id.startsWith('root_')) {
-      // root_ 접두사가 있는 경우 제거
-      chatRoomId = node.id.replace('root_', '');
-    } else {
-      // 일반 노드의 경우 해당 노드의 chatRoomId 사용
-      chatRoomId = node.chatRoomId;
-    }
-
-    if (chatRoomId) {
-      // MainPage로 이동하면서 필요한 정보 전달
-      navigate('/main', { 
-        state: { 
-          selectedChatRoomId: chatRoomId,
-          fromMindmap: true,
-          nodeInfo: {
-            id: node.id,
-            title: node.title,
-            content: node.content
-          }
-        } 
-      });
-    }
-  };
-
   return (
     <div className="relative w-full h-full">
       {/* 검색창 컨테이너 수정 */}
@@ -877,7 +853,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
       </div>
 
       {/* 편집 모드 체크박스 추가 */}
-      <div className="absolute right-4 top-4 z-50">
+      <div className="absolute right-4 top-4 z-40">
         {/* ? 버튼 */}
         <button
           className="w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center text-gray-700 hover:bg-opacity-100 shadow-lg font-bold"
@@ -891,7 +867,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
         {/* 색상 범례 - 호버 또는 클릭 시 표시 */}
         {(hoverLegend || showLegend) && (
           <div 
-            className="absolute right-10 top-0 bg-white rounded-lg shadow-lg"
+            className="absolute right-10 top-0 bg-white rounded-lg shadow-lg z-40"
             style={{ 
               backgroundColor: showLegend ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)',
               minWidth: 'max-content'
