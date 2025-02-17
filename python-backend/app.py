@@ -283,6 +283,25 @@ message_model = api.model('message', {'chatRoomId': fields.Integer(required=Fals
 message_all = api.model('title', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
 message_title = api.model('all', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
 
+@ns_chatbot.route('/setMemory/<int:chatRoomId>')
+class SetMemory(Resource):
+    @ns_chatbot.response(200, '성공적인 응답')
+    @ns_chatbot.response(400, '필수 필드 누락')
+    @ns_chatbot.response(500, '내부 서버 오류')
+    def post(self, chatRoomId):
+        print("작동")
+        global memory, current_room_id
+        
+        # Check if the room ID has changed
+        if current_room_id != chatRoomId:
+            current_room_id = chatRoomId
+            memory.clear()
+            memory = initialize_memory(chatRoomId)  # Replace with your initialization logic
+        
+        return {"message": "Memory set successfully", "chatRoomId": chatRoomId}, 200
+
+
+
 @ns_chatbot.route('/all')
 class AlleAPI(Resource):
     @ns_chatbot.expect(message_all)
@@ -476,16 +495,18 @@ class MassageAPI(Resource):
             error_response = {'error': str(e)}
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
 
+answer_sentence_model = api.model('AnswerSentence', {
+    'sentenceId': fields.String(),
+    'content': fields.String()
+})
+
 @ns_chatbot.route('/first-mindmap')
 class FirstMindmapAPI(Resource):
     @ns_chatbot.expect(api.model('first_mindmap', {
         'chatRoomId': fields.Integer(required=True),
         'userInput': fields.String(required=True),
         'creatorId': fields.Integer(required=True),
-        'answerSentences': fields.List(fields.Nested({
-            'sentenceId': fields.String(),
-            'content': fields.String()
-        }))
+        'answerSentences': fields.List(fields.Nested(answer_sentence_model))  # ✅ 수정됨
     }))
     def post(self):
         try:
