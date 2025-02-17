@@ -215,8 +215,31 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       socket.off("all_stream")
       socket.off("stream_end")
       socket.off("error")
+      socket.off("mindmap_status")
     }
-  }, [handleStreamEndCallback])
+  }, [handleStreamEndCallback, currentChatRoom])
+
+  useEffect(() => {
+    const loadInitialState = async () => {
+      // URL 파라미터나 state에서 chatRoomId 가져오기
+      const chatRoomId = location.state?.selectedChatRoomId || currentChatRoom;
+      
+      if (chatRoomId) {
+        // 채팅방 선택 상태 업데이트
+        onChatRoomSelect(chatRoomId);
+        
+        try {
+          // 채팅 내역 로딩
+          const response = await api.get(`/api/chatroom/messages/${chatRoomId}`);
+          // ... 메시지 처리 로직
+        } catch (error) {
+          console.error("채팅 메세지 로딩 실패:", error);
+        }
+      }
+    };
+
+    loadInitialState();
+  }, [location.state, currentChatRoom]);
 
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
@@ -251,18 +274,33 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
 
       console.log("API Response:", response) // 응답 확인용 로그 추가
 
-      onChatRoomSelect(response.data.chat_room_id)
-
+      
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chat_room_id) {
-        localStorage.setItem("currentChatRoom", response.data.chat_room_id.toString())
+        
+        const newChatRoomId = response.data.chat_room_id;
+        
+        localStorage.setItem("currentChatRoom", newChatRoomId.toString());
+        
+        // 새로운 채팅방에 소켓 연결
+        socket.emit('join_room', { chatRoomId: newChatRoomId });
+
+        // 마인드맵 상태를 즉시 'generating'으로 설정
+        setMindmapStatus({
+          status: 'generating',
+          message: '마인드맵을 생성하고 있습니다',
+        });
+        
         onChatRoomSelect(response.data.chat_room_id)
+        
         setModelStreamingTexts({
           chatgpt: "",
           claude: "",
           google: "",
           clova: "",
         })
+
+
         setRefreshTrigger((prev) => !prev)
       } else {
         console.error("포멧 에러:", response)
@@ -443,6 +481,100 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     }
   }
 
+  // ------------------------------------  입력창 ----------------------------------------------------------
+  const ChatInputForm = () => {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex gap-3 items-end">
+            {/* 메인 입력창 */}
+            <div className="flex-1 relative">
+              <textarea
+                ref={textareaRef}
+                value={userInput}
+                onChange={handleInputChange}
+                rows={1}
+                disabled={chatSemaphore || showModelCards}
+                placeholder={showModelCards ? "모델을 선택해주세요" : chatSemaphore ? "메시지 전송 중..." : "무엇이 궁금하신가요?"}
+                className="w-full px-4 py-3 pr-12 rounded-2xl bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
+                style={{ minHeight: "48px", maxHeight: "120px" }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleMessageSend(e);
+                  }
+                }}
+              />
+              <button
+                type="submit"
+                disabled={chatSemaphore || showModelCards}
+                className="absolute right-3 bottom-2.5 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed p-1 rounded-lg transition-colors"
+              >
+                <SendHorizontal size={20} />
+              </button>
+            </div>
+  
+            {/* 모델 선택 드롭다운 - 모델 선택 후에만 표시 */}
+            {model && (
+              <div className="relative">
+                <button
+                  onClick={toggleModelDropdown}
+                  className="h-12 px-4 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 transition-colors"
+                >
+                  <img src={getModelIcon(model)} alt={model} className="w-5 h-5 object-contain" />
+                  <span className="capitalize hidden sm:inline">{model}</span>
+                  <Braces size={16} className="sm:ml-1" />
+                </button>
+  
+                {/* 드롭다운 메뉴 */}
+                {isModelDropdownOpen && (
+                  <div className="absolute bottom-full mb-2 right-0 flex gap-2 bg-white rounded-lg shadow-lg p-2 min-w-[200px]">
+                    <div className="grid grid-cols-1 gap-1 w-full">
+                      {modelList.map((modelName) => (
+                        <button
+                          key={modelName}
+                          onClick={() => changeModel(modelName)}
+                          className={`px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100 transition-colors ${
+                            modelName === model ? "bg-gray-50" : ""
+                          }`}
+                        >
+                          <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
+                          <span className="capitalize">{modelName}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+  
+            {/* 마인드맵 버튼 */}
+            {mindmapStatus.status === "completed" ? (
+              <button
+                onClick={handleMindmapView}
+                className="h-12 px-4 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-2 transition-colors whitespace-nowrap"
+              >
+                <Map size={20} />
+                <span className="hidden sm:inline">마인드맵</span>
+              </button>
+            ) : (
+              <button
+                disabled
+                className="h-12 px-4 rounded-xl bg-gray-100 text-gray-500 flex items-center gap-2 cursor-not-allowed"
+              >
+                <Loader2 size={20} className="animate-spin" />
+                <span className="hidden sm:inline">생성중</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // -----------------------------------------  입력창 ----------------------------------------------------------
+
+
   // **렌더링**
   return (
     <div className="h-full flex flex-col p-4 relative" id="modal-root">
@@ -474,7 +606,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
                   </span>
                   <span className="text-gray-800 capitalize text-sm">{modelName}</span>
                 </div>
-                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">마인드맵 생성중...</span>}</p>
+                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">답변 중...</span>}</p>
               </div>
             ))}
           </div>
