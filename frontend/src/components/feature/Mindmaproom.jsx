@@ -739,7 +739,7 @@ const Mindmaproomdetail = ({ data }) => {
           graphData={processedData}
           nodeThreeObject={nodeThreeObject}
           nodeThreeObjectExtend={false}
-          width={window.innerWidth - 256}
+          width={window.innerWidth - 296}
           height={window.innerHeight - 64}
           backgroundColor="#353A3E"
           nodeColor={getNodeColor}
@@ -800,7 +800,7 @@ const Mindmaproomdetail = ({ data }) => {
         <ForceGraph2D
           ref={graphRef}
           graphData={processedData}
-          width={window.innerWidth - 256}
+          width={window.innerWidth - 296}
           height={window.innerHeight - 64}
           nodeRelSize={1}
           nodeVal={1}
