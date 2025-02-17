@@ -4,10 +4,7 @@ import com.swissclassic.mindflow_server.conversation.model.dto.*;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatLog;
 import com.swissclassic.mindflow_server.conversation.model.entity.ChatRoom;
 import com.swissclassic.mindflow_server.conversation.model.entity.ConversationSummary;
-import com.swissclassic.mindflow_server.conversation.service.AiServerService;
-import com.swissclassic.mindflow_server.conversation.service.ChatLogService;
-import com.swissclassic.mindflow_server.conversation.service.ChatRoomService;
-import com.swissclassic.mindflow_server.conversation.service.ConversationSummaryService;
+import com.swissclassic.mindflow_server.conversation.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +30,7 @@ public class ChatController {
     private final ChatRoomService roomService;
     private final ChatLogService chatLogService;
     private final ConversationSummaryService conversationSummaryService;
-
+    private final MemoryService memoryService;
 
     @PostMapping("/send")
     @Operation(description = "gemini-2.0-flash-exp")
@@ -121,6 +118,7 @@ public class ChatController {
                 "User:" + conversationSummaryRequest.getUserInput() + "\nAI" + conversationSummaryRequest.getAnswer());
 
         conversationSummaryService.saveConversationSummary(conversationSummary);
+        memoryService.setMemory(roomId);
 
         // 마인드맵 생성을 위한 요청 추가
         log.info("초기 마인드맵 생성!!!!!!!!!!!!!!!!!!!!!!!");

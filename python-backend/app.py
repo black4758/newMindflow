@@ -142,6 +142,7 @@ async def llm_generate_async(user_input, llm, model_name):
 
     return full_response
 
+
 async def generate_model_responses_async(user_input):
     models = {
         'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
@@ -197,7 +198,7 @@ async def generate_response_for_model(user_input, model_class, detail_model):
         # 실시간으로 소켓에 데이터 전송
         socketio.emit('stream', {
             'content': chunk.content
-        })
+        },room = sessionId)
         
         await asyncio.sleep(stream_time)  # 너무 빠른 전송을 방지 (비동기 방식에 맞게 처리)
 
@@ -225,7 +226,7 @@ def generate_response_for_google(user_input, model_class, detail_model):
         message = f"{part} "  # 공백 포함
         socketio.emit('stream', {
             'content': message,
-        })
+        },room = sessionId)
         time.sleep(stream_time) 
     memory.save_context(
         {"input": user_input},  # 사용자 입력 저장
@@ -282,6 +283,25 @@ message_model = api.model('message', {'chatRoomId': fields.Integer(required=Fals
 message_all = api.model('title', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
 message_title = api.model('all', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
 
+@ns_chatbot.route('/setMemory/<int:chatRoomId>')
+class SetMemory(Resource):
+    @ns_chatbot.response(200, '성공적인 응답')
+    @ns_chatbot.response(400, '필수 필드 누락')
+    @ns_chatbot.response(500, '내부 서버 오류')
+    def post(self, chatRoomId):
+        print("작동")
+        global memory, current_room_id
+        
+        # Check if the room ID has changed
+        if current_room_id != chatRoomId:
+            current_room_id = chatRoomId
+            memory.clear()
+            memory = initialize_memory(chatRoomId)  # Replace with your initialization logic
+        
+        return {"message": "Memory set successfully", "chatRoomId": chatRoomId}, 200
+
+
+
 @ns_chatbot.route('/all')
 class AlleAPI(Resource):
     @ns_chatbot.expect(message_all)
@@ -292,7 +312,6 @@ class AlleAPI(Resource):
         try:
             data = request.get_json()
             print(data)
-
             user_input = data.get('userInput')
             
             responses = asyncio.run(generate_model_responses_async(user_input))  
@@ -396,6 +415,9 @@ class MassageAPI(Resource):
                 memory = initialize_memory(chat_room_id)
                 print(memory.load_memory_variables({})["history"])
                 print(f"Initialized memory: {memory}")  # 메모리 초기화 결과 출력
+            global sessionId
+            sessionId=account_id
+
 
             if not user_input:
                 print("user_input is missing")  # user_input이 없을 경우 출력
@@ -473,16 +495,18 @@ class MassageAPI(Resource):
             error_response = {'error': str(e)}
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
 
+answer_sentence_model = api.model('AnswerSentence', {
+    'sentenceId': fields.String(),
+    'content': fields.String()
+})
+
 @ns_chatbot.route('/first-mindmap')
 class FirstMindmapAPI(Resource):
     @ns_chatbot.expect(api.model('first_mindmap', {
         'chatRoomId': fields.Integer(required=True),
         'userInput': fields.String(required=True),
         'creatorId': fields.Integer(required=True),
-        'answerSentences': fields.List(fields.Nested({
-            'sentenceId': fields.String(),
-            'content': fields.String()
-        }))
+        'answerSentences': fields.List(fields.Nested(answer_sentence_model))  # ✅ 수정됨
     }))
     def post(self):
         try:
