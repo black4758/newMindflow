@@ -7,9 +7,6 @@ import PropTypes from "prop-types"
 import { useNavigate } from "react-router-dom"
 import * as d3 from "d3"
 
-
-const extraRenderers = [new CSS2DRenderer()]
-
 // 모드 상태를 저장하기 위한 전역 변수나 localStorage 사용
 const setViewMode = (is3D) => {
   localStorage.setItem('viewMode', is3D ? '3d' : '2d');
@@ -109,10 +106,13 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     // 각 chatRoom 그룹별로 새로운 루트 노드 생성
     Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
       if (groupNodes.length >= 1) {
+        // 채팅방 제목 가져오기 (첫 번째 노드의 chatRoomTitle 사용)
+        const chatRoomTitle = groupNodes[0].chatRoomTitle || `CR ${chatRoomId}`;
+        
         // 새로운 루트 노드 생성
         const newRootNode = {
           id: `root_${chatRoomId}`,
-          title: `CR ${chatRoomId}`,
+          title: chatRoomTitle, // 실제 채팅방 제목 사용
           content: `Group of ${groupNodes.length} root nodes`,
           chatRoomId: chatRoomId,
           isRoot: true,
@@ -569,14 +569,6 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
       default:
         return "rgba(255,255,255,0.8)";
     }
-  };
-
-  // 링크 두께 설정 함수 추가
-  const getLinkWidth = (link, isHighlighted) => {
-    if (!isHighlighted) {
-      return 1; // 하이라이트되지 않은 링크는 기본 두께
-    }
-    return 3; // 하이라이트된 링크는 두껍게
   };
 
   // 마우스 이동 이벤트 핸들러
@@ -1114,29 +1106,11 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
 }
 
 const CustomNodeComponent = ({ data }) => {
-  return (
-    <div className="min-w-[150px] p-2">
-      <div className="font-bold text-gray-800 mb-1">{data.label}</div>
-      {data.description && <div className="text-sm text-gray-600">{data.description}</div>}
-      {data.tags && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {data.tags.map((tag, index) => (
-            <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  // ... component code ...
 }
 
 CustomNodeComponent.propTypes = {
-  data: PropTypes.shape({
-    label: PropTypes.string,
-    description: PropTypes.string,
-    tags: PropTypes.arrayOf(PropTypes.string),
-  }).isRequired,
+  // ... prop types ...
 }
 
 Mindmap.propTypes = {
@@ -1144,7 +1118,7 @@ Mindmap.propTypes = {
     nodes: PropTypes.array,
     relationships: PropTypes.array
   }),
-  onChatRoomSelect: PropTypes.func.isRequired
+  onChatRoomSelect: PropTypes.func.isRequired  // 사용되지 않음
 };
 
 export default Mindmap
