@@ -118,7 +118,7 @@ async def llm_generate_async(user_input, llm, model_name):
         socketio.emit('all_stream', {
             'content': content,
             'model_name': model_name
-        })
+        },room = sessionId)
         await asyncio.sleep(stream_time)
 
     # ✅ Google LLM은 동기 방식이라 별도 처리
@@ -197,7 +197,7 @@ async def generate_response_for_model(user_input, model_class, detail_model):
         # 실시간으로 소켓에 데이터 전송
         socketio.emit('stream', {
             'content': chunk.content
-        })
+        },room = sessionId)
         
         await asyncio.sleep(stream_time)  # 너무 빠른 전송을 방지 (비동기 방식에 맞게 처리)
 
@@ -225,7 +225,7 @@ def generate_response_for_google(user_input, model_class, detail_model):
         message = f"{part} "  # 공백 포함
         socketio.emit('stream', {
             'content': message,
-        })
+        },room = sessionId)
         time.sleep(stream_time) 
     memory.save_context(
         {"input": user_input},  # 사용자 입력 저장
@@ -292,7 +292,8 @@ class AlleAPI(Resource):
         try:
             data = request.get_json()
             print(data)
-
+            global sessionId
+            sessionId=data.get('UserId')
             user_input = data.get('userInput')
             
             responses = asyncio.run(generate_model_responses_async(user_input))  
@@ -396,6 +397,9 @@ class MassageAPI(Resource):
                 memory = initialize_memory(chat_room_id)
                 print(memory.load_memory_variables({})["history"])
                 print(f"Initialized memory: {memory}")  # 메모리 초기화 결과 출력
+            global sessionId
+            sessionId=account_id
+
 
             if not user_input:
                 print("user_input is missing")  # user_input이 없을 경우 출력
