@@ -107,7 +107,13 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
       if (groupNodes.length >= 1) {
         // 채팅방 제목 가져오기 (첫 번째 노드의 chatRoomTitle 사용)
-        const chatRoomTitle = groupNodes[0].chatRoomTitle || `CR ${chatRoomId}`;
+        console.log('노드정보',groupNodes)
+
+        // 채팅방 제목 가져오기 및 길이 제한 (20자)
+        const fullTitle = groupNodes[0].chatRoomTitle || `CR ${chatRoomId}`;
+        const chatRoomTitle = fullTitle.length > 10 
+          ? fullTitle.substring(0, 10) + '...' 
+          : fullTitle;
         
         // 새로운 루트 노드 생성
         const newRootNode = {
