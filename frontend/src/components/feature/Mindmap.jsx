@@ -4,7 +4,7 @@ import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
 import { fetchMindmapData, deleteNode, splitNode } from '../../api/mindmap'
 import PropTypes from "prop-types"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import * as d3 from "d3"
 
 // 모드 상태를 저장하기 위한 전역 변수나 localStorage 사용
@@ -20,6 +20,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
   const [is3D, setIs3D] = useState(getViewMode())                                 // 2D/3D 모드 상태
   const graphRef = useRef()                                                       // 그래프 참조
   const navigate = useNavigate()                                                  // 라우터 네비게이션
+  const location = useLocation(); // 현재 경로 가져오기
   const [hoverNode, setHoverNode] = useState(null)                               // 마우스 오버된 노드
   const [searchTerm, setSearchTerm] = useState("")                               // 검색어
   const [searchResults, setSearchResults] = useState([])                         // 검색 결과 목록
@@ -105,10 +106,8 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
 
     // 각 chatRoom 그룹별로 새로운 루트 노드 생성
     Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
-      if (groupNodes.length >= 1) {
-        // 채팅방 제목 가져오기 (첫 번째 노드의 chatRoomTitle 사용)
-        console.log('노드정보',groupNodes)
-
+      // '/mindmap' 경로일 때만 새로운 루트 노드 생성
+      if (location.pathname === '/mindmap' && groupNodes.length >= 1) {
         // 채팅방 제목 가져오기 및 길이 제한 (20자)
         const fullTitle = groupNodes[0].chatRoomTitle || `CR ${chatRoomId}`;
         const chatRoomTitle = fullTitle.length > 10 
@@ -150,7 +149,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
          !rootNodeGroups[node.chatRoomId]?.length > 1);
       return {
         ...node,
-        color: isRoot ? rootColor : colors[node.level % colors.length],
+        color: isRoot || originalRootNodes.some(rootNode => rootNode.id === node.id) ? rootColor : colors[node.level % colors.length],
         isRoot
       };
     });
@@ -179,7 +178,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     });
 
     return { nodes, links };
-  }, [localData, is3D]);
+  }, [localData, is3D, location.pathname]);
   //}, [is3D]); // 노드의 멀어짐 해결책책
 
   // 루트 노드까지의 경로를 찾는 함수 추가
@@ -824,10 +823,52 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     setIs3D(!is3D);
   }, [is3D]);
 
+  // 이전 페이지로 이동하는 함수
+  const handleBackButtonClick = () => {
+    if (location.pathname.startsWith('/mindmap/node/')) {
+      const nodeId = location.pathname.split('/').pop();
+      const node = processedData.nodes.find(n => n.id === nodeId);
+      if (node && node.chatRoomId) {
+        navigate(`/mindmap/room/${node.chatRoomId}`);
+      }
+    } else if (location.pathname.startsWith('/mindmap/room/')) {
+      navigate('/mindmap');
+    }
+  };
+
+  // 현재 chatRoomTitle 및 추가 정보 가져오기
+  const getCurrentChatRoomTitle = () => {
+    if (location.pathname.startsWith('/mindmap/node/')) {
+      const nodeId = location.pathname.split('/').pop();
+      const node = processedData.nodes.find(n => n.id === nodeId);
+      if (node && node.chatRoomId) {
+        const chatRoomNode = processedData.nodes.find(n => n.id === `root_${node.chatRoomId}`);
+        if (chatRoomNode) {
+          return `${chatRoomNode.title} - ${node.title}`;
+        } else {
+          // 루트 노드가 없을 경우에도 chatRoomTitle을 찾기
+          const anyNodeInRoom = processedData.nodes.find(n => n.chatRoomId === node.chatRoomId);
+          return anyNodeInRoom ? `${anyNodeInRoom.chatRoomTitle} - ${node.title}` : node.title;
+        }
+      }
+    } else if (location.pathname.startsWith('/mindmap/room/')) {
+      const chatRoomId = location.pathname.split('/').pop();
+      const chatRoomNode = processedData.nodes.find(n => n.id === `root_${chatRoomId}`);
+      if (chatRoomNode) {
+        return `${chatRoomNode.title} - room`;
+      } else {
+        // 루트 노드가 없을 경우에도 chatRoomTitle을 찾기
+        const anyNodeInRoom = processedData.nodes.find(n => n.chatRoomId === chatRoomId);
+        return anyNodeInRoom ? `${anyNodeInRoom.chatRoomTitle} - room` : 'room';
+      }
+    }
+    return '';
+  };
+
   return (
     <div className="relative w-full h-full">
       {/* 검색창 컨테이너 수정 */}
-      <div className="absolute left-4 top-4 z-50">
+      <div className="absolute left-4 top-4 z-50 flex items-center">
         <div className="relative">
           <input
             type="text"
@@ -858,6 +899,18 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
             </div>
           )}
         </div>
+        {/* 이전 페이지로 이동 버튼 및 chatRoomTitle 표시 */}
+        {(location.pathname.startsWith('/mindmap/room/') || location.pathname.startsWith('/mindmap/node/')) && (
+          <div className="flex items-center">
+            <button
+              onClick={handleBackButtonClick}
+              className="ml-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+            >
+              {'<<'}
+            </button>
+            <span className="ml-2 text-white">{getCurrentChatRoomTitle()}</span>
+          </div>
+        )}
       </div>
 
       {/* 편집 모드 체크박스 추가 */}

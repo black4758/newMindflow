@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from "react"
-import { ArrowUpCircle, ChevronDown } from "lucide-react"
+import { ArrowUpCircle, ChevronDown, SendHorizontal, Map, Loader2, Braces } from "lucide-react"
 import ModelCard from "../components/common/ModelCard.jsx"
 import api from "../api/axios.js"
 import { useSelector } from "react-redux"
@@ -21,13 +21,24 @@ const socket = io(baseURL, {
 
 // MainPage 컴포넌트 정의
 // setRefreshTrigger: 새로운 채팅방 생성 시 사이드바 갱신을 위한 prop
-const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRoomSelect, chatSemaphore, setChatSemaphore }) => {
+const MainPage = ({ 
+  refreshTrigger, 
+  setRefreshTrigger, 
+  currentChatRoom, 
+  onChatRoomSelect,
+  chatSemaphore,
+  setChatSemaphore,
+  mindSemaphore,
+  setMindSemaphore,
+  isCollapsed  // 추가된 prop
+}) => {
   // ===== Refs =====
   const location = useLocation()
   const navigate = useNavigate()
   const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref
   const messagesEndRef = useRef(null) // 새 메시지 추가시 자동 스크롤을 위한 ref
   const containerRef = useRef(null) // 채팅 메시지 컨테이너의 DOM 요소를 참조하기 위한 ref
+  const modelDropdownRef = useRef(null);
   // - 스크롤 위치 감지
   // - 무한 스크롤 구현에 사용
 
@@ -481,92 +492,129 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
     }
   }
 
+  // useEffect 추가
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target)) {
+        setIsModelDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // ------------------------------------  입력창 ----------------------------------------------------------
   const ChatInputForm = () => {
     return (
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex gap-3 items-end">
-            {/* 메인 입력창 */}
-            <div className="flex-1 relative">
-              <textarea
-                ref={textareaRef}
-                value={userInput}
-                onChange={handleInputChange}
-                rows={1}
-                disabled={chatSemaphore || showModelCards}
-                placeholder={showModelCards ? "모델을 선택해주세요" : chatSemaphore ? "메시지 전송 중..." : "무엇이 궁금하신가요?"}
-                className="w-full px-4 py-3 pr-12 rounded-2xl bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto"
-                style={{ minHeight: "48px", maxHeight: "120px" }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleMessageSend(e);
-                  }
-                }}
-              />
-              <button
-                type="submit"
-                disabled={chatSemaphore || showModelCards}
-                className="absolute right-3 bottom-2.5 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed p-1 rounded-lg transition-colors"
-              >
-                <SendHorizontal size={20} />
-              </button>
-            </div>
-  
-            {/* 모델 선택 드롭다운 - 모델 선택 후에만 표시 */}
+      <div className={`fixed bottom-0 right-0 bg-transparent backdrop-blur-none border-none transition-all duration-300 ${
+        isCollapsed ? "left-16" : "left-64"
+      }`}>
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          {/* 상단 버튼 영역 */}
+          <div className="flex justify-end gap-2 mb-3">
+            {/* 모델 선택 드롭다운과 마인드맵 버튼을 같은 조건으로 감싸기 */}
             {model && (
-              <div className="relative">
-                <button
-                  onClick={toggleModelDropdown}
-                  className="h-12 px-4 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 transition-colors"
-                >
-                  <img src={getModelIcon(model)} alt={model} className="w-5 h-5 object-contain" />
-                  <span className="capitalize hidden sm:inline">{model}</span>
-                  <Braces size={16} className="sm:ml-1" />
-                </button>
-  
-                {/* 드롭다운 메뉴 */}
-                {isModelDropdownOpen && (
-                  <div className="absolute bottom-full mb-2 right-0 flex gap-2 bg-white rounded-lg shadow-lg p-2 min-w-[200px]">
-                    <div className="grid grid-cols-1 gap-1 w-full">
-                      {modelList.map((modelName) => (
-                        <button
-                          key={modelName}
-                          onClick={() => changeModel(modelName)}
-                          className={`px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100 transition-colors ${
-                            modelName === model ? "bg-gray-50" : ""
-                          }`}
-                        >
-                          <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
-                          <span className="capitalize">{modelName}</span>
-                        </button>
-                      ))}
+              <>
+                <div className="relative" ref={modelDropdownRef}>
+                  <button
+                    onClick={toggleModelDropdown}
+                    className="h-10 px-4 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 transition-colors"
+                  >
+                    <img src={getModelIcon(model)} alt={model} className="w-5 h-5 object-contain" />
+                    <span className="capitalize">{model}</span>
+                    <ChevronDown size={16} />
+                  </button>
+
+                  {/* 드롭다운 메뉴 */}
+                  {isModelDropdownOpen && (
+                    <div className="absolute bottom-full mb-2 right-0 flex gap-2 bg-white rounded-lg shadow-lg p-2">
+                      <div className="w-40">
+                        {modelList.map((modelName) => (
+                          <button
+                            key={modelName}
+                            onClick={() => changeModel(modelName)}
+                            className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100 ${
+                              modelName === model ? "bg-gray-50" : ""
+                            }`}
+                          >
+                            <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
+                            <span className="capitalize">{modelName}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {/* 세부 모델 목록 드롭다운 */}
+                      {model && (
+                        <div className="w-56 bg-white rounded-lg shadow-lg py-2">
+                          {detailModelList[model].map((detailModelName) => (
+                            <button
+                              key={detailModelName}
+                              onClick={() => changeDetailModel(detailModelName)}
+                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
+                                detailModelName === detailModel ? "bg-gray-50" : ""
+                              }`}
+                            >
+                              {detailModelName}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
+                </div>
+
+                {/* 마인드맵 버튼 */}
+                {mindmapStatus.status === "completed" ? (
+                  <button
+                    onClick={handleMindmapView}
+                    className="h-10 px-4 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-2 transition-colors"
+                  >
+                    <Map size={20} />
+                    <span className="hidden sm:inline">마인드맵</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="h-10 px-4 rounded-xl bg-gray-100 text-gray-500 flex items-center gap-2 cursor-not-allowed"
+                  >
+                    <Loader2 size={20} className="animate-spin" />
+                    <span className="hidden sm:inline">생성중</span>
+                  </button>
                 )}
-              </div>
-            )}
-  
-            {/* 마인드맵 버튼 */}
-            {mindmapStatus.status === "completed" ? (
-              <button
-                onClick={handleMindmapView}
-                className="h-12 px-4 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-2 transition-colors whitespace-nowrap"
-              >
-                <Map size={20} />
-                <span className="hidden sm:inline">마인드맵</span>
-              </button>
-            ) : (
-              <button
-                disabled
-                className="h-12 px-4 rounded-xl bg-gray-100 text-gray-500 flex items-center gap-2 cursor-not-allowed"
-              >
-                <Loader2 size={20} className="animate-spin" />
-                <span className="hidden sm:inline">생성중</span>
-              </button>
+              </>
             )}
           </div>
+
+          {/* 입력창 영역 */}
+          <form onSubmit={handleMessageSend} className="relative">
+            <textarea
+              ref={textareaRef}
+              value={userInput}
+              onChange={handleInputChange}
+              rows={1}
+              disabled={chatSemaphore || showModelCards}
+              placeholder={showModelCards ? "모델을 선택해주세요" : chatSemaphore ? "메시지 전송 중..." : "무엇이 궁금하신가요?"}
+              className={`w-full px-4 py-3 pr-12 rounded-2xl bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto ${
+                chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              style={{ minHeight: "48px", maxHeight: "120px" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleMessageSend(e);
+                }
+              }}
+            />
+            <button
+              type="submit"
+              disabled={chatSemaphore || showModelCards}
+              className={`absolute right-4 bottom-3 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-lg transition-colors`}
+            >
+              <SendHorizontal size={24} />
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -579,7 +627,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
   return (
     <div className="h-full flex flex-col p-4 relative" id="modal-root">
       {/* 메시지 표시 영역 - 스크롤 가능 */}
-      <div className="flex-1 overflow-y-auto mb-4">
+      <div className="flex-1 overflow-y-auto" style={{ marginBottom: "120px" }}>
         {/* 이전 메시지들 표시 */}
         {messages.map((message, index) => (
           <div key={index} className="mb-4">
@@ -613,91 +661,114 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
         )}
       </div>
 
-      {/* 채팅 입력 폼 - 고정 위치 */}
-      <div className="w-1/2 mx-auto flex gap-2">
-        <form onSubmit={handleMessageSend} className="relative flex-1">
-          <textarea
-            ref={textareaRef}
-            value={userInput}
-            onChange={handleInputChange}
-            rows={1}
-            disabled={chatSemaphore || showModelCards}
-            placeholder={showModelCards ? "모델을 선택해주세요" : chatSemaphore ? "메시지 전송 중..." : "메시지를 입력하세요"}
-            className={`w-full px-4 py-2 pr-12 rounded-lg bg-[#e0e0e0] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FFD26F] resize-none overflow-y-auto ${
-              chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            style={{ minHeight: "40px", maxHeight: "120px", lineHeight: "24px" }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                handleMessageSend(e)
-              }
-            }}
-          />
-          <button
-            type="submit"
-            disabled={chatSemaphore || showModelCards}
-            className={`absolute right-2 top-[8px] text-gray-600 hover:text-[#FBFBFB] ${chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            <ArrowUpCircle size={24} />
-          </button>
-        </form>
+      {/* 채팅 입력 폼 - Sidebar 너비를 고려한 고정 위치 */}
+      <div className={`fixed bottom-0 right-0 bg-transparent backdrop-blur-none border-none transition-all duration-300 ${
+        isCollapsed ? "left-16" : "left-64"
+      }`}>
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          {/* 상단 버튼 영역 */}
+          <div className="flex justify-end gap-2 mb-3">
+            {/* 모델 선택 드롭다운과 마인드맵 버튼을 같은 조건으로 감싸기 */}
+            {model && (
+              <>
+                <div className="relative" ref={modelDropdownRef}>
+                  <button
+                    onClick={toggleModelDropdown}
+                    className="h-10 px-4 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-2 transition-colors"
+                  >
+                    <img src={getModelIcon(model)} alt={model} className="w-5 h-5 object-contain" />
+                    <span className="capitalize">{model}</span>
+                    <ChevronDown size={16} />
+                  </button>
 
-        {/* 모델 선택 드롭다운 */}
-        {model && (
-          <div className="relative">
-            <button onClick={toggleModelDropdown} className="h-[40px] px-4 rounded-lg bg-[#e0e0e0] text-gray-800 hover:bg-[#EFEFEF] flex items-center gap-2">
-              <img src={getModelIcon(model)} alt={model} className="w-5 h-5 object-contain" />
-              <span className="capitalize">{model}</span>
-              <ChevronDown size={16} />
-            </button>
-
-            {/* 드롭다운 메뉴 */}
-            {isModelDropdownOpen && (
-              <div className="absolute bottom-full mb-2 right-0 flex gap-2">
-                <div className="w-40 bg-white rounded-lg shadow-lg py-2">
-                  {modelList.map((modelName) => (
-                    <button
-                      key={modelName}
-                      onClick={() => changeModel(modelName)}
-                      className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-100 ${modelName === model ? "bg-gray-50" : ""}`}
-                    >
-                      <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
-                      <span className="capitalize">{modelName}</span>
-                    </button>
-                  ))}
+                  {/* 드롭다운 메뉴 */}
+                  {isModelDropdownOpen && (
+                    <div className="absolute bottom-full mb-2 right-0 flex gap-2 bg-white rounded-lg shadow-lg p-2">
+                      <div className="w-40">
+                        {modelList.map((modelName) => (
+                          <button
+                            key={modelName}
+                            onClick={() => changeModel(modelName)}
+                            className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100 ${
+                              modelName === model ? "bg-gray-50" : ""
+                            }`}
+                          >
+                            <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
+                            <span className="capitalize">{modelName}</span>
+                          </button>
+                        ))}
+                      </div>
+                      {/* 세부 모델 목록 드롭다운 */}
+                      {model && (
+                        <div className="w-56 bg-white rounded-lg shadow-lg py-2">
+                          {detailModelList[model].map((detailModelName) => (
+                            <button
+                              key={detailModelName}
+                              onClick={() => changeDetailModel(detailModelName)}
+                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${
+                                detailModelName === detailModel ? "bg-gray-50" : ""
+                              }`}
+                            >
+                              {detailModelName}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {/* 세부 모델 목록 드롭다운 */}
-                {model && (
-                  <div className="w-56 bg-white rounded-lg shadow-lg py-2">
-                    <div className="px-4 py-2 text-sm font-medium text-gray-600 border-b border-gray-100"></div>
-                    {detailModelList[model].map((detailModelName) => (
-                      <button
-                        key={detailModelName}
-                        onClick={() => changeDetailModel(detailModelName)}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${detailModelName === detailModel ? "bg-gray-50" : ""}`}
-                      >
-                        {detailModelName}
-                      </button>
-                    ))}
-                  </div>
+
+                {/* 마인드맵 버튼 */}
+                {mindmapStatus.status === "completed" ? (
+                  <button
+                    onClick={handleMindmapView}
+                    className="h-10 px-4 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center gap-2 transition-colors"
+                  >
+                    <Map size={20} />
+                    <span className="hidden sm:inline">마인드맵</span>
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="h-10 px-4 rounded-xl bg-gray-100 text-gray-500 flex items-center gap-2 cursor-not-allowed"
+                  >
+                    <Loader2 size={20} className="animate-spin" />
+                    <span className="hidden sm:inline">생성중</span>
+                  </button>
                 )}
-              </div>
+              </>
             )}
           </div>
-        )}
 
-        {/* 마인드맵 버튼 */}
-        {mindmapStatus.status === "completed" ? (
-          <button onClick={handleMindmapView} className="h-[40px] px-4 rounded-lg bg-[#e0e0e0] text-gray-800 hover:bg-[#EFEFEF] flex items-center gap-2 ml-2">
-            마인드맵 조회하기
-          </button>
-        ) : (
-          <button disabled className="h-[40px] px-4 rounded-lg bg-gray-200 text-gray-500 cursor-not-allowed flex items-center gap-2 ml-2">
-            <span className="animate-spin">⚙️</span>
-            {mindmapStatus.message || "마인드맵 생성중"}
-          </button>
-        )}
+          {/* 입력창 영역 */}
+          <form onSubmit={handleMessageSend} className="relative">
+            <textarea
+              ref={textareaRef}
+              value={userInput}
+              onChange={handleInputChange}
+              rows={1}
+              disabled={chatSemaphore || showModelCards}
+              placeholder={showModelCards ? "모델을 선택해주세요" : chatSemaphore ? "메시지 전송 중..." : "무엇이 궁금하신가요?"}
+              className={`w-full px-4 py-3 pr-12 rounded-2xl bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto ${
+                chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              style={{ minHeight: "48px", maxHeight: "120px" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleMessageSend(e);
+                }
+              }}
+            />
+            <button
+              type="submit"
+              disabled={chatSemaphore || showModelCards}
+              className={`absolute right-4 bottom-3 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-lg transition-colors`}
+            >
+              <SendHorizontal size={24} />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )
