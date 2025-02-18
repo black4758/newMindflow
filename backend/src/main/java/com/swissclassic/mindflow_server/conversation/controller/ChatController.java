@@ -78,7 +78,7 @@ public class ChatController {
         List<ChatApiResponse.AnswerSentence> answerSentences = Arrays.stream(
                 conversationSummaryRequest
                         .getAnswer()
-                        .split("\n"))
+                        .split("\\."))
                         .filter(line -> !line.trim()
                         .isEmpty())
                         .map(line -> {
