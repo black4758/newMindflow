@@ -163,7 +163,8 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
   useEffect(() => {
     // 연결 성공 이벤트
     socket.on("connect", () => {
-      console.log("Socket connected")
+      socket.emit('join', { room: userId });
+      console.log(userId)
     })
 
     // 연결 에러 이벤트
