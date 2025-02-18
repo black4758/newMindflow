@@ -274,6 +274,10 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
           node.fz = node.z;
         }
       }
+      // 강제 리렌더링을 위해 그래프 데이터 업데이트
+      if (graphRef.current) {
+        graphRef.current.refresh();
+      }
       return;
     }
 
@@ -594,7 +598,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
   useEffect(() => {
     if (graphRef.current && !is3D) {
       // 2D 모드일 때 초기 줌 레벨 설정
-      graphRef.current.zoom(0.7);
+      graphRef.current.zoom(0.2);
       
       // 그래프의 중심점 계산
       if (processedData.nodes.length > 0) {
@@ -698,6 +702,12 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     sprite.textHeight = baseSize;
     sprite.padding = baseSize * 0.5;
     sprite.borderRadius = baseSize;
+    
+    // 노드가 고정되었을 때 테두리 추가
+    if (node.fx !== undefined && node.fy !== undefined) {
+      sprite.borderWidth = baseSize * 0.2;
+      sprite.borderColor = '#FFD700'; // 금색 테두리
+    }
     
     if (node.title.length > 10) {
       sprite.text = node.title.substring(0, 10) + '...';
