@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Menu, Search, ExternalLink, Network, MoreHorizontal } from "lucide-react"
+import { Menu, Search, ExternalLink, Network, MoreHorizontal, Star } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
-import { deleteNode } from "../../api/mindmap.js"
 import { useSelector } from "react-redux"
 
 const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, chatSemaphore, mindSemaphore }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [menuStates, setMenuStates] = useState({})
   const [isChatting, setIsChatting] = useState(false)
+  const [localStarred, setLocalStarred] = useState(false)
 
   const toggleMenu = (roomId) => {
     setMenuStates((prev) => {
@@ -32,7 +32,6 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
 
   // 채팅방 관련 상태
   const [allChatRooms, setAllChatRooms] = useState([]) // 모든 채팅방 저장
-  const [isLoading, setIsLoading] = useState(false) // 사이드바 로딩 상태
 
   // 스크롤 감지를 위한 ref
   const containerRef = useRef(null)
@@ -40,7 +39,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   // 채팅방 목록 불러오기
   const handleChatRooms = useCallback(async () => {
     console.log("handleChatRooms 실행")
-    setIsLoading(true)
+    // setIsLoading(true)
     try {
       const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
       // console.log("채팅방 목록 로딩 완료:", response.data)
@@ -48,7 +47,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     } catch (error) {
       console.error("채팅방 목록 로딩 실패:", error)
     } finally {
-      setIsLoading(false)
+      // setIsLoading(false)
     }
   }, [userId])
 
@@ -64,7 +63,6 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
 
         setRefreshTrigger((prev) => !prev)
 
-
         // 3. 현재 채팅방이 삭제되는 경우 추가 처리
         if (chatroomId === currentChatRoom) {
           onChatRoomSelect(null) // 현재 채팅방 선택 해제
@@ -79,25 +77,27 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     }
   }
 
+  const handleRoomStarred = async () => {
+    try {
+      const request = await api.post('url', currentChatRoom)
+      
+    } catch(error) {
+      console.log(error)
+    }
+  }
+
   // 채팅방 분류 함수
   const categorizeRooms = (rooms) => {
     if (!rooms || rooms.length === 0) return { recentFiveRooms: [], remainingRooms: [] }
 
-    // 최근 5개 채팅방
-    const recentFiveRooms = rooms
-      .slice()
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5)
-
-    // 나머지 채팅방
-    const remainingRooms = rooms
-      .slice()
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(5)
+    // 즐겨찾기 추가된 방
+    const bookmarkedRooms = rooms.filter((room) => room.starred)
+    // 나머지 채팅 방
+    const otherRooms = rooms.filter((room) => !room.starred)
 
     return {
-      recentFiveRooms,
-      remainingRooms,
+      bookmarkedRooms,
+      otherRooms,
     }
   }
 
@@ -127,8 +127,9 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   }, [chatSemaphore])
 
   useEffect(() => {
-    // console.log("채팅방 목록 상태 변경:", allChatRooms)
-  }, [allChatRooms])
+    const isStarred = allChatRooms.find(room => room.id === currentChatRoom)?.starred
+    setLocalStarred(isStarred);
+  }, [allChatRooms, currentChatRoom])
 
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
@@ -141,6 +142,11 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
           <>
             <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
               <Search className="w-6 h-6 text-[#ffffff]" />
+            </button>
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
+              <Star className= {`w-6 h-6 text-[#ffffff] ${
+                localStarred ? "fill-white" : ""
+              }`}/>
             </button>
             <button
               className="p-1 rounded hover:bg-gray-200 transition-colors"
@@ -161,12 +167,12 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
       {/* Navigation Sections */}
       {!isCollapsed && (
         <div ref={containerRef} className="space-y-8 overflow-y-auto flex-1">
-          {/* 오늘 채팅방 */}
+          {/* 즐겨찾기기 */}
           <div className="mb-6">
-            <h2 className="text-[#ffffff] mb-2">최근 대화</h2>
+            <h2 className="text-[#ffffff] mb-2">즐겨찾기</h2>
             <div className="flex flex-col gap-2">
-              {categorizeRooms(allChatRooms).recentFiveRooms.map((chatRoom) => (
-                <div key={`today-${chatRoom.id}`} className="relative group">
+              {categorizeRooms(allChatRooms).bookmarkedRooms?.map((chatRoom) => (
+                <div key={`bookmark-${chatRoom.id}`} className="relative group">
                   <button
                     onClick={() => handleChatRoomClick(chatRoom.id)}
                     className={`
@@ -224,12 +230,12 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
             </div>
           </div>
 
-          {/* 최근 7일 채팅방 */}
+          {/* 전체 대화 목록 */}
           <div className="flex flex-col gap-2">
             <h2 className="text-[#ffffff] mb-2">지난 대화</h2>
             <div className="flex flex-col gap-2">
-              {categorizeRooms(allChatRooms).remainingRooms.map((chatRoom) => (
-                <div key={`recent-${chatRoom.id}`} className="relative group">
+              {categorizeRooms(allChatRooms).otherRooms?.map((chatRoom) => (
+                <div key={`all-${chatRoom.id}`} className="relative group">
                   <button
                     onClick={() => handleChatRoomClick(chatRoom.id)}
                     className={`
