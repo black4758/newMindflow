@@ -16,7 +16,7 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Mindmap = ({ data, onChatRoomSelect }) => {
+const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
   const [is3D, setIs3D] = useState(getViewMode())                                 // 2D/3D 모드 상태
   const graphRef = useRef()                                                       // 그래프 참조
   const navigate = useNavigate()                                                  // 라우터 네비게이션
@@ -144,12 +144,15 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
 
     // 노드에 색상 할당
     const nodes = newNodes.map(node => {
-      const isRoot = node.id.startsWith('root_') || 
-        (!newRelationships.some(rel => rel.target === node.id) && 
-         !rootNodeGroups[node.chatRoomId]?.length > 1);
+      const isRoot = 
+        node.id.startsWith('root_') || // 새로 생성된 루트 노드
+        (!newRelationships.some(rel => rel.target === node.id) && // 들어오는 관계가 없는 노드
+         (location.pathname === '/mindmap' ? 
+           !rootNodeGroups[node.chatRoomId]?.length > 1 : true)); // '/mindmap'에서만 추가 조건 확인
+      
       return {
         ...node,
-        color: isRoot || originalRootNodes.some(rootNode => rootNode.id === node.id) ? rootColor : colors[node.level % colors.length],
+        color: isRoot ? rootColor : colors[node.level % colors.length],
         isRoot
       };
     });
@@ -490,7 +493,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
           }
         } 
       });
-
+      setRefreshTrigger((prev) => !prev)
     } catch (error) {
       console.error('노드 분리 중 오류 발생:', error);
       alert('노드 분리에 실패했습니다.');

@@ -33,7 +33,6 @@ const MainPage = ({
   isCollapsed  // 추가된 prop
 }) => {
   // ===== Refs =====
-  const location = useLocation()
   const navigate = useNavigate()
   const textareaRef = useRef(null) // 입력창 높이 자동조절을 위한 ref
   const messagesEndRef = useRef(null) // 새 메시지 추가시 자동 스크롤을 위한 ref
@@ -54,10 +53,11 @@ const MainPage = ({
   const [detailModel, setDetailModel] = useState("gpt-3.5-turbo") // 선택된 모델의 세부 버전
   const [showModelCards, setShowModelCards] = useState(false) // 모델 선택 UI 표시 여부
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false) // 모델 선택 드롭다운 상태
-
+  const [isResponseLoading, setIsResponseLoading] = useState(false) // 채팅 로딩 중 여부
   // 채팅방 관련 상태
-  const [page, setPage] = useState(1) // 무한 스크롤을 위한 현재 페이지 번호 (1부터 시작)
-  const [hasMore, setHasMore] = useState(true) // 더 불러올 이전 메시지가 있는지 여부를 나타내는 플래그
+  // const [page, setPage] = useState(1) // 무한 스크롤을 위한 현재 페이지 번호 (1부터 시작)
+  // const [hasMore, setHasMore] = useState(true) // 더 불러올 이전 메시지가 있는지 여부를 나타내는 플래그
+  const [isAutoScroll, setIsAutoScroll] = useState(true) // 자동 스크롤 상태
 
   // 각 AI 모델별 스트리밍 응답 저장
   const [modelStreamingTexts, setModelStreamingTexts] = useState({
@@ -81,7 +81,7 @@ const MainPage = ({
   const modelList = ["chatgpt", "claude", "google", "clova"]
   // 각 모델별 세부 버전 정의
   const detailModelList = {
-    chatgpt: ["gpt-3.5-turbo", "gpt-4o", "gpi-4o-mini", "gpt-o1"],
+    chatgpt: ["gpt-3.5-turbo", "gpt-4", "gpt-4-mini", "gpt-1"],
     claude: ["claude-3-5-sonnet-latest", "claude-3-opus", "claude-3.5-haiku"],
     google: ["gemini-2.0-flash-exp", "gemini-1.5-pro"],
     clova: ["HCX-003", "clova-studio-basic"],
@@ -173,7 +173,8 @@ const MainPage = ({
   useEffect(() => {
     // 연결 성공 이벤트
     socket.on("connect", () => {
-      console.log("Socket connected")
+      socket.emit('join', { room: userId });
+      console.log(userId)
     })
 
     // 연결 에러 이벤트
@@ -185,6 +186,7 @@ const MainPage = ({
     socket.on("stream", (data) => {
       // console.log("Stream chunk received:", data)
       setStreamingText((prev) => prev + data.content)
+      setIsResponseLoading(false) // 로딩 종료
     })
 
     // 모든 모델의 스트리밍 데이터 수신
@@ -226,31 +228,8 @@ const MainPage = ({
       socket.off("all_stream")
       socket.off("stream_end")
       socket.off("error")
-      socket.off("mindmap_status")
     }
-  }, [handleStreamEndCallback, currentChatRoom])
-
-  useEffect(() => {
-    const loadInitialState = async () => {
-      // URL 파라미터나 state에서 chatRoomId 가져오기
-      const chatRoomId = location.state?.selectedChatRoomId || currentChatRoom;
-      
-      if (chatRoomId) {
-        // 채팅방 선택 상태 업데이트
-        onChatRoomSelect(chatRoomId);
-        
-        try {
-          // 채팅 내역 로딩
-          const response = await api.get(`/api/chatroom/messages/${chatRoomId}`);
-          // ... 메시지 처리 로직
-        } catch (error) {
-          console.error("채팅 메세지 로딩 실패:", error);
-        }
-      }
-    };
-
-    loadInitialState();
-  }, [location.state, currentChatRoom]);
+  }, [handleStreamEndCallback])
 
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
@@ -262,6 +241,7 @@ const MainPage = ({
     // responses 대신 modelStreamingTexts 사용
     const streamingText = modelStreamingTexts[modelName]
 
+    setIsResponseLoading(false)
     setModel(modelName)
     // 기본 detail_model 설정
     setDetailModel(detailModelList[modelName][0])
@@ -285,33 +265,18 @@ const MainPage = ({
 
       console.log("API Response:", response) // 응답 확인용 로그 추가
 
-      
+      onChatRoomSelect(response.data.chat_room_id)
+
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chat_room_id) {
-        
-        const newChatRoomId = response.data.chat_room_id;
-        
-        localStorage.setItem("currentChatRoom", newChatRoomId.toString());
-        
-        // 새로운 채팅방에 소켓 연결
-        socket.emit('join_room', { chatRoomId: newChatRoomId });
-
-        // 마인드맵 상태를 즉시 'generating'으로 설정
-        setMindmapStatus({
-          status: 'generating',
-          message: '마인드맵을 생성하고 있습니다',
-        });
-        
+        localStorage.setItem("currentChatRoom", response.data.chat_room_id.toString())
         onChatRoomSelect(response.data.chat_room_id)
-        
         setModelStreamingTexts({
           chatgpt: "",
           claude: "",
           google: "",
           clova: "",
         })
-
-
         setRefreshTrigger((prev) => !prev)
       } else {
         console.error("포멧 에러:", response)
@@ -334,6 +299,9 @@ const MainPage = ({
     if (!userInput.trim()) return
 
     setChatSemaphore(true) //임계 구역 설정: 채팅입력, 채팅방 변경 방지
+    if (currentChatRoom) {
+      setIsResponseLoading(true) // 로딩 시작
+    }
     // 사용자 메시지를 즉시 화면에 표시
     const userMessage = {
       text: userInput,
@@ -354,7 +322,7 @@ const MainPage = ({
           google: "",
           clova: "",
         })
-        await api.post("/api/messages/all", { userInput})
+        await api.post("/api/messages/all", { userInput })
       } else {
         // 이후 메시지: 선택된 모델과 대화
         const response = await api.post("/api/messages/send", {
@@ -384,8 +352,10 @@ const MainPage = ({
     } catch (error) {
       console.error("메시지 전송 오류:", error)
       setStreamingText("")
+      setIsResponseLoading(false) // 로딩 종료
     } finally {
       setChatSemaphore(false) // 임계 구역 해제
+      setIsResponseLoading(false)
       setUserInput("")
     }
   }
@@ -425,61 +395,30 @@ const MainPage = ({
     adjustTextareaHeight(e.target)
   }
 
-  // 스크롤 이벤트 처리
-  const handleScroll = useCallback(() => {
-    if (!containerRef.current) return
-
-    const { scrollTop } = containerRef.current
-    // 스크롤이 상단에 가까워지면 이전 메시지 로드
-    if (scrollTop < 100 && hasMore) {
-      loadMoreMessages()
-    }
-  }, [hasMore])
-
-  // 무한스크롤 로직
-  const loadMoreMessages = async () => {
-    // 현재 활성화된 채팅방이 없으면 함수 종료
-    if (!currentChatRoom) return
-
-    try {
-      // 현재 페이지 번호를 기준으로 이전 메시지들을 서버에서 가져옴
-      const response = await api.get(`/api/chatroom/messages/${currentChatRoom}?page=${page}`)
-
-      // 서버로부터 받은 메시지 데이터를 UI에 맞게 변환
-      const newMessages = response.data.flatMap((message) => [
-        {
-          text: message.question,
-          isUser: true,
-        },
-        {
-          text: message.answerSentences.map((sentence) => sentence.content).join(" "),
-          isUser: false,
-        },
-      ])
-
-      // 새로 받은 메시지들을 기존 메시지 배열의 앞쪽에 추가
-      // (시간순으로 정렬하기 위해 이전 메시지가 앞에 위치)
-      setMessages((prev) => [...newMessages, ...prev])
-
-      // 다음 페이지를 위해 페이지 번호 증가
-      setPage((prev) => prev + 1)
-
-      // 새로 받은 메시지가 있으면 더 불러올 메시지가 있다고 판단
-      // 메시지가 없으면 더 이상 불러올 메시지가 없음을 표시
-      setHasMore(newMessages.length > 0)
-    } catch (error) {
-      console.error("이전 메시지 로딩 실패:", error)
-    }
-  }
-
-  // 스크롤 이벤트 리스너 등록
   useEffect(() => {
     const container = containerRef.current
-    if (container) {
-      container.addEventListener("scroll", handleScroll)
-      return () => container.removeEventListener("scroll", handleScroll)
+    if (!container) return
+
+    const handleScroll = () => {
+      // 현재 스크롤 위치가 하단이이라면 자동 스크롤 활성화
+      const isAtBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight) < 1
+      setIsAutoScroll(isAtBottom)
     }
-  }, [handleScroll])
+
+    container.addEventListener("scroll", handleScroll)
+    return () => container.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // 자동 스크롤 이벤트 리스너 등록
+  useEffect(() => {
+    if (streamingText && containerRef.current && isAutoScroll) {
+      const container = containerRef.current
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: "auto", // 'smooth' 대신 'auto' 사용
+      })
+    }
+  }, [streamingText, isAutoScroll])
 
   // 마인드맵 조회 핸들러
   const handleMindmapView = async () => {
@@ -636,9 +575,9 @@ const MainPage = ({
         ))}
 
         {/* 스트리밍 중일 때만 임시로 표시되는 메시지 */}
-        {streamingText && (
+        {(streamingText || isResponseLoading) && (
           <div className="mb-4">
-            <ModelCard text={streamingText} isUser={false} model={model} className="animate-pulse" />
+            <ModelCard text={streamingText} isUser={false} model={model} className="animate-pulse model-card" isLoading={isResponseLoading} />
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -654,7 +593,7 @@ const MainPage = ({
                   </span>
                   <span className="text-gray-800 capitalize text-sm">{modelName}</span>
                 </div>
-                <p className="text-sm text-gray-600">{streamingText || <span className="animate-pulse">답변 중...</span>}</p>
+                <p className="text-sm text-gray-600">{streamingText || <Loader2 className="w-5 h-5 animate-spin mr-2" />}</p>
               </div>
             ))}
           </div>

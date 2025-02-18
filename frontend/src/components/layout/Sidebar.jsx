@@ -288,7 +288,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
             </div>
           </div>
           {/* 로딩 인디케이터 */}
-          {isLoading && <div className="text-center py-2 text-white">로딩 중...</div>}
+          {/* {isLoading && <div className="text-center py-2 text-white">로딩 중...</div>} */}
         </div>
       )}
     </div>
