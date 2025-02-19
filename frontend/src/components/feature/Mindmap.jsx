@@ -450,6 +450,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       chatRoomId = node.chatRoomId;
     }
 
+    console.log('테스트', chatRoomId)
     if (chatRoomId) {
       // MainPage로 이동하면서 필요한 정보 전달
       navigate('/main', { 
