@@ -42,7 +42,7 @@ const AppLayout = () => {
   // 인증 페이지일 경우 간단한 레이아웃 반환
   if (isAuthPage || !userId) {
     return (
-      <div className="h-screen bg-[#353a3e]">
+      <div className="h-screen bg-[#212121]">
         <Routes>
           {routes.map((route) => (
             <Route key={route.path} path={route.path} element={route.element} />
@@ -67,9 +67,7 @@ const AppLayout = () => {
       />
       <div className="flex-1 flex flex-col">
         {/* 상단 네비게이션 바 */}
-        <Navbar 
-          onChatRoomSelect={handleChatRoomSelect}
-        />
+        <Navbar onChatRoomSelect={handleChatRoomSelect} />
         {/* 메인 컨텐츠 영역 */}
         <main className="flex-1 px-5 overflow-y-auto">
           {/* 검색 모달 컴포넌트 */}

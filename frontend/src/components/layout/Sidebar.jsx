@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { Menu, Search, ExternalLink, Network, MoreHorizontal, Star } from "lucide-react"
+import { Menu, Search, MessagesSquare, Network, MoreHorizontal, Star } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
@@ -110,9 +110,9 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     if (!rooms || rooms.length === 0) return { recentFiveRooms: [], remainingRooms: [] }
 
     // 즐겨찾기 추가된 방
-    const bookmarkedRooms = rooms.filter((room) => room.starred)
+    const bookmarkedRooms = rooms.filter((room) => room.starred).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     // 나머지 채팅 방
-    const otherRooms = rooms.filter((room) => !room.starred)
+    const otherRooms = rooms.filter((room) => !room.starred).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
     return {
       bookmarkedRooms,
@@ -148,25 +148,26 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#171717] p-4 flex flex-col transition-all duration-300`}>
       {/* Header */}
-      <div className={`flex items-center mb-8`}>
+      <div className={`flex items-center mb-8 ${isCollapsed ? "flex-col" : ""}`}>
         <div className="relative group">
           <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
             <Menu className="w-6 h-6 text-[#ffffff]" />
           </button>
           <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-            <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">메뉴 접기</span>
+            <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">{isCollapsed ? "메뉴 열기" : "메뉴 접기"}</span>
           </div>
         </div>
-        {!isCollapsed && (
-          <div className="flex items-center gap-2 ml-auto">
-            <div className="relative group">
-              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
-                <Search className="w-6 h-6 text-[#ffffff]" />
-              </button>
-              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">검색</span>
-              </div>
+
+        <div className={`flex ${isCollapsed ? "flex-col items-center gap-2 mt-4" : "items-center gap-2 ml-auto"}`}>
+          <div className="relative group">
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
+              <Search className="w-6 h-6 text-[#ffffff]" />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+              <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">검색</span>
             </div>
+          </div>
+          {!isCollapsed && (
             <div className="relative group">
               <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
                 <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
@@ -175,36 +176,36 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                 <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">즐겨찾기</span>
               </div>
             </div>
-            <div className="relative group">
-              <button
-                className="p-1 rounded hover:bg-gray-200 transition-colors"
-                onClick={() => {
-                  onChatRoomSelect(null)
-                  navigate("/main", { state: { refresh: Date.now() } })
-                }}
-              >
-                <ExternalLink className="w-6 h-6 text-[#ffffff]" />
-              </button>
-              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">새 대화</span>
-              </div>
-            </div>
-            <div className="relative group">
-              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
-                <Network className="w-6 h-6 text-[#ffffff]" />
-              </button>
-              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">마인드맵</span>
-              </div>
+          )}
+          <div className="relative group">
+            <button
+              className="p-1 rounded hover:bg-gray-200 transition-colors"
+              onClick={() => {
+                onChatRoomSelect(null)
+                navigate("/main", { state: { refresh: Date.now() } })
+              }}
+            >
+              <MessagesSquare className="w-6 h-6 text-[#ffffff]" />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+              <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">새 대화</span>
             </div>
           </div>
-        )}
+          <div className="relative group">
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
+              <Network className="w-6 h-6 text-[#ffffff]" />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+              <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">마인드맵</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Navigation Sections */}
       {!isCollapsed && (
         <div ref={containerRef} className="space-y-8 overflow-y-auto flex-1">
-          {/* 즐겨찾기기 */}
+          {/* 즐겨찾기 */}
           <div className="mb-6">
             <h2 className="text-[#ffffff] mb-2">즐겨찾기</h2>
             <div className="flex flex-col gap-2">

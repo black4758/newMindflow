@@ -218,7 +218,7 @@ const Profile = () => {
           >
             <span className="relative z-10">프로필 설정</span>
             {/* 네온 효과를 위한 그라데이션 오버레이 */}
-            <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-yellow-200/30 to-transparent group-hover:animate-neon-shine"></div>
+            <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white to-transparent group-hover:animate-neon-shine"></div>
           </button>
 
           {/* 계정 삭제 버튼 */}
@@ -248,7 +248,7 @@ const Profile = () => {
                 h-full 
                 bg-gradient-to-r 
                 from-transparent 
-                via-yellow-200/30
+                via-white
                 to-transparent
                 group-hover:animate-neon-shine
               "
@@ -282,7 +282,7 @@ const Profile = () => {
                 h-full 
                 bg-gradient-to-r 
                 from-transparent 
-                via-yellow-200/30
+                via-white
                 to-transparent
                 group-hover:animate-neon-shine
               "
