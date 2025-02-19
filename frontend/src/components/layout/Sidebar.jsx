@@ -148,31 +148,44 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
       {/* Header */}
-      <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-end"} gap-2 mb-8`}>
-        <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
-          <Menu className="w-6 h-6 text-[#ffffff]" />
-        </button>
+      <div className={`flex items-center mb-8`}>
+        <div className="relative group">
+          <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
+            <Menu className="w-6 h-6 text-[#ffffff]" />
+          </button>
+            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+              메뉴 접기
+            </span>
+        </div>
         {!isCollapsed && (
-          <>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
-              <Search className="w-6 h-6 text-[#ffffff]" />
-            </button>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
-              <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
-            </button>
-            <button
-              className="p-1 rounded hover:bg-gray-200 transition-colors"
-              onClick={() => {
-                onChatRoomSelect(null)
-                navigate("/main", { state: { refresh: Date.now() } })
-              }}
-            >
-              <ExternalLink className="w-6 h-6 text-[#ffffff]" />
-            </button>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
-              <Network className="w-6 h-6 text-[#ffffff]" />
-            </button>
-          </>
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="relative group">
+              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
+                <Search className="w-6 h-6 text-[#ffffff]" />
+              </button>
+            </div>
+            <div className="relative group">
+              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
+                <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
+              </button>
+            </div>
+            <div className="relative group">
+              <button
+                className="p-1 rounded hover:bg-gray-200 transition-colors"
+                onClick={() => {
+                  onChatRoomSelect(null)
+                  navigate("/main", { state: { refresh: Date.now() } })
+                }}
+              >
+                <ExternalLink className="w-6 h-6 text-[#ffffff]" />
+              </button>
+            </div>
+            <div className="relative group">
+              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
+                <Network className="w-6 h-6 text-[#ffffff]" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
