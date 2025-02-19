@@ -973,7 +973,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
           nodeThreeObjectExtend={false}
           width={window.innerWidth - 296}
           height={window.innerHeight - 64}
-          backgroundColor="#212121"
+          backgroundColor="#171717"
           nodeColor={getNodeColor}
           linkWidth={2}
           linkColor={getLinkColor}
@@ -1072,7 +1072,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
           d3ForceStrength={-200} // 확산형 배치를 위한 강한 반발력
           linkDistance={200}     // 긴 링크 거리
           nodeLabel={(node) => ""}
-          backgroundColor="#212121"
+          backgroundColor="#171717"
           nodePointerAreaPaint={(node, color, ctx) => {
             const fontSize = node.isRoot ? 32 : 26;
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
