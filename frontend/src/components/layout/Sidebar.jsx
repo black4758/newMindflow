@@ -146,7 +146,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   }, [chatSemaphore])
 
   return (
-    <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#171717] p-4 flex flex-col transition-all duration-300`}>
+    <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#212121] p-4 flex flex-col transition-all duration-300`}>
       {/* Header */}
       <div className={`flex items-center mb-8`}>
         <div className="relative group">
