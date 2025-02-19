@@ -531,7 +531,7 @@ const MainPage = ({
 
       {/* 채팅 입력 폼 - Sidebar 너비를 고려한 고정 위치 */}
       <div className={`fixed bottom-0 right-0 bg-transparent backdrop-blur-none border-none transition-all duration-300 ${isCollapsed ? "left-16" : "left-64"}`}>
-        <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="max-w-2xl min-w-fit mx-auto px-4 py-4">
           {/* 상단 버튼 영역 */}
           <div className="flex justify-end gap-2 mb-3">
             {/* 모델 선택 드롭다운과 마인드맵 버튼을 같은 조건으로 감싸기 */}
@@ -552,7 +552,7 @@ const MainPage = ({
                           <button
                             key={modelName}
                             onClick={() => changeModel(modelName)}
-                            className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100 ${modelName === model ? "bg-gray-50" : ""}`}
+                            className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-400 ${modelName === model ? "bg-gray-300" : ""}`}
                           >
                             <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
                             <span className="capitalize">{modelName}</span>
@@ -566,7 +566,7 @@ const MainPage = ({
                             <button
                               key={detailModelName}
                               onClick={() => changeDetailModel(detailModelName)}
-                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${detailModelName === detailModel ? "bg-gray-50" : ""}`}
+                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-400 ${detailModelName === detailModel ? "bg-gray-300" : ""}`}
                             >
                               {detailModelName}
                             </button>
