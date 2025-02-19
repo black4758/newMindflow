@@ -28,61 +28,71 @@ export const fetchMindmapData = async (chatRoomId = null, nodeId = null) => {
     // mindmap 객체에서 data를 추출하고 기본값 설정
     const mindmapData = response.data.data || response.data || { nodes: [], relationships: [] }
 
-    if (nodeId && mindmapData.nodes && mindmapData.relationships) {
-      // nodeId가 있는 경우: 특정 노드와 연결된 노드들만 반환
-      const targetNode = mindmapData.nodes.find(node => node.id === nodeId);
-      if (!targetNode) return { nodes: [], relationships: [] };
+    // 노드 ID가 이상한 경우를 걸러내기
+    const validNodes = mindmapData.nodes.filter(node => node.id && node.id.trim() !== '');
+    const validNodeIds = new Set(validNodes.map(node => node.id));
 
-      // 루트 노드 찾기
-      const findRootNode = (currentId, visited = new Set()) => {
-        if (visited.has(currentId)) return null;
-        visited.add(currentId);
-
-        const isRoot = !mindmapData.relationships.some(rel => rel.target === currentId);
-        if (isRoot) return currentId;
-
-        const parentRels = mindmapData.relationships.filter(rel => rel.target === currentId);
-        for (const rel of parentRels) {
-          const rootId = findRootNode(rel.source, visited);
-          if (rootId) return rootId;
+    // 연결 관계를 통해 누락된 노드 복구
+    mindmapData.relationships.forEach(rel => {
+      if (!validNodeIds.has(rel.source)) {
+        const missingNode = mindmapData.nodes.find(node => node.id === rel.source);
+        if (missingNode) {
+          validNodes.push(missingNode);
+          validNodeIds.add(missingNode.id);
         }
-        return null;
-      };
+      }
+      if (!validNodeIds.has(rel.target)) {
+        const missingNode = mindmapData.nodes.find(node => node.id === rel.target);
+        if (missingNode) {
+          validNodes.push(missingNode);
+          validNodeIds.add(missingNode.id);
+        }
+      }
+    });
 
-      // 연결된 모든 노드 찾기
-      const rootNodeId = findRootNode(nodeId);
+    // 유효한 노드와 관계로 데이터 구성
+    const validRelationships = mindmapData.relationships.filter(rel => 
+      validNodeIds.has(rel.source) && validNodeIds.has(rel.target)
+    );
+
+    if (nodeId) {
+      // 특정 노드와 연결된 모든 노드 복구
       const connectedNodes = new Set();
-      
       const findAllConnectedNodes = (currentId) => {
         if (connectedNodes.has(currentId)) return;
         connectedNodes.add(currentId);
 
         mindmapData.relationships
-          .filter(rel => rel.source === currentId)
-          .forEach(rel => findAllConnectedNodes(rel.target));
+          .filter(rel => rel.source === currentId || rel.target === currentId)
+          .forEach(rel => {
+            findAllConnectedNodes(rel.source);
+            findAllConnectedNodes(rel.target);
+          });
       };
 
-      if (rootNodeId) {
-        findAllConnectedNodes(rootNodeId);
-        return {
-          nodes: mindmapData.nodes.filter(node => connectedNodes.has(node.id)),
-          relationships: mindmapData.relationships.filter(rel => 
-            connectedNodes.has(rel.source) && connectedNodes.has(rel.target)
-          )
-        };
-      }
-    } else if (chatRoomId && mindmapData.nodes && mindmapData.relationships) {
-      // chatRoomId로 필터링된 데이터 반환
+      findAllConnectedNodes(nodeId);
+
       return {
-        nodes: mindmapData.nodes.filter((node) => node.chatRoomId === chatRoomId),
-        relationships: mindmapData.relationships.filter((rel) => {
-          const sourceNode = mindmapData.nodes.find((node) => node.id === rel.source);
+        nodes: validNodes.filter(node => connectedNodes.has(node.id)),
+        relationships: validRelationships.filter(rel => 
+          connectedNodes.has(rel.source) && connectedNodes.has(rel.target)
+        )
+      };
+    } else if (chatRoomId) {
+      // 특정 채팅방과 연결된 모든 노드 복구
+      return {
+        nodes: validNodes.filter(node => node.chatRoomId === chatRoomId),
+        relationships: validRelationships.filter(rel => {
+          const sourceNode = validNodes.find(node => node.id === rel.source);
           return sourceNode && sourceNode.chatRoomId === chatRoomId;
         }),
       };
     }
 
-    return mindmapData.nodes && mindmapData.relationships ? mindmapData : { nodes: [], relationships: [] }
+    return {
+      nodes: validNodes,
+      relationships: validRelationships
+    };
   } catch (error) {
     console.error("마인드맵 데이터 가져오기 실패:", error)
     return { nodes: [], relationships: [] }  // 에러 시 빈 객체 반환

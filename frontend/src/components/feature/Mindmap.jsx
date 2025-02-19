@@ -291,8 +291,13 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
         
         // 루트 노드(chatroom)인 경우
         if (node.isRoot) {
-          const chatRoomId = node.id.replace('root_', '');
-          navigate(`/mindmap/room/${chatRoomId}`);
+          if (location.pathname.startsWith('/mindmap/room/') || location.pathname.startsWith('/mindmap/node/')) {
+            // const chatRoomId = node.id.replace('root_', '');
+            navigate(`/mindmap/node/${node.id}`);
+          } else {
+            const chatRoomId = node.id.replace('root_', '');
+            navigate(`/mindmap/room/${chatRoomId}`);
+          }
         } else {
           // 일반 노드인 경우
           navigate(`/mindmap/node/${node.id}`);
@@ -328,7 +333,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       setFixedNode(prev => prev?.id === node.id ? null : node);
       setFixedPosition({ x: mousePosition.x, y: mousePosition.y });
     }, 300);
-  }, [lastClickedNode, navigate, is3D, mousePosition, graphRef]);
+  }, [lastClickedNode, navigate, is3D, mousePosition, graphRef, location.pathname]);
 
   // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
@@ -450,22 +455,14 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       chatRoomId = node.chatRoomId;
     }
 
-    console.log('테스트', chatRoomId)
     if (chatRoomId) {
+      // 채팅방 선택
+      onChatRoomSelect(chatRoomId);
+
       // MainPage로 이동하면서 필요한 정보 전달
-      navigate('/main', { 
-        state: { 
-          selectedChatRoomId: chatRoomId,
-          fromMindmap: true,
-          nodeInfo: {
-            id: node.id,
-            title: node.title,
-            content: node.content
-          }
-        } 
-      });
+      navigate('/main');
     }
-  }, [processedData.nodes, navigate]);
+  }, [processedData.nodes, navigate, onChatRoomSelect]);
 
   // 분리 버튼 클릭 핸들러
   const handleSplitButtonClick = useCallback(async (node) => {
@@ -483,23 +480,19 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       setShowNodeModal(false);
 
       // 3. 새로운 chatRoomId로 main 페이지 이동
-      navigate('/main', { 
-        state: { 
-          selectedChatRoomId: newChatRoomId,
-          fromMindmap: true,
-          nodeInfo: {
-            id: node.id,
-            title: node.title,
-            content: node.content
-          }
-        } 
-      });
+      if (newChatRoomId) {
+        // 채팅방 선택
+        onChatRoomSelect(newChatRoomId);
+  
+        // MainPage로 이동하면서 필요한 정보 전달
+        navigate('/main');
+      }
       setRefreshTrigger((prev) => !prev)
     } catch (error) {
       console.error('노드 분리 중 오류 발생:', error);
       alert('노드 분리에 실패했습니다.');
     }
-  }, [navigate]);
+  }, [navigate, onChatRoomSelect]);
 
   // 노드 삭제 핸들러 수정
   const handleNodeDelete = useCallback(async () => {
@@ -980,7 +973,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
           nodeThreeObjectExtend={false}
           width={window.innerWidth - 296}
           height={window.innerHeight - 64}
-          backgroundColor="#212121"
+          backgroundColor="#171717"
           nodeColor={getNodeColor}
           linkWidth={2}
           linkColor={getLinkColor}
@@ -1079,7 +1072,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
           d3ForceStrength={-200} // 확산형 배치를 위한 강한 반발력
           linkDistance={200}     // 긴 링크 거리
           nodeLabel={(node) => ""}
-          backgroundColor="#212121"
+          backgroundColor="#171717"
           nodePointerAreaPaint={(node, color, ctx) => {
             const fontSize = node.isRoot ? 32 : 26;
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
