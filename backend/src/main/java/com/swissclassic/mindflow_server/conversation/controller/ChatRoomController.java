@@ -52,4 +52,10 @@ public class ChatRoomController {
 
         return ResponseEntity.noContent().build();
     }
+    @PostMapping("book-mark/{roomId}")
+    public ResponseEntity<Void> changeBookMark(@PathVariable long roomId) {
+        chatRoomService.toggleStarredStatus(roomId);
+        return ResponseEntity.noContent().build();
+    }
+
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import api from "../api/axios"
-import { useSelector } from "react-redux"
+import { useSelector, useDispatch } from "react-redux"
+import { useNavigate } from "react-router-dom"
+import { logout } from "../store/slices/authSlice"
 
 const Profile = () => {
   // 상태 관리
@@ -10,7 +12,10 @@ const Profile = () => {
   const [email, setEmail] = useState("") // 사용자 이메일
   const [selectedButton, setSelectedButton] = useState("profile") // 현재 선택된 메뉴 상태
 
-  const userId = useSelector((state) => state.auth.user.userId)
+  const userId = useSelector((state) => state.auth.user.userId) //User ID
+
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const getUserInfo = async () => {
     try {
@@ -36,6 +41,19 @@ const Profile = () => {
       setEmail("")
       setAccountId("")
       setDisplayName("")
+    }
+  }
+
+  const deleteUser = async () => {
+    try {
+      const response = await api.delete(`/api/auth/delete/${userId}`)
+      if (response.status === 200 || response.status === 204) {
+        dispatch(logout())
+        alert("잘가요 ㅠㅠ")
+        navigate("/")
+      }
+    } catch (error) {
+      console.log(error)
     }
   }
 
@@ -142,6 +160,7 @@ const Profile = () => {
               <button
                 type="button"
                 className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                onClick={deleteUser}
               >
                 삭제
               </button>
