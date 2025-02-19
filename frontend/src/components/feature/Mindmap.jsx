@@ -980,7 +980,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
           nodeThreeObjectExtend={false}
           width={window.innerWidth - 296}
           height={window.innerHeight - 64}
-          backgroundColor="#353A3E"
+          backgroundColor="#212121"
           nodeColor={getNodeColor}
           linkWidth={2}
           linkColor={getLinkColor}
@@ -1079,7 +1079,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
           d3ForceStrength={-200} // 확산형 배치를 위한 강한 반발력
           linkDistance={200}     // 긴 링크 거리
           nodeLabel={(node) => ""}
-          backgroundColor="#353A3E"
+          backgroundColor="#212121"
           nodePointerAreaPaint={(node, color, ctx) => {
             const fontSize = node.isRoot ? 32 : 26;
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
@@ -1170,9 +1170,9 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       {/* 도움말 텍스트 */}
       <div className="absolute left-4 bottom-4 z-50 text-white text-sm bg-gray-800 bg-opacity-75 p-2 rounded">
         <p>클릭: 카메라 이동 및 설명창 고정</p>
-        <p>ESC/외부 클릭: 설명창 닫기</p>
         <p>더블클릭: 상세페이지 이동</p>
-        <p>Ctrl + 클릭 시 노드의 위치 고정</p>
+        <p>Ctrl + 클릭: 노드의 위치 고정</p>
+        <p>ESC/외부 클릭: 설명창 닫기</p>
       </div>
     </div>
   )
