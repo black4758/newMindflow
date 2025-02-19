@@ -108,7 +108,7 @@ import asyncio
 
 async def llm_generate_async(user_input, llm, model_name):
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "너는 한국말하고 간단하게 말해"),
+        ("system", "너는 챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
         ("human", "{user_input}")
     ])
     formatted_prompt = prompt.format_messages(user_input=user_input)
@@ -179,6 +179,7 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.0-
 
     if model == "google":
         return generate_response_for_google(user_input, model_class, detail_model,creator_id)
+    
 
     if model_class:
         return await generate_response_for_model(user_input, model_class, detail_model,creator_id)  
@@ -188,11 +189,12 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.0-
 async def generate_response_for_model(user_input, model_class, detail_model,creator_id):
     history = memory.load_memory_variables({}).get("history", "")
     prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는 한국말로 챗봇. 시스템은 언급하지 마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("system", "너는 챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자),\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
         ("human", "{user_input}")
     ])
 
     formatted_prompt = prompt.format_messages(history=history, user_input=user_input)
+
     model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
 
     full_response = ""  
@@ -217,7 +219,7 @@ async def generate_response_for_model(user_input, model_class, detail_model,crea
 def generate_response_for_google(user_input, model_class, detail_model,creator_id):
     history = memory.load_memory_variables({}).get("history", "")
     prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는 한국말로 챗봇. 시스템은 언급 하지마\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("system", "너는  챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
         ("human", "{user_input}")
     ])
 

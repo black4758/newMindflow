@@ -146,33 +146,58 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   }, [chatSemaphore])
 
   return (
-    <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
+    <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#171717] p-4 flex flex-col transition-all duration-300`}>
       {/* Header */}
-      <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-end"} gap-2 mb-8`}>
-        <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
-          <Menu className="w-6 h-6 text-[#ffffff]" />
-        </button>
+      <div className={`flex items-center mb-8`}>
+        <div className="relative group">
+          <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
+            <Menu className="w-6 h-6 text-[#ffffff]" />
+          </button>
+          <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+            <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">메뉴 접기</span>
+          </div>
+        </div>
         {!isCollapsed && (
-          <>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
-              <Search className="w-6 h-6 text-[#ffffff]" />
-            </button>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
-              <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
-            </button>
-            <button
-              className="p-1 rounded hover:bg-gray-200 transition-colors"
-              onClick={() => {
-                onChatRoomSelect(null)
-                navigate("/main", { state: { refresh: Date.now() } })
-              }}
-            >
-              <ExternalLink className="w-6 h-6 text-[#ffffff]" />
-            </button>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
-              <Network className="w-6 h-6 text-[#ffffff]" />
-            </button>
-          </>
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="relative group">
+              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
+                <Search className="w-6 h-6 text-[#ffffff]" />
+              </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">검색</span>
+              </div>
+            </div>
+            <div className="relative group">
+              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
+                <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
+              </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">즐겨찾기</span>
+              </div>
+            </div>
+            <div className="relative group">
+              <button
+                className="p-1 rounded hover:bg-gray-200 transition-colors"
+                onClick={() => {
+                  onChatRoomSelect(null)
+                  navigate("/main", { state: { refresh: Date.now() } })
+                }}
+              >
+                <ExternalLink className="w-6 h-6 text-[#ffffff]" />
+              </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">새 대화</span>
+              </div>
+            </div>
+            <div className="relative group">
+              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
+                <Network className="w-6 h-6 text-[#ffffff]" />
+              </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">마인드맵</span>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 

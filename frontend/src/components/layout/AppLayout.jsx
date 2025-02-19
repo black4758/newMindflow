@@ -54,7 +54,7 @@ const AppLayout = () => {
 
   // 일반 페이지일 경우 전체 레이아웃 반환
   return (
-    <div className="flex h-screen bg-[#353a3e]">
+    <div className="flex h-screen bg-[#212121]">
       {/* 사이드바 컴포넌트 - 모달 열기/닫기 함수 전달 */}
       <Sidebar
         onOpenModal={() => setIsOpen(!isOpen)}
