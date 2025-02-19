@@ -12,7 +12,7 @@ const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
   const [SearchResults, setSearchResults] = useState([])
 
   const userId = useSelector((state) => state.auth.user.userId)
-  const navitage = useNavigate()
+  const navigate = useNavigate()
 
   const handleSearch = async () => {
     // 더미 데이터
@@ -64,7 +64,7 @@ const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
 
   const handleResultClick = (chatRoomId) => {
     onChatRoomSelect(chatRoomId)
-    navitage("/main")
+    navigate('/main')
     onClose()
   }
 
