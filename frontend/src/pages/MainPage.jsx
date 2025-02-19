@@ -552,7 +552,7 @@ const MainPage = ({
                           <button
                             key={modelName}
                             onClick={() => changeModel(modelName)}
-                            className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100 ${modelName === model ? "bg-gray-50" : ""}`}
+                            className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-400 ${modelName === model ? "bg-gray-300" : ""}`}
                           >
                             <img src={getModelIcon(modelName)} alt={modelName} className="w-5 h-5 object-contain" />
                             <span className="capitalize">{modelName}</span>
@@ -566,7 +566,7 @@ const MainPage = ({
                             <button
                               key={detailModelName}
                               onClick={() => changeDetailModel(detailModelName)}
-                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 ${detailModelName === detailModel ? "bg-gray-50" : ""}`}
+                              className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-400 ${detailModelName === detailModel ? "bg-gray-300" : ""}`}
                             >
                               {detailModelName}
                             </button>
