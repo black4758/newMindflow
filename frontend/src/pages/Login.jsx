@@ -39,28 +39,28 @@ const Login = () => {
     }
   }
 
-    // kakao 소셜 로그인
-    const handleKakao = async (e) => {
-      e.preventDeault()
-      const request = await api.get("api/auth/oauth2/kakao")
-
-    
-      try {
-        // 구글 API로 로그인 요청
-  
-      } catch (error) {
-        console.log(error)
-      }
-    }
-
-  // google 소셜 로그인
-  const handleGoogle = async (e) => {
-    e.preventDeault()
-    const request = await api.get("api/auth/oauth2/google")
-  
+  // kakao 소셜 로그인
+  const handleKakao = async () => {
     try {
       // 구글 API로 로그인 요청
 
+      const response = await api.get("/api/auth/oauth2/login/kakao")
+      if (response.data) {
+        window.location.href = response.data
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  // google 소셜 로그인
+  const handleGoogle = async () => {
+    try {
+      // 구글 API로 로그인 요청
+      const response = await api.get("/api/auth/oauth2/login/google")
+      if (response.data) {
+        window.location.href = response.data
+      }
     } catch (error) {
       console.log(error)
     }

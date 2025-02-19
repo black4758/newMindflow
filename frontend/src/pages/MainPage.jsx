@@ -1,3 +1,50 @@
+{
+  /*
+
+HCX-003
+
+gemini-2.0-flash-lite-preview-02-05
+
+최신 멀티모달 기능을 지원.
+고속 처리와 다양한 작업에서 뛰어난 성능 제공.
+복잡한 멀티모달 작업에 적합.)
+
+gemini-2.0-flash
+
+비용 효율성과 낮은 지연 시간에 최적화.
+고빈도 작업에서 효율적인 성능 제공.
+
+gemini-1.5-flash
+
+빠르고 다재다능한 성능.
+다양한 작업에서 안정적인 결과 제공.
+
+gemini-1.5-pro
+복잡한 추론 작업에 적합.
+높은 지능이 요구되는 작업에 최적화.
+
+
+
+gpt-4
+ 가장 성능이 뛰어난 모델로, 8192 토큰까지 처리 가능
+
+gpt-3.5-turbo
+현재 가장 효과적이고 비용 효율적인 모델로, 4,096개의 토큰을 생성할 수 있습니다
+
+gpt-3.5-turbo-1106
+
+ 향상된 명령어 따름, JSON 모드, 재현성 있는 출력 등을 제공하는 최신 GPT-3.5 Turbo 모델입니다
+
+
+Claude 3 시리즈
+Claude 3.5 Sonnet:  claude-3-5-sonnet-20241022
+Claude 3.5 Haiku:  claude-3-5-haiku-20241022
+
+Claude 3 Sonnet:  claude-3-sonnet-20240229
+Claude 3 Haiku:  claude-3-haiku-20240307
+Claude 3 Opus:  claude-3-opus-20240229
+ */
+}
 import { useRef, useEffect, useState, useCallback } from "react"
 import { ArrowUpCircle, ChevronDown, Loader2 } from "lucide-react"
 import ModelCard from "../components/common/ModelCard.jsx"
@@ -90,7 +137,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
       try {
         // API를 통해 채팅 내역 가져오기
         const response = await api.get(`/api/chatroom/messages/${currentChatRoom}`)
-
+        console.log(response.data)
         // 서버 응답 데이터를 UI에 표시할 수 있는 형식으로 변환
         const formattedMessages = response.data.flatMap((message) => [
           // 첫 번째 요소: 사용자의 질문
@@ -110,7 +157,6 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
         ])
 
         setMessages(formattedMessages)
-
         const lastMessage = response.data[response.data.length - 1]
 
         setModel(lastMessage.model)
@@ -163,7 +209,7 @@ const MainPage = ({ refreshTrigger, setRefreshTrigger, currentChatRoom, onChatRo
   useEffect(() => {
     // 연결 성공 이벤트
     socket.on("connect", () => {
-      socket.emit('join', { room: userId });
+      socket.emit("join", { room: userId })
       console.log(userId)
     })
 

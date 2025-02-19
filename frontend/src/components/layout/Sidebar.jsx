@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Menu, Search, ExternalLink, Network, MoreHorizontal, Star } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
@@ -44,12 +44,16 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
       const response = await api.get(`/api/chatroom/my-rooms/${userId}`)
       // console.log("채팅방 목록 로딩 완료:", response.data)
       setAllChatRooms(response.data)
+      if (currentChatRoom) {
+        const currentRoom = response.data.find((room) => room.id === currentChatRoom)
+        setLocalStarred(currentRoom?.starred || false)
+      }
     } catch (error) {
       console.error("채팅방 목록 로딩 실패:", error)
     } finally {
       // setIsLoading(false)
     }
-  }, [userId])
+  }, [userId, currentChatRoom])
 
   // 채팅방 삭제
   const handleDeleteRoom = async (chatroomId) => {
@@ -77,11 +81,26 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     }
   }
 
+  // 현재 선택된 방의 starred 상태를 계산하는 메모이제이션된 값
+  const currentRoomStarred = useMemo(() => {
+    const currentRoom = allChatRooms.find((room) => room.id === currentChatRoom)
+    return currentRoom?.starred || false
+  }, [allChatRooms, currentChatRoom])
+
+  // 즐겨찾기 요청
   const handleRoomStarred = async () => {
     try {
-      const request = await api.post('url', currentChatRoom)
-      
-    } catch(error) {
+      const response = await api.post(`/api/chatroom/book-mark/${currentChatRoom}`, currentChatRoom)
+      if (response.status === 204) {
+        if (currentChatRoom) {
+          // setLocalStarred((prev) => !prev)
+          setAllChatRooms((prev) => prev.map((room) => (room.id === currentChatRoom ? { ...room, starred: !room.starred } : room)))
+
+          setRefreshTrigger((prev) => !prev)
+          alert(currentRoomStarred() ? "즐겨찾기 해제" : "즐겨찾기 추가")
+        }
+      }
+    } catch (error) {
       console.log(error)
     }
   }
@@ -101,11 +120,6 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     }
   }
 
-  // 초기 로딩
-  useEffect(() => {
-    handleChatRooms()
-  }, [refreshTrigger, currentChatRoom, chatSemaphore])
-
   //대화 목록을 클릭했을 시의 핸들러
   const handleChatRoomClick = (roomId) => {
     onChatRoomSelect(roomId)
@@ -114,6 +128,11 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
       navigate("/main")
     }
   }
+
+  // 초기 로딩
+  useEffect(() => {
+    handleChatRooms()
+  }, [refreshTrigger, currentChatRoom, chatSemaphore])
 
   //대화중이면 채팅방 이동 못하게 금지
   useEffect(() => {
@@ -125,11 +144,6 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
       // toast.info("채팅 중에는 메뉴를 사용할 수 없습니다");
     }
   }, [chatSemaphore])
-
-  useEffect(() => {
-    const isStarred = allChatRooms.find(room => room.id === currentChatRoom)?.starred
-    setLocalStarred(isStarred);
-  }, [allChatRooms, currentChatRoom])
 
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
@@ -143,10 +157,8 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
             <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
               <Search className="w-6 h-6 text-[#ffffff]" />
             </button>
-            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
-              <Star className= {`w-6 h-6 text-[#ffffff] ${
-                localStarred ? "fill-white" : ""
-              }`}/>
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
+              <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
             </button>
             <button
               className="p-1 rounded hover:bg-gray-200 transition-colors"
