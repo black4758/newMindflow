@@ -4,11 +4,8 @@ import SpriteText from "three-spritetext"
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer"
 import { fetchMindmapData, deleteNode, splitNode } from '../../api/mindmap'
 import PropTypes from "prop-types"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import * as d3 from "d3"
-
-
-const extraRenderers = [new CSS2DRenderer()]
 
 // 모드 상태를 저장하기 위한 전역 변수나 localStorage 사용
 const setViewMode = (is3D) => {
@@ -19,10 +16,11 @@ const getViewMode = () => {
   return localStorage.getItem('viewMode') === '3d';
 };
 
-const Mindmap = ({ data, onChatRoomSelect }) => {
+const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
   const [is3D, setIs3D] = useState(getViewMode())                                 // 2D/3D 모드 상태
   const graphRef = useRef()                                                       // 그래프 참조
   const navigate = useNavigate()                                                  // 라우터 네비게이션
+  const location = useLocation(); // 현재 경로 가져오기
   const [hoverNode, setHoverNode] = useState(null)                               // 마우스 오버된 노드
   const [searchTerm, setSearchTerm] = useState("")                               // 검색어
   const [searchResults, setSearchResults] = useState([])                         // 검색 결과 목록
@@ -108,11 +106,18 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
 
     // 각 chatRoom 그룹별로 새로운 루트 노드 생성
     Object.entries(rootNodeGroups).forEach(([chatRoomId, groupNodes]) => {
-      if (groupNodes.length >= 1) {
+      // '/mindmap' 경로일 때만 새로운 루트 노드 생성
+      if (location.pathname === '/mindmap' && groupNodes.length >= 1) {
+        // 채팅방 제목 가져오기 및 길이 제한 (20자)
+        const fullTitle = groupNodes[0].chatRoomTitle || `CR ${chatRoomId}`;
+        const chatRoomTitle = fullTitle.length > 10 
+          ? fullTitle.substring(0, 10) + '...' 
+          : fullTitle;
+        
         // 새로운 루트 노드 생성
         const newRootNode = {
           id: `root_${chatRoomId}`,
-          title: `CR ${chatRoomId}`,
+          title: chatRoomTitle, // 실제 채팅방 제목 사용
           content: `Group of ${groupNodes.length} root nodes`,
           chatRoomId: chatRoomId,
           isRoot: true,
@@ -139,9 +144,12 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
 
     // 노드에 색상 할당
     const nodes = newNodes.map(node => {
-      const isRoot = node.id.startsWith('root_') || 
-        (!newRelationships.some(rel => rel.target === node.id) && 
-         !rootNodeGroups[node.chatRoomId]?.length > 1);
+      const isRoot = 
+        node.id.startsWith('root_') || // 새로 생성된 루트 노드
+        (!newRelationships.some(rel => rel.target === node.id) && // 들어오는 관계가 없는 노드
+         (location.pathname === '/mindmap' ? 
+           !rootNodeGroups[node.chatRoomId]?.length > 1 : true)); // '/mindmap'에서만 추가 조건 확인
+      
       return {
         ...node,
         color: isRoot ? rootColor : colors[node.level % colors.length],
@@ -173,7 +181,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     });
 
     return { nodes, links };
-  }, [localData, is3D]);
+  }, [localData, is3D, location.pathname]);
   //}, [is3D]); // 노드의 멀어짐 해결책책
 
   // 루트 노드까지의 경로를 찾는 함수 추가
@@ -267,6 +275,10 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
         if (is3D) {
           node.fz = node.z;
         }
+      }
+      // 강제 리렌더링을 위해 그래프 데이터 업데이트
+      if (graphRef.current) {
+        graphRef.current.refresh();
       }
       return;
     }
@@ -438,6 +450,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
       chatRoomId = node.chatRoomId;
     }
 
+    console.log('테스트', chatRoomId)
     if (chatRoomId) {
       // MainPage로 이동하면서 필요한 정보 전달
       navigate('/main', { 
@@ -481,7 +494,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
           }
         } 
       });
-
+      setRefreshTrigger((prev) => !prev)
     } catch (error) {
       console.error('노드 분리 중 오류 발생:', error);
       alert('노드 분리에 실패했습니다.');
@@ -571,14 +584,6 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     }
   };
 
-  // 링크 두께 설정 함수 추가
-  const getLinkWidth = (link, isHighlighted) => {
-    if (!isHighlighted) {
-      return 1; // 하이라이트되지 않은 링크는 기본 두께
-    }
-    return 3; // 하이라이트된 링크는 두껍게
-  };
-
   // 마우스 이동 이벤트 핸들러
   const handleMouseMove = useCallback((e) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
@@ -596,7 +601,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
   useEffect(() => {
     if (graphRef.current && !is3D) {
       // 2D 모드일 때 초기 줌 레벨 설정
-      graphRef.current.zoom(0.7);
+      graphRef.current.zoom(0.2);
       
       // 그래프의 중심점 계산
       if (processedData.nodes.length > 0) {
@@ -700,6 +705,12 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     sprite.textHeight = baseSize;
     sprite.padding = baseSize * 0.5;
     sprite.borderRadius = baseSize;
+    
+    // 노드가 고정되었을 때 테두리 추가
+    if (node.fx !== undefined && node.fy !== undefined) {
+      sprite.borderWidth = baseSize * 0.2;
+      sprite.borderColor = '#FFD700'; // 금색 테두리
+    }
     
     if (node.title.length > 10) {
       sprite.text = node.title.substring(0, 10) + '...';
@@ -816,10 +827,52 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
     setIs3D(!is3D);
   }, [is3D]);
 
+  // 이전 페이지로 이동하는 함수
+  const handleBackButtonClick = () => {
+    if (location.pathname.startsWith('/mindmap/node/')) {
+      const nodeId = location.pathname.split('/').pop();
+      const node = processedData.nodes.find(n => n.id === nodeId);
+      if (node && node.chatRoomId) {
+        navigate(`/mindmap/room/${node.chatRoomId}`);
+      }
+    } else if (location.pathname.startsWith('/mindmap/room/')) {
+      navigate('/mindmap');
+    }
+  };
+
+  // 현재 chatRoomTitle 및 추가 정보 가져오기
+  const getCurrentChatRoomTitle = () => {
+    if (location.pathname.startsWith('/mindmap/node/')) {
+      const nodeId = location.pathname.split('/').pop();
+      const node = processedData.nodes.find(n => n.id === nodeId);
+      if (node && node.chatRoomId) {
+        const chatRoomNode = processedData.nodes.find(n => n.id === `root_${node.chatRoomId}`);
+        if (chatRoomNode) {
+          return `${chatRoomNode.title} - ${node.title}`;
+        } else {
+          // 루트 노드가 없을 경우에도 chatRoomTitle을 찾기
+          const anyNodeInRoom = processedData.nodes.find(n => n.chatRoomId === node.chatRoomId);
+          return anyNodeInRoom ? `${anyNodeInRoom.chatRoomTitle} - ${node.title}` : node.title;
+        }
+      }
+    } else if (location.pathname.startsWith('/mindmap/room/')) {
+      const chatRoomId = location.pathname.split('/').pop();
+      const chatRoomNode = processedData.nodes.find(n => n.id === `root_${chatRoomId}`);
+      if (chatRoomNode) {
+        return `${chatRoomNode.title} - room`;
+      } else {
+        // 루트 노드가 없을 경우에도 chatRoomTitle을 찾기
+        const anyNodeInRoom = processedData.nodes.find(n => n.chatRoomId === chatRoomId);
+        return anyNodeInRoom ? `${anyNodeInRoom.chatRoomTitle} - room` : 'room';
+      }
+    }
+    return '';
+  };
+
   return (
     <div className="relative w-full h-full">
       {/* 검색창 컨테이너 수정 */}
-      <div className="absolute left-4 top-4 z-50">
+      <div className="absolute left-4 top-4 z-50 flex items-center">
         <div className="relative">
           <input
             type="text"
@@ -850,6 +903,18 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
             </div>
           )}
         </div>
+        {/* 이전 페이지로 이동 버튼 및 chatRoomTitle 표시 */}
+        {(location.pathname.startsWith('/mindmap/room/') || location.pathname.startsWith('/mindmap/node/')) && (
+          <div className="flex items-center">
+            <button
+              onClick={handleBackButtonClick}
+              className="ml-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+            >
+              {'<<'}
+            </button>
+            <span className="ml-2 text-white">{getCurrentChatRoomTitle()}</span>
+          </div>
+        )}
       </div>
 
       {/* 편집 모드 체크박스 추가 */}
@@ -915,7 +980,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
           nodeThreeObjectExtend={false}
           width={window.innerWidth - 296}
           height={window.innerHeight - 64}
-          backgroundColor="#353A3E"
+          backgroundColor="#212121"
           nodeColor={getNodeColor}
           linkWidth={2}
           linkColor={getLinkColor}
@@ -1014,7 +1079,7 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
           d3ForceStrength={-200} // 확산형 배치를 위한 강한 반발력
           linkDistance={200}     // 긴 링크 거리
           nodeLabel={(node) => ""}
-          backgroundColor="#353A3E"
+          backgroundColor="#212121"
           nodePointerAreaPaint={(node, color, ctx) => {
             const fontSize = node.isRoot ? 32 : 26;
             const { width, height } = getNodeSize(node.title, ctx, fontSize);
@@ -1105,38 +1170,20 @@ const Mindmap = ({ data, onChatRoomSelect }) => {
       {/* 도움말 텍스트 */}
       <div className="absolute left-4 bottom-4 z-50 text-white text-sm bg-gray-800 bg-opacity-75 p-2 rounded">
         <p>클릭: 카메라 이동 및 설명창 고정</p>
-        <p>ESC/외부 클릭: 설명창 닫기</p>
         <p>더블클릭: 상세페이지 이동</p>
-        <p>Ctrl + 클릭 시 노드의 위치 고정</p>
+        <p>Ctrl + 클릭: 노드의 위치 고정</p>
+        <p>ESC/외부 클릭: 설명창 닫기</p>
       </div>
     </div>
   )
 }
 
 const CustomNodeComponent = ({ data }) => {
-  return (
-    <div className="min-w-[150px] p-2">
-      <div className="font-bold text-gray-800 mb-1">{data.label}</div>
-      {data.description && <div className="text-sm text-gray-600">{data.description}</div>}
-      {data.tags && (
-        <div className="flex flex-wrap gap-1 mt-2">
-          {data.tags.map((tag, index) => (
-            <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
+  // ... component code ...
 }
 
 CustomNodeComponent.propTypes = {
-  data: PropTypes.shape({
-    label: PropTypes.string,
-    description: PropTypes.string,
-    tags: PropTypes.arrayOf(PropTypes.string),
-  }).isRequired,
+  // ... prop types ...
 }
 
 Mindmap.propTypes = {
@@ -1144,7 +1191,7 @@ Mindmap.propTypes = {
     nodes: PropTypes.array,
     relationships: PropTypes.array
   }),
-  onChatRoomSelect: PropTypes.func.isRequired
+  onChatRoomSelect: PropTypes.func.isRequired  // 사용되지 않음
 };
 
 export default Mindmap

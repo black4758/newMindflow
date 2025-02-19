@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import api from "../api/axios"
-import { useSelector } from "react-redux"
+import { useSelector, useDispatch } from "react-redux"
+import { useNavigate } from "react-router-dom"
+import { logout } from "../store/slices/authSlice"
 
 const Profile = () => {
   // 상태 관리
@@ -10,7 +12,10 @@ const Profile = () => {
   const [email, setEmail] = useState("") // 사용자 이메일
   const [selectedButton, setSelectedButton] = useState("profile") // 현재 선택된 메뉴 상태
 
-  const userId = useSelector((state) => state.auth.user.userId)
+  const userId = useSelector((state) => state.auth.user.userId) //User ID
+
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const getUserInfo = async () => {
     try {
@@ -36,6 +41,19 @@ const Profile = () => {
       setEmail("")
       setAccountId("")
       setDisplayName("")
+    }
+  }
+
+  const deleteUser = async () => {
+    try {
+      const response = await api.delete(`/api/auth/delete/${userId}`)
+      if (response.status === 200 || response.status === 204) {
+        dispatch(logout())
+        alert("잘가요 ㅠㅠ")
+        navigate("/")
+      }
+    } catch (error) {
+      console.log(error)
     }
   }
 
@@ -68,25 +86,10 @@ const Profile = () => {
         return (
           <div className="max-w-3xl bg-white p-8 rounded-lg">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">프로필 설정</h2>
-              <button className="text-gray-500 hover:text-gray-700">
-                <span className="sr-only">닫기</span>✕
-              </button>
+              <h2 className="text-2xl font-bold text-gray-900">내 프로필</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="flex items-center space-x-6">
-                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
-                  <span className="text-gray-500 text-4xl">👤</span>
-                </div>
-                {/* <button
-                  type="button"
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  이미지 변경
-                </button> */}
-              </div>
-
               <div className="space-y-6">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -98,6 +101,21 @@ const Profile = () => {
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    readOnly
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    닉네임
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={displayName}
+                    onChange={(e) => setName(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    readOnly
                   />
                 </div>
 
@@ -111,6 +129,7 @@ const Profile = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500"
+                    readOnly
                   />
                 </div>
               </div>
@@ -141,6 +160,7 @@ const Profile = () => {
               <button
                 type="button"
                 className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                onClick={deleteUser}
               >
                 삭제
               </button>
@@ -178,7 +198,7 @@ const Profile = () => {
     <div className="h-full flex justify-center">
       <div className="flex h-full max-w-7xl w-full">
         {/* 왼쪽 사이드바: 메뉴 버튼 영역 */}
-        <div className="w-64 bg-[#353A3E] p-4 space-y-4">
+        <div className="w-64 bg-[#212121] p-4 space-y-4">
           {/* 프로필 설정 버튼 */}
           <button
             onClick={() => setSelectedButton("profile")}
@@ -188,18 +208,11 @@ const Profile = () => {
               px-4 
               py-4
               rounded-full 
-              bg-white 
-              text-black
+              text-white
               transition-all 
               duration-300
               overflow-hidden
-              hover:bg-gray-100
-              border-[5px]
-              ${
-                selectedButton === "profile" // 선택된 버튼 스타일 조건부 적용
-                  ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]"
-                  : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"
-              }
+              hover:border-[5px]"border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" 
               group
             `}
           >
@@ -217,14 +230,11 @@ const Profile = () => {
               px-4 
               py-4
               rounded-full 
-              bg-white 
-              text-black
+              text-white
               transition-all 
               duration-300
               overflow-hidden
-              hover:bg-gray-100
-              border-[5px]
-              ${selectedButton === "notification" ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"}
+              hover:border-[5px]"border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" 
               group
             `}
           >
@@ -254,14 +264,11 @@ const Profile = () => {
               px-4 
               py-4
               rounded-full 
-              bg-white 
-              text-black
+              text-white
               transition-all 
               duration-300
               overflow-hidden
-              hover:bg-gray-100
-              border-[5px]
-              ${selectedButton === "security" ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" : "border-white hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.5)]"}
+              hover:border-[5px]"border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" 
               group
             `}
           >
