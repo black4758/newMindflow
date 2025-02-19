@@ -146,7 +146,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   }, [chatSemaphore])
 
   return (
-    <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#1a1a1a] p-4 flex flex-col transition-all duration-300`}>
+    <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#171717] p-4 flex flex-col transition-all duration-300`}>
       {/* Header */}
       <div className={`flex items-center ${isCollapsed ? "justify-center" : "justify-end"} gap-2 mb-8`}>
         <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
