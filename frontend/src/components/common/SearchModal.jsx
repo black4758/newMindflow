@@ -5,12 +5,14 @@ import { X } from "lucide-react"
 import PropTypes from "prop-types"
 import api from "../../api/axios"
 import { useSelector } from "react-redux"
+import { useNavigate } from "react-router-dom"
 
 const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
   const [searchInput, setSearchInput] = useState("")
   const [SearchResults, setSearchResults] = useState([])
 
   const userId = useSelector((state) => state.auth.user.userId)
+  const navigate = useNavigate()
 
   const handleSearch = async () => {
     // 더미 데이터
@@ -62,6 +64,7 @@ const SearchModal = ({ isOpen, onClose, onChatRoomSelect }) => {
 
   const handleResultClick = (chatRoomId) => {
     onChatRoomSelect(chatRoomId)
+    navigate('/main')
     onClose()
   }
 
