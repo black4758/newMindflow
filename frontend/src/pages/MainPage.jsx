@@ -316,6 +316,18 @@ const MainPage = ({
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chat_room_id) {
         localStorage.setItem("currentChatRoom", response.data.chat_room_id.toString())
+
+        const newChatRoomId = response.data.chat_room_id;
+        
+        // 새로운 채팅방에 소켓 연결
+        socket.emit('join_room', { chatRoomId: newChatRoomId });
+
+        // 마인드맵 상태를 즉시 'generating'으로 설정
+        setMindmapStatus({
+          status: 'generating',
+          message: '마인드맵을 생성하고 있습니다',
+        });
+
         onChatRoomSelect(response.data.chat_room_id)
         setModelStreamingTexts({
           chatgpt: "",
