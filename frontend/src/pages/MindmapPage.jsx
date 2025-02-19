@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { fetchMindmapData } from "../api/mindmap";
 import Mindmap from "../components/feature/Mindmap";
 
-const MindmapPage = ({setRefreshTrigger}) => {
+const MindmapPage = ({ setRefreshTrigger, onChatRoomSelect }) => {
   const { chatRoomId, id } = useParams();
   const [mindmapData, setMindmapData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +51,7 @@ const MindmapPage = ({setRefreshTrigger}) => {
   if (!mindmapData) return null;
 
   // 모든 경우에 Mindmap 컴포넌트 사용
-  return <Mindmap data={mindmapData} setRefreshTrigger={setRefreshTrigger} />;
+  return <Mindmap data={mindmapData} setRefreshTrigger={setRefreshTrigger} onChatRoomSelect={onChatRoomSelect} />;
 };
 
 export default MindmapPage;
