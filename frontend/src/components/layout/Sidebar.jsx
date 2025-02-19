@@ -153,9 +153,9 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
           <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
             <Menu className="w-6 h-6 text-[#ffffff]" />
           </button>
-            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-              메뉴 접기
-            </span>
+          <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+            <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">메뉴 접기</span>
+          </div>
         </div>
         {!isCollapsed && (
           <div className="flex items-center gap-2 ml-auto">
@@ -163,11 +163,17 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
               <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
                 <Search className="w-6 h-6 text-[#ffffff]" />
               </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">검색</span>
+              </div>
             </div>
             <div className="relative group">
               <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
                 <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
               </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">즐겨찾기</span>
+              </div>
             </div>
             <div className="relative group">
               <button
@@ -179,11 +185,17 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
               >
                 <ExternalLink className="w-6 h-6 text-[#ffffff]" />
               </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">새 대화</span>
+              </div>
             </div>
             <div className="relative group">
               <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
                 <Network className="w-6 h-6 text-[#ffffff]" />
               </button>
+              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">마인드맵</span>
+              </div>
             </div>
           </div>
         )}
