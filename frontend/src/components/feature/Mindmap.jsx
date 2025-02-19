@@ -455,7 +455,6 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       chatRoomId = node.chatRoomId;
     }
 
-    console.log('테스트', chatRoomId)
     if (chatRoomId) {
       // 채팅방 선택
       onChatRoomSelect(chatRoomId);
@@ -481,23 +480,19 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       setShowNodeModal(false);
 
       // 3. 새로운 chatRoomId로 main 페이지 이동
-      navigate('/main', { 
-        state: { 
-          selectedChatRoomId: newChatRoomId,
-          fromMindmap: true,
-          nodeInfo: {
-            id: node.id,
-            title: node.title,
-            content: node.content
-          }
-        } 
-      });
+      if (newChatRoomId) {
+        // 채팅방 선택
+        onChatRoomSelect(newChatRoomId);
+  
+        // MainPage로 이동하면서 필요한 정보 전달
+        navigate('/main');
+      }
       setRefreshTrigger((prev) => !prev)
     } catch (error) {
       console.error('노드 분리 중 오류 발생:', error);
       alert('노드 분리에 실패했습니다.');
     }
-  }, [navigate]);
+  }, [navigate, onChatRoomSelect]);
 
   // 노드 삭제 핸들러 수정
   const handleNodeDelete = useCallback(async () => {
