@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { Menu, Search, MessagesSquare, Network, MoreHorizontal, Star } from "lucide-react"
+import { Menu, Search, MessagesSquare, Network, MoreHorizontal, Star, Trash } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
@@ -226,43 +226,14 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
                   <button
-                    onClick={() => {
-                      toggleMenu(chatRoom.id)
-                    }}
+                    onClick={() => handleDeleteRoom(chatRoom.id)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1 
                      hover:bg-gray-600 rounded-full opacity-0 
                      group-hover:opacity-100 transition-all duration-300 z-20"
                     disabled={isChatting}
                   >
-                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                    <Trash className="w-5 h-5 text-[#ffffff]" />
                   </button>
-                  {menuStates[chatRoom.id] && (
-                    <div
-                      className="absolute z-50 top-[calc(100%-0.5rem)] right-3 mt-1 
-                                  px-4 py-2 rounded-lg bg-[#1a1a1a] text-white shadow-lg"
-                    >
-                      <button
-                        onClick={() => {
-                          // 마인드맵 로직 추가
-                          toggleMenu(chatRoom.id)
-                          navigate("/mindmap", { state: { chatRoomId: chatRoom.id } })
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-gray-300 transition-colors w-full text-left"
-                      >
-                        마인드맵
-                      </button>
-                      <button
-                        onClick={() => {
-                          console.log("삭제 버튼 클릭됨:", chatRoom.id)
-                          toggleMenu(chatRoom.id)
-                          handleDeleteRoom(chatRoom.id)
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-red-400 transition-colors w-full text-left"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -289,44 +260,14 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
                   <button
-                    onClick={() => {
-                      toggleMenu(chatRoom.id)
-                    }}
+                    onClick={() => handleDeleteRoom(chatRoom.id)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1 
                      hover:bg-gray-600 rounded-full opacity-0 
                      group-hover:opacity-100 transition-all duration-300 z-20"
                     disabled={isChatting}
                   >
-                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                    <Trash className="w-5 h-5 text-[#ffffff]" />
                   </button>
-                  {menuStates[chatRoom.id] && (
-                    <div
-                      className="absolute z-50 top-[calc(100%-0.5rem)] right-3 mt-1 
-                                  px-4 py-2 rounded-lg bg-[#1a1a1a] text-white shadow-lg"
-                    >
-                      <button
-                        onClick={() => {
-                          // 마인드맵 로직 추가
-                          toggleMenu(chatRoom.id)
-                          navigate(`/mindmap/room/${chatRoom.id}`)
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-gray-300 transition-colors w-full text-left"
-                      >
-                        마인드맵
-                      </button>
-                      <button
-                        onClick={() => {
-                          // 삭제 로직 추가
-                          console.log("삭제 버튼 클릭됨:", chatRoom.id)
-                          toggleMenu(chatRoom.id)
-                          handleDeleteRoom(chatRoom.id)
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-red-400 transition-colors w-full text-left"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
