@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
 
-const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, chatSemaphore, mindSemaphore }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, chatSemaphore, mindSemaphore, setIsCollapsed }) => {
+  const [isCollapsed, setIsCollapsedLocal] = useState(false)
   const [menuStates, setMenuStates] = useState({})
   const [isChatting, setIsChatting] = useState(false)
   const [localStarred, setLocalStarred] = useState(false)
@@ -150,7 +150,10 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
       {/* Header */}
       <div className={`flex items-center mb-8 ${isCollapsed ? "flex-col" : ""}`}>
         <div className="relative group">
-          <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
+          <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => {
+            setIsCollapsedLocal(!isCollapsed);
+            setIsCollapsed(!isCollapsed);
+          }}>
             <Menu className="w-6 h-6 text-[#ffffff]" />
           </button>
           <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
