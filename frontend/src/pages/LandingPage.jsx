@@ -35,7 +35,7 @@ const LandingPage = () => {
               <p className="text-gray-400 mb-6">다양한 AI 모델과 대화하며 아이디어를 발전시키세요. 실시간으로 피드백을 받고 새로운 관점을 발견할 수 있습니다.</p>
               <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
                 {/* 채팅 데모 이미지/영상 */}
-                <img src="../../public/landing1.png" alt="AI 채팅 데모" className="w-full h-full object-cover rounded-lg" />
+                <img src="/landing1.png" alt="AI 채팅 데모" className="w-full h-full object-cover rounded-lg" />
               </div>
             </div>
           </div>
@@ -48,7 +48,7 @@ const LandingPage = () => {
               <p className="text-gray-400 mb-6">대화 내용을 자동으로 마인드맵으로 변환합니다. 복잡한 아이디어도 한눈에 파악할 수 있습니다.</p>
               <div className="aspect-video bg-gray-800 rounded-lg overflow-hidden">
                 {/* 마인드맵 데모 이미지/영상 */}
-                <img src="../../public/landing2.png" alt="마인드맵 데모" className="w-full h-full object-fill rounded-lg" />
+                <img src="/landing2.png" alt="마인드맵 데모" className="w-full h-full object-fill rounded-lg" />
               </div>
             </div>
           </div>
