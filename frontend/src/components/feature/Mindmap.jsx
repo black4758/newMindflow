@@ -934,10 +934,10 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
             <div className="p-4">
               <h3 className="text-gray-800 font-bold mb-2">연결선 관계 색상 설명</h3>
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(245,158,11,0.9)" }}></div>
                   <span className="text-sm text-gray-700 whitespace-nowrap">루트까지의 경로</span>
-                </div>
+                </div> */}
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(52,211,153,0.9)" }}></div>
                   <span className="text-sm text-gray-700 whitespace-nowrap">관련 관계</span>
@@ -958,10 +958,23 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
 
       {/* 2D/3D 전환 버튼 */}
       <button
-        className="absolute bottom-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg"
+        className="absolute bottom-4 right-4 z-50 text-white transform hover:scale-105 transition-transform duration-200"
+        style={{
+          width: '60px',
+          height: '60px',
+          borderRadius: is3D ? '8px' : '50%',
+          background: is3D 
+            ? 'linear-gradient(to right, #4f93ce, #1c3b57)' 
+            : 'radial-gradient(circle, #4f93ce, #1c3b57)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          textAlign: 'center',
+        }}
         onClick={handleDimensionToggle}
       >
-        {is3D ? '2D로 보기' : '3D로 보기'}
+        {is3D ? '2D' : '3D'}
       </button>
 
       {/* 조건부 렌더링으로 2D/3D 그래프 전환 */}
