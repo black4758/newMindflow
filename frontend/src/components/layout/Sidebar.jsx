@@ -149,10 +149,13 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
       {/* Header */}
       <div className={`flex items-center mb-8 ${isCollapsed ? "flex-col" : ""}`}>
         <div className="relative group">
-          <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => {
-            setIsCollapsedLocal(!isCollapsed);
-            setIsCollapsed(!isCollapsed);
-          }}>
+          <button
+            className="p-1 rounded hover:bg-gray-200 transition-colors"
+            onClick={() => {
+              setIsCollapsedLocal(!isCollapsed)
+              setIsCollapsed(!isCollapsed)
+            }}
+          >
             <Menu className="w-6 h-6 text-[#ffffff]" />
           </button>
           <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
@@ -224,7 +227,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                     `}
                     disabled={isChatting}
                   >
-                    <span className="relative z-10 truncate">{chatRoom.title}</span>
+                    <span className="relative z-10 block truncate">{chatRoom.title}</span>
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
                   <button
@@ -258,7 +261,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                   `}
                     disabled={isChatting}
                   >
-                    <span className="relative z-10 truncate">{chatRoom.title}</span>
+                    <span className="relative z-10 block truncate">{chatRoom.title}</span>
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
                   <button
