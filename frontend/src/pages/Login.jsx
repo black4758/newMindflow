@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 import api from "../api/axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
 import googleIcon from "../assets/google.svg" // 구글 아이콘 이미지
+import { toast } from "react-toastify"
 
 const Login = () => {
   // email -> accountId로 변경
@@ -30,7 +31,7 @@ const Login = () => {
       // 로그인 성공
       if (response.status === 200) {
         dispatch(login(response.data))
-        alert("로그인 성공")
+        toast.success("로그인 되었습니다.")
         navigate("/main")
       }
     } catch (error) {

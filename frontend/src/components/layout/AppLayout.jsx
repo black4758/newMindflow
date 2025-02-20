@@ -44,7 +44,7 @@ const AppLayout = () => {
   // 인증 페이지일 경우 간단한 레이아웃 반환
   if (isAuthPage || !userId) {
     return (
-      <div className="h-screen bg-[#212121]">
+      <div className="h-screen bg-[#171717]">
         <Routes>
           {routes.map((route) => (
             <Route key={route.path} path={route.path} element={route.element} />
