@@ -7,6 +7,7 @@ import PropTypes from "prop-types"
 import { useNavigate, useLocation } from "react-router-dom"
 import * as d3 from "d3"
 import { toast } from "react-toastify"
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls'
 
 // 모드 상태를 저장하기 위한 전역 변수나 localStorage 사용
 const setViewMode = (is3D) => {
@@ -44,6 +45,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
   const lastCameraPositionRef = useRef(null) // 마지막 카메라 위치 참조
   const stabilityTimeoutRef = useRef(null) // 안정화 타임아웃 참조
   const cameraTimeoutRef = useRef(null) // 카메라 타임아웃 참조
+  const [isHelpVisible, setIsHelpVisible] = useState(false)
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -858,6 +860,25 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
     return ""
   }
 
+  useEffect(() => {
+    if (graphRef.current && is3D) {
+      const controls = new TrackballControls(graphRef.current.camera(), graphRef.current.renderer().domElement);
+      controls.rotateSpeed = 1.0; // 회전 속도 조절
+      controls.zoomSpeed = 1.2; // 줌 속도 조절
+      controls.panSpeed = 0.0001; // 팬 속도 조절
+
+      const animate = () => {
+        controls.update();
+        requestAnimationFrame(animate);
+      };
+      animate();
+
+      return () => {
+        controls.dispose();
+      };
+    }
+  }, [is3D, graphRef]);
+
   return (
     <div className="relative w-full h-full">
       {/* 검색창 컨테이너 수정 */}
@@ -917,10 +938,10 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
             <div className="p-4">
               <h3 className="text-gray-800 font-bold mb-2">연결선 관계 색상 설명</h3>
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(245,158,11,0.9)" }}></div>
                   <span className="text-sm text-gray-700 whitespace-nowrap">루트까지의 경로</span>
-                </div>
+                </div> */}
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded-full" style={{ backgroundColor: "rgba(52,211,153,0.9)" }}></div>
                   <span className="text-sm text-gray-700 whitespace-nowrap">관련 관계</span>
@@ -940,8 +961,24 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
       </div>
 
       {/* 2D/3D 전환 버튼 */}
-      <button className="absolute bottom-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg" onClick={handleDimensionToggle}>
-        {is3D ? "2D로 보기" : "3D로 보기"}
+      <button
+        className="absolute bottom-4 right-4 z-50 text-white transform hover:scale-105 transition-transform duration-200"
+        style={{
+          width: '60px',
+          height: '60px',
+          borderRadius: is3D ? '8px' : '50%',
+          background: is3D 
+            ? 'linear-gradient(to right, #4f93ce, #1c3b57)' 
+            : 'radial-gradient(circle, #4f93ce, #1c3b57)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          textAlign: 'center',
+        }}
+        onClick={handleDimensionToggle}
+      >
+        {is3D ? '2D' : '3D'}
       </button>
 
       {/* 조건부 렌더링으로 2D/3D 그래프 전환 */}
@@ -1125,13 +1162,28 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
         </div>
       )}
 
+      {/* 설명창 토글 버튼 */}
+      <button
+        className="absolute left-4 bottom-4 bg-gray-700 text-white p-1 rounded"
+        onClick={() => setIsHelpVisible(!isHelpVisible)}
+      >
+        조작법
+      </button>
+
       {/* 도움말 텍스트 */}
-      <div className="absolute left-4 bottom-4 z-50 text-white text-sm bg-gray-800 bg-opacity-75 p-2 rounded">
-        <p>클릭: 카메라 이동 및 설명창 고정</p>
-        <p>더블클릭: 상세페이지 이동</p>
-        <p>Ctrl + 클릭: 노드의 위치 고정</p>
-        <p>ESC/외부 클릭: 설명창 닫기</p>
-      </div>
+      {isHelpVisible && (
+        <div className="absolute left-4 bottom-16 z-50 text-white text-sm bg-gray-800 bg-opacity-75 p-2 rounded"
+             style={{ width: '300px', height: '90px', overflowY: 'auto' }}>
+          <p>클릭: 카메라 이동 및 설명창 고정</p>
+          <p>더블클릭: 상세페이지 이동</p>
+          <p>Ctrl + 클릭: 노드의 위치 고정</p>
+          <p>ESC/외부 클릭: 설명창 닫기</p>
+          <p>마우스 휠: 그래프 확대/축소</p>
+          <p>===3D===</p>
+          <p>마우스 왼쪽 버튼 드래그: 그래프 회전</p>
+          <p>마우스 오른쪽 버튼 드래그: 그래프 이동</p>
+        </div>
+      )}
     </div>
   )
 }
