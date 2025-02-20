@@ -46,12 +46,12 @@ Claude 3 Opus:  claude-3-opus-20240229
  */
 }
 import { useRef, useEffect, useState, useCallback } from "react"
-import { ArrowUpCircle, ChevronDown, SendHorizontal, Map, Loader2, Braces } from "lucide-react"
+import { ChevronDown, SendHorizontal, Map, Loader2 } from "lucide-react"
 import ModelCard from "../components/common/ModelCard.jsx"
 import api from "../api/axios.js"
 import { useSelector } from "react-redux"
 import { io } from "socket.io-client"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 // WebSocket 연결 설정
 // - localhost:5001 서버와 웹소켓 연결을 설정

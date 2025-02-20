@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { Menu, Search, MessagesSquare, Network, MoreHorizontal, Star, Trash } from "lucide-react"
+import { Menu, Search, MessagesSquare, Network, Star, Trash } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
+import { toast } from "react-toastify"
 
 const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, chatSemaphore, mindSemaphore }) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -64,7 +65,7 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
         setAllChatRooms((prev) => prev.filter((room) => room.id !== chatroomId))
 
         // 2. 사이드바 갱신을 위한 리프레시 트리거
-
+        toast.warning("채팅방 삭제 완료")
         setRefreshTrigger((prev) => !prev)
 
         // 3. 현재 채팅방이 삭제되는 경우 추가 처리
@@ -72,12 +73,10 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
           onChatRoomSelect(null) // 현재 채팅방 선택 해제
           // navigate("/main") // 메인 페이지로 이동
         }
-
-        alert("삭제 완료")
       }
     } catch (error) {
       console.error("채팅방 삭제 실패:", error)
-      alert("삭제 실패")
+      toast.error("삭제가 되지 않았습니다.")
     }
   }
 
@@ -97,11 +96,11 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
           setAllChatRooms((prev) => prev.map((room) => (room.id === currentChatRoom ? { ...room, starred: !room.starred } : room)))
 
           setRefreshTrigger((prev) => !prev)
-          alert(currentRoomStarred() ? "즐겨찾기 해제" : "즐겨찾기 추가")
         }
       }
     } catch (error) {
       console.log(error)
+      toast.error("에러가 발생했습니다!")
     }
   }
 
