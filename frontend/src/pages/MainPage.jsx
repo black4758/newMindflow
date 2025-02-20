@@ -321,7 +321,6 @@ const MainPage = ({
 
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chat_room_id) {
-
         const newChatRoomId = response.data.chat_room_id
         localStorage.setItem("currentChatRoom", newChatRoomId.toString())
 
@@ -470,6 +469,7 @@ const MainPage = ({
     }
 
     container.addEventListener("scroll", handleScroll)
+
     return () => container.removeEventListener("scroll", handleScroll)
   }, [])
 
@@ -482,7 +482,7 @@ const MainPage = ({
         behavior: "auto", // 'smooth' 대신 'auto' 사용
       })
     }
-  }, [streamingText, isAutoScroll])
+  }, [streamingText, messages, isAutoScroll])
 
   // 마인드맵 조회 핸들러
   const handleMindmapView = async () => {
@@ -513,7 +513,7 @@ const MainPage = ({
   return (
     <div className="h-full flex flex-col p-4 relative" id="modal-root">
       {/* 메시지 표시 영역 - 스크롤 가능 */}
-      <div className="flex-1 overflow-y-auto" style={{ marginBottom: "120px" }}>
+      <div className="flex-1 overflow-y-auto" style={{ marginBottom: "120px" }} ref={containerRef}>
         {/* 이전 메시지들 표시 */}
         {messages.map((message, index) => (
           <div key={index} className="mb-4">
