@@ -45,6 +45,7 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
   const lastCameraPositionRef = useRef(null) // 마지막 카메라 위치 참조
   const stabilityTimeoutRef = useRef(null) // 안정화 타임아웃 참조
   const cameraTimeoutRef = useRef(null) // 카메라 타임아웃 참조
+  const [isHelpVisible, setIsHelpVisible] = useState(false)
 
   // is3D 상태가 변경될 때마다 저장
   useEffect(() => {
@@ -1161,17 +1162,28 @@ const Mindmap = ({ data, onChatRoomSelect, setRefreshTrigger }) => {
         </div>
       )}
 
+      {/* 설명창 토글 버튼 */}
+      <button
+        className="absolute left-4 bottom-4 bg-gray-700 text-white p-1 rounded"
+        onClick={() => setIsHelpVisible(!isHelpVisible)}
+      >
+        조작법
+      </button>
+
       {/* 도움말 텍스트 */}
-      <div className="absolute left-4 bottom-4 z-50 text-white text-sm bg-gray-800 bg-opacity-75 p-2 rounded"
-           style={{ width: '300px', height: '90px', overflowY: 'auto' }}>
-        <p>클릭: 카메라 이동 및 설명창 고정</p>
-        <p>더블클릭: 상세페이지 이동</p>
-        <p>Ctrl + 클릭: 노드의 위치 고정</p>
-        <p>ESC/외부 클릭: 설명창 닫기</p>
-        <p>마우스 왼쪽 버튼 드래그: 그래프 회전</p>
-        <p>마우스 휠: 그래프 확대/축소</p>
-        <p>마우스 오른쪽 버튼 드래그: 그래프 이동</p>
-      </div>
+      {isHelpVisible && (
+        <div className="absolute left-4 bottom-16 z-50 text-white text-sm bg-gray-800 bg-opacity-75 p-2 rounded"
+             style={{ width: '300px', height: '90px', overflowY: 'auto' }}>
+          <p>클릭: 카메라 이동 및 설명창 고정</p>
+          <p>더블클릭: 상세페이지 이동</p>
+          <p>Ctrl + 클릭: 노드의 위치 고정</p>
+          <p>ESC/외부 클릭: 설명창 닫기</p>
+          <p>마우스 휠: 그래프 확대/축소</p>
+          <p>===3D===</p>
+          <p>마우스 왼쪽 버튼 드래그: 그래프 회전</p>
+          <p>마우스 오른쪽 버튼 드래그: 그래프 이동</p>
+        </div>
+      )}
     </div>
   )
 }
