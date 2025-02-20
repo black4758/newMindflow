@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../api/axios"
 import kakaoIcon from "../assets/kakao-icon.svg" // 카카오 아이콘 이미지
+import { toast } from 'react-toastify';
 
 const Signup = () => {
   // state 선언
@@ -49,7 +50,7 @@ const Signup = () => {
       })
     
       if (response.status === 200) {
-        alert("회원가입이 완료되었습니다. 로그인해주세요.")
+        toast.success("회원가입이 완료되었습니다. 로그인해주세요.")
         navigate("/login")
       }
     } catch (error) {
