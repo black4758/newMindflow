@@ -78,16 +78,22 @@ def load_memory_from_db(chat_room_id):
     return summary_doc["summary_content"] if summary_doc else ""
 
 
+chat_memory_cache = {}
 # 메모리 초기화 함수 수정 (메모리가 비어 있을 경우에만 DB에서 로드)
 def initialize_memory(chat_room_id):
     # ConversationSummaryBufferMemory를 초기화할 때 메모리가 비어 있는지 확인
-
+    if chat_room_id in chat_memory_cache:
+        print(f"캐시에서 {chat_room_id}의 대화 요약을 가져옵니다.")
+        memory.save_context({"input": ""}, {"output": chat_memory_cache[chat_room_id]})
+        return memory
+        
     # 메모리가 비어 있을 경우에만 DB에서 기존 요약 데이터를 가져옴
     if not memory.load_memory_variables({}).get("history"):
         existing_summary = load_memory_from_db(chat_room_id)
         if existing_summary:
             print("DB에서 기존 요약 데이터를 불러옵니다.")
             memory.save_context({"input": ""}, {"output": existing_summary})
+            chat_memory_cache[chat_room_id] = existing_summary
         else:
             print("이전에 저장된 대화 내용이 없습니다. 새로 시작합니다.")
 
@@ -247,7 +253,7 @@ def save_conversation_summary(chat_room_id, memory_content):
 
     conversation_summaries.update_one({"chat_room_id": chat_room_id}, {
         "$set": {"summary_content": updated_summary.strip(), "timestamp": datetime.now().isoformat()}}, upsert=True)
-
+    chat_memory_cache[chat_room_id] = updated_summary.strip()
 
 
 def serialize_message(message):
