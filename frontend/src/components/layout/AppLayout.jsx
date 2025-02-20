@@ -26,6 +26,8 @@ const AppLayout = () => {
   // 현재 라우트 위치 정보를 가져오는 훅
   const location = useLocation()
 
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
   // 채팅방 업데이트 핸들러(Sidebar)
   const handleChatRoomSelect = (roomId) => {
     if (roomId) {
@@ -64,12 +66,11 @@ const AppLayout = () => {
         currentChatRoom={currentChatRoom}
         chatSemaphore={chatSemaphore}
         mindSemaphore={mindSemaphore}
+        setIsCollapsed={setIsCollapsed}
       />
       <div className="flex-1 flex flex-col">
         {/* 상단 네비게이션 바 */}
-        <Navbar 
-          onChatRoomSelect={handleChatRoomSelect}
-        />
+        <Navbar onChatRoomSelect={handleChatRoomSelect} />
         {/* 메인 컨텐츠 영역 */}
         <main className="flex-1 px-5 overflow-y-auto">
           {/* 검색 모달 컴포넌트 */}
@@ -89,6 +90,7 @@ const AppLayout = () => {
                   setChatSemaphore,
                   mindSemaphore,
                   setMindSemaphore,
+                  isCollapsed,
                 })}
               />
             ))}

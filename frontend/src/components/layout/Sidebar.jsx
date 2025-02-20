@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { Menu, Search, ExternalLink, Network, MoreHorizontal, Star } from "lucide-react"
+import { Menu, Search, MessagesSquare, Network, MoreHorizontal, Star, Trash } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import api from "../../api/axios.js"
 import { useSelector } from "react-redux"
 
-const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, chatSemaphore, mindSemaphore }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSelect, currentChatRoom, chatSemaphore, mindSemaphore, setIsCollapsed }) => {
+  const [isCollapsed, setIsCollapsedLocal] = useState(false)
   const [menuStates, setMenuStates] = useState({})
   const [isChatting, setIsChatting] = useState(false)
   const [localStarred, setLocalStarred] = useState(false)
@@ -110,9 +110,9 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
     if (!rooms || rooms.length === 0) return { recentFiveRooms: [], remainingRooms: [] }
 
     // 즐겨찾기 추가된 방
-    const bookmarkedRooms = rooms.filter((room) => room.starred)
+    const bookmarkedRooms = rooms.filter((room) => room.starred).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     // 나머지 채팅 방
-    const otherRooms = rooms.filter((room) => !room.starred)
+    const otherRooms = rooms.filter((room) => !room.starred).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
     return {
       bookmarkedRooms,
@@ -148,25 +148,29 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   return (
     <div className={`${isCollapsed ? "w-16" : "w-64"} bg-[#212121] p-4 flex flex-col transition-all duration-300`}>
       {/* Header */}
-      <div className={`flex items-center mb-8`}>
+      <div className={`flex items-center mb-8 ${isCollapsed ? "flex-col" : ""}`}>
         <div className="relative group">
-          <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => setIsCollapsed(!isCollapsed)}>
+          <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => {
+            setIsCollapsedLocal(!isCollapsed);
+            setIsCollapsed(!isCollapsed);
+          }}>
             <Menu className="w-6 h-6 text-[#ffffff]" />
           </button>
           <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-            <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">메뉴 접기</span>
+            <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">{isCollapsed ? "메뉴 열기" : "메뉴 접기"}</span>
           </div>
         </div>
-        {!isCollapsed && (
-          <div className="flex items-center gap-2 ml-auto">
-            <div className="relative group">
-              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
-                <Search className="w-6 h-6 text-[#ffffff]" />
-              </button>
-              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">검색</span>
-              </div>
+
+        <div className={`flex ${isCollapsed ? "flex-col items-center gap-2 mt-4" : "items-center gap-2 ml-auto"}`}>
+          <div className="relative group">
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={onOpenModal}>
+              <Search className="w-6 h-6 text-[#ffffff]" />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+              <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">검색</span>
             </div>
+          </div>
+          {!isCollapsed && (
             <div className="relative group">
               <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={handleRoomStarred}>
                 <Star className={`w-6 h-6 text-[#ffffff] ${currentRoomStarred ? "fill-white" : ""}`} />
@@ -175,36 +179,36 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                 <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">즐겨찾기</span>
               </div>
             </div>
-            <div className="relative group">
-              <button
-                className="p-1 rounded hover:bg-gray-200 transition-colors"
-                onClick={() => {
-                  onChatRoomSelect(null)
-                  navigate("/main", { state: { refresh: Date.now() } })
-                }}
-              >
-                <ExternalLink className="w-6 h-6 text-[#ffffff]" />
-              </button>
-              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">새 대화</span>
-              </div>
-            </div>
-            <div className="relative group">
-              <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
-                <Network className="w-6 h-6 text-[#ffffff]" />
-              </button>
-              <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
-                <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">마인드맵</span>
-              </div>
+          )}
+          <div className="relative group">
+            <button
+              className="p-1 rounded hover:bg-gray-200 transition-colors"
+              onClick={() => {
+                onChatRoomSelect(null)
+                navigate("/main", { state: { refresh: Date.now() } })
+              }}
+            >
+              <MessagesSquare className="w-6 h-6 text-[#ffffff]" />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+              <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">새 대화</span>
             </div>
           </div>
-        )}
+          <div className="relative group">
+            <button className="p-1 rounded hover:bg-gray-200 transition-colors" onClick={() => navigate("/mindmap")}>
+              <Network className="w-6 h-6 text-[#ffffff]" />
+            </button>
+            <div className="absolute left-1/2 -translate-x-1/2  top-full mt-1 hidden group-hover:block z-50">
+              <span className="px-2 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">마인드맵</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Navigation Sections */}
       {!isCollapsed && (
         <div ref={containerRef} className="space-y-8 overflow-y-auto flex-1">
-          {/* 즐겨찾기기 */}
+          {/* 즐겨찾기 */}
           <div className="mb-6">
             <h2 className="text-[#ffffff] mb-2">즐겨찾기</h2>
             <div className="flex flex-col gap-2">
@@ -225,43 +229,14 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
                   <button
-                    onClick={() => {
-                      toggleMenu(chatRoom.id)
-                    }}
+                    onClick={() => handleDeleteRoom(chatRoom.id)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1 
                      hover:bg-gray-600 rounded-full opacity-0 
                      group-hover:opacity-100 transition-all duration-300 z-20"
                     disabled={isChatting}
                   >
-                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                    <Trash className="w-5 h-5 text-[#ffffff]" />
                   </button>
-                  {menuStates[chatRoom.id] && (
-                    <div
-                      className="absolute z-50 top-[calc(100%-0.5rem)] right-3 mt-1 
-                                  px-4 py-2 rounded-lg bg-[#1a1a1a] text-white shadow-lg"
-                    >
-                      <button
-                        onClick={() => {
-                          // 마인드맵 로직 추가
-                          toggleMenu(chatRoom.id)
-                          navigate("/mindmap", { state: { chatRoomId: chatRoom.id } })
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-gray-300 transition-colors w-full text-left"
-                      >
-                        마인드맵
-                      </button>
-                      <button
-                        onClick={() => {
-                          console.log("삭제 버튼 클릭됨:", chatRoom.id)
-                          toggleMenu(chatRoom.id)
-                          handleDeleteRoom(chatRoom.id)
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-red-400 transition-colors w-full text-left"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -288,44 +263,14 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
                     <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:animate-neon-shine"></div>
                   </button>
                   <button
-                    onClick={() => {
-                      toggleMenu(chatRoom.id)
-                    }}
+                    onClick={() => handleDeleteRoom(chatRoom.id)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1 
                      hover:bg-gray-600 rounded-full opacity-0 
                      group-hover:opacity-100 transition-all duration-300 z-20"
                     disabled={isChatting}
                   >
-                    <MoreHorizontal className="w-5 h-5 text-[#ffffff]" />
+                    <Trash className="w-5 h-5 text-[#ffffff]" />
                   </button>
-                  {menuStates[chatRoom.id] && (
-                    <div
-                      className="absolute z-50 top-[calc(100%-0.5rem)] right-3 mt-1 
-                                  px-4 py-2 rounded-lg bg-[#1a1a1a] text-white shadow-lg"
-                    >
-                      <button
-                        onClick={() => {
-                          // 마인드맵 로직 추가
-                          toggleMenu(chatRoom.id)
-                          navigate(`/mindmap/room/${chatRoom.id}`)
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-gray-300 transition-colors w-full text-left"
-                      >
-                        마인드맵
-                      </button>
-                      <button
-                        onClick={() => {
-                          // 삭제 로직 추가
-                          console.log("삭제 버튼 클릭됨:", chatRoom.id)
-                          toggleMenu(chatRoom.id)
-                          handleDeleteRoom(chatRoom.id)
-                        }}
-                        className="p-2 flex items-center gap-2 whitespace-nowrap hover:text-red-400 transition-colors w-full text-left"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

@@ -60,6 +60,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 const baseURL = import.meta.env.VITE_APP_SOCKET_BASE_URL
 
 const socket = io(baseURL, {
+  autoConnect: false,
   transports: ["websocket"], // WebSocket 프로토콜만 사용
   reconnection: true, // 연결 끊김 시 재연결 시도
   reconnectionAttempts: 5, // 최대 재연결 시도 횟수
@@ -217,6 +218,10 @@ const MainPage = ({
 
   // WebSocket 이벤트 리스너 설정
   useEffect(() => {
+    // 소켓 연결 시작
+    if (!socket.connected) {
+      socket.connect()
+    }
     // 연결 성공 이벤트
     socket.on("connect", () => {
       socket.emit("join", { room: userId })
@@ -274,8 +279,9 @@ const MainPage = ({
       socket.off("all_stream")
       socket.off("stream_end")
       socket.off("error")
+      socket.off("mindmap_status")
     }
-  }, [handleStreamEndCallback])
+  }, [handleStreamEndCallback, userId, currentChatRoom])
 
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
@@ -315,18 +321,18 @@ const MainPage = ({
 
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chat_room_id) {
-        localStorage.setItem("currentChatRoom", response.data.chat_room_id.toString())
 
-        const newChatRoomId = response.data.chat_room_id;
-        
+        const newChatRoomId = response.data.chat_room_id
+        localStorage.setItem("currentChatRoom", newChatRoomId.toString())
+
         // 새로운 채팅방에 소켓 연결
-        socket.emit('join_room', { chatRoomId: newChatRoomId });
+        socket.emit("join_room", { chatRoomId: newChatRoomId })
 
         // 마인드맵 상태를 즉시 'generating'으로 설정
         setMindmapStatus({
-          status: 'generating',
-          message: '마인드맵을 생성하고 있습니다',
-        });
+          status: "generating",
+          message: "마인드맵을 생성하고 있습니다",
+        })
 
         onChatRoomSelect(response.data.chat_room_id)
         setModelStreamingTexts({
