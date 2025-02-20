@@ -279,8 +279,9 @@ const MainPage = ({
       socket.off("all_stream")
       socket.off("stream_end")
       socket.off("error")
+      socket.off("mindmap_status")
     }
-  }, [handleStreamEndCallback, userId])
+  }, [handleStreamEndCallback, userId, currentChatRoom])
 
   // **모델 선택 시 처리**
   const handleModelSelect = async (modelName) => {
@@ -320,9 +321,9 @@ const MainPage = ({
 
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chat_room_id) {
-        localStorage.setItem("currentChatRoom", response.data.chat_room_id.toString())
 
         const newChatRoomId = response.data.chat_room_id
+        localStorage.setItem("currentChatRoom", newChatRoomId.toString())
 
         // 새로운 채팅방에 소켓 연결
         socket.emit("join_room", { chatRoomId: newChatRoomId })
