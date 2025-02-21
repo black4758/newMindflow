@@ -57,7 +57,7 @@
 
 #### 로그인
 
-![로그인](docs/login.png)
+![login](/uploads/dc7850ee51704d57b36f987315d9b65d/login.gif)
 
 #### 회원가입
 
