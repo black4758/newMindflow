@@ -17,26 +17,21 @@
 * 프로젝트명: 통합 생성형 AI와 마인드맵 프로젝트
 * 서비스 특징: 통합형 LLM 채팅 서비스와 대화 요약 마인드맵 생성 서비스
 * 주요 기능
-  - 회원 관리
-  - 화상 미팅룸
-  - 그룹 채팅
+- 채팅 중 LLM 모델 변경 (Google Gemini, CLOVA, ChatGPT, Claude 지원)
+- 채팅 내용 요약 및 마인드맵 자동 생성
+- 채팅방 즐겨찾기 및 검색 기능
+- 실시간 스트리밍 응답 제공 (WebSocket & LLM Streaming)
+- 마인드맵 그래프 생성 및 수정 기능 (Neo4j 기반)
 * 주요 기술
-  - WebRTC
+  - LangChain
   - WebSocket
   - JWT Authentication
   - REST API
-* 참조 리소스
-  * Vuetify: 디자인 전반 적용
-  * Vue Argon Design System: 디자인 전반 적용
-  * Vue Black Dashboard Pro(유료): 캘린더 컴포넌트 사용
-  * AR Core: 구글에서 제공하는 AR 지원 라이브러리. 이미지 인식 및 오버레이 영상에 활용
-  * Color Thief: 이미지 색상 추출 라이브러리. 커버 사진 색상 추출 및 배경 변경에 활용
-  * Animation.css: CSS 애니메이션 지원 라이브러리. 메인 페이지 진입 애니메이션에 활용
+  - Redis
+  - Docker
 * 배포 환경
   - URL: // [마인드플로우](https://mindflow.ddns.net/)
-  - 테스트 계정: // 로그인이 필요한 경우, 사용 가능한 테스트 계정(ID/PW) 기입
-
-<!-- 자유 양식 -->
+  - 테스트 계정: love / love
 
 ## 팀 소개
 * 우성윤: 팀장, LLM 채팅 기능 백엔드 담당
@@ -46,8 +41,44 @@
 * 김동욱: 미안드맵 기능 프론트엔드 담당
 * 이강민: 인가 시스템 백엔드 담당
 
-<!-- 자유 양식 -->
-
 ## 프로젝트 상세 설명
 
-// 개발 환경, 기술 스택, 시스템 구성도, ERD, 기능 상세 설명 등
+#### 아키텍처
+
+![아키텍처](docs/Architecture.png)
+
+#### ERD
+
+![ERD](docs/erd.png)
+
+#### 랜딩페이지
+
+![랜딩페이지](docs/landing.png)
+
+#### 로그인
+
+![로그인](docs/login.png)
+
+#### 회원가입
+
+![회원가입](docs/register.png)
+
+#### 새채팅
+
+![새채팅](docs/newchat.png)
+
+#### 모델 선택
+
+![모델 선택](docs/select-model.png)
+
+#### 채팅 검색
+
+![채팅 검색](docs/searching.png)
+
+#### 마인드맵 2D
+
+![마인드맵 2D](docs/mindmap2d.png)
+
+#### 마인드맵 3D
+
+![마인드맵 3D](docs/mindmap3d.png)
