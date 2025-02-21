@@ -53,7 +53,7 @@
 
 #### 랜딩페이지
 
-![랜딩페이지](docs/landing.png)
+![landing](/uploads/15548579676534074b55eaeddc5e809e/landing.gif)
 
 #### 로그인
 
@@ -65,20 +65,20 @@
 
 #### 새채팅
 
-![새채팅](docs/newchat.png)
+![newchat](/uploads/7d6eec21941d0898fb49b993d237ea35/newchat.gif)
 
 #### 모델 선택
 
-![모델 선택](docs/select-model.png)
+![modelselect](/uploads/86990fd2eeb7e49f007dc5c3e297d4f2/modelselect.gif)
 
 #### 채팅 검색
 
-![채팅 검색](docs/searching.png)
+![Search](/uploads/a5affcd1701cc14b8c30a1e175a60da0/Search.gif)
 
 #### 마인드맵 2D
 
-![마인드맵 2D](docs/mindmap2d.png)
+![mindmap2d](/uploads/6ab3d4fa44884b336e18f162ab272468/mindmap2d.gif)
 
 #### 마인드맵 3D
 
-![마인드맵 3D](docs/mindmap3d.png)
+![mindmap3d](/uploads/02fbc00500c86afddcc1b9d5f02e90e6/mindmap3d.gif)
