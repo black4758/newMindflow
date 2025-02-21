@@ -17,11 +17,11 @@
 * 프로젝트명: 통합 생성형 AI와 마인드맵 프로젝트
 * 서비스 특징: 통합형 LLM 채팅 서비스와 대화 요약 마인드맵 생성 서비스
 * 주요 기능
-- 채팅 중 LLM 모델 변경 (Google Gemini, CLOVA, ChatGPT, Claude 지원)
-- 채팅 내용 요약 및 마인드맵 자동 생성
-- 채팅방 즐겨찾기 및 검색 기능
-- 실시간 스트리밍 응답 제공 (WebSocket & LLM Streaming)
-- 마인드맵 그래프 생성 및 수정 기능 (Neo4j 기반)
+  - 채팅 중 LLM 모델 변경 (Google Gemini, CLOVA, ChatGPT, Claude 지원)
+  - 채팅 내용 요약 및 마인드맵 자동 생성
+  - 채팅방 즐겨찾기 및 검색 기능
+  - 실시간 스트리밍 응답 제공 (WebSocket & LLM Streaming)
+  - 마인드맵 그래프 생성 및 수정 기능 (Neo4j 기반)
 * 주요 기술
   - LangChain
   - WebSocket
