@@ -7,6 +7,8 @@ build/
 
 REDACTED-web.log
 
+.env
+
 ### STS ###
 .apt_generated
 .classpath
