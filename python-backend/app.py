@@ -87,7 +87,8 @@ def initialize_memory(chat_room_id):
         existing_summary = load_memory_from_db(chat_room_id)
         if existing_summary:
             print("DB에서 기존 요약 데이터를 불러옵니다.")
-            memory.save_context({"input": ""}, {"output": existing_summary})
+            # save_context 대신 내부 버퍼에 직접 할당하여 불필요한 재요약(LLM 호출) 방지
+            memory.moving_summary_buffer = existing_summary
         else:
             print("이전에 저장된 대화 내용이 없습니다. 새로 시작합니다.")
 
@@ -122,25 +123,19 @@ async def llm_generate_async(user_input, llm, model_name):
         await asyncio.sleep(stream_time)
 
     # ✅ Google LLM은 동기 방식이라 별도 처리
-    if model_name == "google":
-        def sync_google_response():
-            return llm(formatted_prompt).content
-
-        answer = await asyncio.to_thread(sync_google_response)  # Google LLM을 별도 쓰레드에서 실행
-        for word in answer.split():
-            await send_to_websocket(word + " ")
-        return answer
-
-    # ✅ 나머지 모델 (스트리밍 방식)
+    # ✅ 모든 모델 (스트리밍 방식) 통합
     full_response = ""
     
-   
+    # 랭체인 astream을 사용하여 비동기 스트리밍
     async for chunk in llm.astream(formatted_prompt):
-        if chunk.content.strip():
-            await send_to_websocket(chunk.content)
-            full_response += chunk.content
+        content = chunk.content
+        if content:
+            await send_to_websocket(content)
+            full_response += content
 
     return full_response
+
+
 
 
 async def generate_model_responses_async(user_input):
@@ -177,9 +172,7 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.0-
     }
     model_class = model_classes.get(model)
 
-    if model == "google":
-        return generate_response_for_google(user_input, model_class, detail_model,creator_id)
-    
+
 
     if model_class:
         return await generate_response_for_model(user_input, model_class, detail_model,creator_id)  
@@ -216,29 +209,7 @@ async def generate_response_for_model(user_input, model_class, detail_model,crea
 
     return full_response
 
-def generate_response_for_google(user_input, model_class, detail_model,creator_id):
-    history = memory.load_memory_variables({}).get("history", "")
-    prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는  챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
-        ("human", "{user_input}")
-    ])
 
-    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
-    answer = model(formatted_prompt).content
-    parts = answer.split(' ')
-
-    for part in parts:
-        message = f"{part} "
-        print(creator_id)
-        socketio.emit('stream', {
-            'content': message,
-        }, room=creator_id)
-        time.sleep(stream_time)
-
-    memory.save_context({"input": user_input}, {"output": answer})
-
-    return answer
 
 
 
