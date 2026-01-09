@@ -8,20 +8,20 @@ spring:
     url: jdbc:mysql://mysql:3306/mindflow_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul&zeroDateTimeBehavior=convertToNull&rewriteBatchedStatements=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      username: REDACTED
-      password: REDACTED
+      username: ${MYSQL_USER}
+      password: ${MYSQL_PASSWORD}
   
   data:
     mongodb:
-      uri: mongodb://REDACTED:REDACTED@mongo:27017/mindflow_db?authSource=mindflow_db
+      uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST:mongo}:${MONGO_PORT:27017}/mindflow_db?authSource=${MONGO_AUTH_SOURCE:admin}
       database: mindflow_db
 
   neo4j:
     uri: bolt://neo4j:7687
 
     authentication:
-      username: neo4j
-      password: REDACTEDREDACTED
+      username: ${NEO4J_USER:neo4j}
+      password: ${NEO4J_PASSWORD:REDACTEDREDACTED}
     database: mindmap
 
   security:

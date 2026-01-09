@@ -1,11 +1,12 @@
-# OpenJDK 17 기반 이미지 사용
-FROM openjdk:17
-
-# 작업 디렉토리 설정
+# 1. Build Stage
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
+COPY . .
+RUN chmod +x gradlew
+RUN ./gradlew build --no-daemon -x test
 
-# JAR 파일 복사
-COPY build/libs/*.jar app.jar
-
-# 컨테이너 실행 시 Spring Boot 실행
+# 2. Run Stage
+FROM eclipse-temurin:17-jdk
+WORKDIR /app
+COPY --from=build /app/build/libs/*.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar", "--spring.profiles.active=prod"]
