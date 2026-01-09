@@ -43,12 +43,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 # MongoDB 클라이언트 초기화
 
-client = MongoClient(
-    os.getenv('MONGODB_URI'),
-    username=os.getenv('MONGODB_USERNAME'),
-    password=os.getenv('MONGODB_PASSWORD'),
-    authSource='admin'  # 인증 데이터베이스 지정
-)
+client = MongoClient(os.getenv('MONGODB_URI'))
 
 db = client['mindflow_db']
 
@@ -58,12 +53,12 @@ chat_logs = db['chat_logs']
 conversation_summaries = db['conversation_summaries']
 stream_time=0.05
 
-google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
+google_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.5, max_tokens=4096,streaming=True)
 clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
 chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
 claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
 
-memory = ConversationSummaryBufferMemory(llm=clova_llm, max_token_limit=500, human_prefix="User", ai_prefix="AI")
+memory = ConversationSummaryBufferMemory(llm=google_llm, max_token_limit=2000, human_prefix="User", ai_prefix="AI")
 current_room_id = ""
 # 첫 입력 여부를 추적하는 변수
 
@@ -71,7 +66,7 @@ current_room_id = ""
 def load_memory_from_db(chat_room_id):
     summary_doc = conversation_summaries.find_one({"chat_room_id": chat_room_id})
     if summary_doc:
-        print(f"Loaded summary content for chat_room_id ")
+        print(f"Loaded summary content for chat_room_id {chat_room_id}")
 
     else:
         print(f"No summary content found for chat_room_id {chat_room_id}.")
@@ -102,7 +97,7 @@ def generate_room_title(user_input):
     # 프롬프트를 포맷팅
     formatted_prompt = tile_prompt.format_messages(user_input=user_input)
     # Google LLM을 사용하여 응답 생성
-    response = google_llm(formatted_prompt)
+    response = google_llm.invoke(formatted_prompt)
     # 응답 내용 반환
     return response.content.strip()
 import asyncio
@@ -123,15 +118,23 @@ async def llm_generate_async(user_input, llm, model_name):
         await asyncio.sleep(stream_time)
 
     # ✅ Google LLM은 동기 방식이라 별도 처리
-    # ✅ 모든 모델 (스트리밍 방식) 통합
+    if model_name == "google":
+        def sync_google_response():
+            return llm.invoke(formatted_prompt).content
+
+        answer = await asyncio.to_thread(sync_google_response)  # Google LLM을 별도 쓰레드에서 실행
+        for word in answer.split():
+            await send_to_websocket(word + " ")
+        return answer
+
+    # ✅ 나머지 모델 (스트리밍 방식)
     full_response = ""
     
-    # 랭체인 astream을 사용하여 비동기 스트리밍
+   
     async for chunk in llm.astream(formatted_prompt):
-        content = chunk.content
-        if content:
-            await send_to_websocket(content)
-            full_response += content
+        if chunk.content.strip():
+            await send_to_websocket(chunk.content)
+            full_response += chunk.content
 
     return full_response
 
@@ -143,7 +146,7 @@ async def generate_model_responses_async(user_input):
         'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
         'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-3.5-turbo"},
         'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
-        'google': {'llm': google_llm, 'detail_model': "gemini-2.0-flash-exp"}
+        'google': {'llm': google_llm, 'detail_model': "gemini-2.5-flash"}
     }
 
     async def run_model(model_name, model_info):
@@ -163,7 +166,7 @@ async def generate_model_responses_async(user_input):
     return results
 
 
-async def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp",creator_id=1):
+async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash",creator_id=1):
     model_classes = {
         "google": ChatGoogleGenerativeAI, 
         "clova": ChatClovaX, 
@@ -173,6 +176,10 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.0-
     model_class = model_classes.get(model)
 
 
+
+    if model == "google":
+        return generate_response_for_google(user_input, model_class, detail_model,creator_id)
+    
 
     if model_class:
         return await generate_response_for_model(user_input, model_class, detail_model,creator_id)  
@@ -208,6 +215,30 @@ async def generate_response_for_model(user_input, model_class, detail_model,crea
     memory.save_context({"input": user_input}, {"output": full_response})
 
     return full_response
+
+def generate_response_for_google(user_input, model_class, detail_model,creator_id):
+    history = memory.load_memory_variables({}).get("history", "")
+    prompt = ChatPromptTemplate.from_messages([ 
+        ("system", "너는  챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("human", "{user_input}")
+    ])
+
+    formatted_prompt = prompt.format_messages(history=history, user_input=user_input)
+    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
+    answer = model.invoke(formatted_prompt).content
+    parts = answer.split(' ')
+
+    for part in parts:
+        message = f"{part} "
+        print(part)
+        socketio.emit('stream', {
+            'content': message,
+        }, room=creator_id)
+        time.sleep(stream_time)
+
+    memory.save_context({"input": user_input}, {"output": answer})
+
+    return answer
 
 
 
@@ -368,7 +399,8 @@ class MassageAPI(Resource):
             model = data.get('model', 'clova')
             user_input = data.get('userInput')
 
-            creator_id = data.get('creatorId')
+            # 다양한 키 이름을 지원하도록 수정
+            creator_id = data.get('creatorId') or data.get('userId') or data.get('user_id')
 
             detail_model = data.get('detailModel', 'HCX-003')
 
