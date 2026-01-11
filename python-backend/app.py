@@ -1,30 +1,27 @@
 import json
 import os
-
-from datetime import datetime
-from flask import Flask, request, jsonify
-from flask_socketio import SocketIO, emit,join_room
 import time
-import mysql.connector
+import asyncio
+from datetime import datetime
+
 from dotenv import load_dotenv
-from flask import Flask, request
-from flask import make_response
+from flask import Flask, request, make_response
 from flask_restx import Api, Resource, fields
-from langchain.chains import ConversationChain
+from flask_socketio import join_room
+
+from pymongo import MongoClient
+from cachetools import TTLCache
+from nanoid import generate
+
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
-from mysql.connector import Error 
-
-
-from pymongo import MongoClient
 
 from tasks import create_mindmap
 from socket_config import app, socketio
-from nanoid import generate
 
 load_dotenv()
 
@@ -103,10 +100,10 @@ def get_memory(chat_room_id):
 
 def generate_room_title(user_input):
     # ChatPromptTemplate 생성
-    tile_prompt = ChatPromptTemplate.from_messages(
+    title_prompt = ChatPromptTemplate.from_messages(
         [("system", "입력을 받은걸로 짧은 키워드나 한 문장으로 제목을 만들어줘. 제목만 말해줘."), ("human", "{user_input}")])
     # 프롬프트를 포맷팅
-    formatted_prompt = tile_prompt.format_messages(user_input=user_input)
+    formatted_prompt = title_prompt.format_messages(user_input=user_input)
     # Google LLM을 사용하여 응답 생성
     response = google_llm.invoke(formatted_prompt)
     # 응답 내용 반환
@@ -303,7 +300,7 @@ class SetMemory(Resource):
 
 
 @ns_chatbot.route('/all')
-class AlleAPI(Resource):
+class AllAPI(Resource):
     @ns_chatbot.expect(message_all)
     @ns_chatbot.response(200, '성공적인 응답')
     @ns_chatbot.response(400, '필수 필드 누락')
@@ -389,14 +386,14 @@ def handle_join(data):
 
 
 @ns_chatbot.route('/message')
-class MassageAPI(Resource):
+class MessageAPI(Resource):
 
     @ns_chatbot.expect(message_model)  # 요청 스키마 정의 연결
     @ns_chatbot.response(200, '성공적인 응답')
     @ns_chatbot.response(400, '필수 필드 누락')
     @ns_chatbot.response(500, '내부 서버 오류')
     def post(self):
-        """Massage API"""
+        """Message API"""
 
         try:
             data = request.get_json()
