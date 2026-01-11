@@ -75,7 +75,7 @@ def load_memory_from_db(chat_room_id):
 
 # 메모리 초기화 및 로드 함수 (캐시 사용)
 def get_memory(chat_room_id):
-    chat_room_id = str(chat_room_id)  # 키 통일성을 위해 문자열로 변환
+    chat_room_id = int(chat_room_id)  # 키 통일성을 위해 정수로 변환
     
     # 캐시에 있으면 반환 (접근 시 TTL 갱신을 위해 재할당)
     if chat_room_id in chat_sessions:
@@ -255,7 +255,7 @@ def generate_response_for_google(user_input, model_class, detail_model, creator_
 def save_conversation_summary(chat_room_id, memory_content):
     updated_summary = memory_content
 
-    conversation_summaries.update_one({"chat_room_id": chat_room_id}, {
+    conversation_summaries.update_one({"chat_room_id": int(chat_room_id)}, {
         "$set": {"summary_content": updated_summary.strip(), "timestamp": datetime.now().isoformat()}}, upsert=True)
 
 
