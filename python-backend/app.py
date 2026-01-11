@@ -75,7 +75,7 @@ def load_memory_from_db(chat_room_id):
 
 # 메모리 초기화 및 로드 함수 (캐시 사용)
 def get_memory(chat_room_id):
-    chat_room_id = str(chat_room_id)  # 키 통일성을 위해 문자열로 변환
+    chat_room_id = int(chat_room_id)  # 키 통일성을 위해 정수로 변환
     
     # 캐시에 있으면 반환 (접근 시 TTL 갱신을 위해 재할당)
     if chat_room_id in chat_sessions:
@@ -255,7 +255,7 @@ def generate_response_for_google(user_input, model_class, detail_model, creator_
 def save_conversation_summary(chat_room_id, memory_content):
     updated_summary = memory_content
 
-    conversation_summaries.update_one({"chat_room_id": chat_room_id}, {
+    conversation_summaries.update_one({"chat_room_id": int(chat_room_id)}, {
         "$set": {"summary_content": updated_summary.strip(), "timestamp": datetime.now().isoformat()}}, upsert=True)
 
 
@@ -283,6 +283,48 @@ message_model = api.model('message', {'chatRoomId': fields.Integer(required=Fals
                                       'detailModel': fields.String(required=False, description='사용할 세부모델'), })
 message_all = api.model('title', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
 message_title = api.model('all', {'userInput': fields.String(required=True, description='사용자 입력 메시지'), })
+
+init_memory_model = api.model('init_memory', {
+    'chatRoomId': fields.Integer(required=True, description='채팅방 ID'),
+    'userInput': fields.String(required=True, description='사용자 초기 입력'),
+    'modelResponse': fields.String(required=True, description='선택된 모델의 답변')
+})
+
+@ns_chatbot.route('/init-memory')
+class InitMemoryAPI(Resource):
+    @ns_chatbot.expect(init_memory_model)
+    @ns_chatbot.response(200, '메모리 초기화 성공')
+    @ns_chatbot.response(400, '필수 필드 누락')
+    @ns_chatbot.response(500, '서버 내부 오류')
+    def post(self):
+        try:
+            data = request.get_json()
+            chat_room_id = data.get('chatRoomId')
+            user_input = data.get('userInput')
+            model_response = data.get('modelResponse')
+
+            if not all([chat_room_id, user_input, model_response]):
+                 return make_response(json.dumps({'error': '모든 필드(chatRoomId, userInput, modelResponse)가 필요합니다.'}, ensure_ascii=False), 400)
+
+            # 1. 메모리 로드 (없으면 생성)
+            memory = get_memory(chat_room_id)
+
+            # 2. 초기 대화 내용 주입 (Human: 질문, AI: 답변)
+            memory.save_context({"input": user_input}, {"output": model_response})
+            
+            # 3. MongoDB에 영구 저장 (문자열 ID 변환 주의)
+            # 현재 메모리 상태(전체 히스토리)를 가져와서 저장
+            memory_content = memory.load_memory_variables({})["history"]
+            save_conversation_summary(chat_room_id, memory_content)
+
+            print(f"[{chat_room_id}] 초기 대화 내용(init-memory)이 저장되었습니다.")
+            
+            return make_response(json.dumps({'message': 'Memory initialized successfully', 'chatRoomId': chat_room_id}, ensure_ascii=False), 200)
+
+        except Exception as e:
+            print(f"Error initializing memory: {e}")
+            return make_response(json.dumps({'error': str(e)}, ensure_ascii=False), 500)
+
 
 @ns_chatbot.route('/setMemory/<int:chatRoomId>')
 class SetMemory(Resource):

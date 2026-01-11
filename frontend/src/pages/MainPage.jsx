@@ -322,6 +322,19 @@ const MainPage = ({
       // 모든 모델의 스트리밍 텍스트 초기화
       if (response.data && response.data.chat_room_id) {
         const newChatRoomId = response.data.chat_room_id
+
+        // [Flask] 초기 대화 내용 메모리에 주입
+        try {
+          await api.post("/chatbot/init-memory", {
+            chatRoomId: newChatRoomId,
+            userInput: firstUserInput,
+            modelResponse: streamingText,
+          })
+          console.log("[Frontend] Initial memory injected successfully")
+        } catch (memError) {
+          console.error("[Frontend] Failed to inject initial memory:", memError)
+        }
+
         localStorage.setItem("currentChatRoom", newChatRoomId.toString())
 
         // 새로운 채팅방에 소켓 연결
@@ -620,9 +633,8 @@ const MainPage = ({
               rows={1}
               disabled={chatSemaphore || showModelCards}
               placeholder={showModelCards ? "모델을 선택해주세요" : chatSemaphore ? "메시지 전송 중..." : "무엇이 궁금하신가요?"}
-              className={`w-full px-4 py-3 pr-12 rounded-2xl bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto ${
-                chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className={`w-full px-4 py-3 pr-12 rounded-2xl bg-gray-100 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-y-auto ${chatSemaphore || showModelCards ? "opacity-50 cursor-not-allowed" : ""
+                }`}
               style={{ minHeight: "48px", maxHeight: "120px" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
