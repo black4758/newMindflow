@@ -465,10 +465,8 @@ class MessageAPI(Resource):
                 'chatRoomId': chat_room_id
             })
             # 비동기 함수 호출 (await)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            # 챗봇 응답 
-            response_obj = loop.run_until_complete(chatbot_response(user_input, model=model, detail_model=detail_model,creator_id=creator_id, memory=memory))
+            # 챗봇 응답
+            response_obj = asyncio.run(chatbot_response(user_input, model=model, detail_model=detail_model, creator_id=creator_id, memory=memory))
              
             response_content_serialized = (response_obj)
 
