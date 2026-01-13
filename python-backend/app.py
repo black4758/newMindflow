@@ -51,7 +51,7 @@ conversation_summaries = db['conversation_summaries']
 chat_memories = db['chat_memories']
 stream_time=0.05
 
-google_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.5, max_tokens=4096,streaming=True)
+google_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5, max_tokens=4096,streaming=True)
 clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
 chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
 claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
@@ -157,10 +157,8 @@ async def llm_generate_async(user_input, llm, model_name):
     return full_response
 
 
-async def process_models(chat_room_id, user_input, creator_id, memory):
-    print(f"[{chat_room_id}] process_models called (Placeholder)")
-    # TODO: Restore original logic if needed. For now, preventing crash.
-    pass
+
+
 
 
 async def generate_model_responses_async(user_input):
@@ -168,7 +166,7 @@ async def generate_model_responses_async(user_input):
         'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
         'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-3.5-turbo"},
         'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
-        'google': {'llm': google_llm, 'detail_model': "gemini-2.5-flash"}
+        'google': {'llm': google_llm, 'detail_model': "gemini-2.5-flash-lite"}
     }
 
     async def run_model(model_name, model_info):
@@ -188,7 +186,7 @@ async def generate_model_responses_async(user_input):
     return results
 
 
-async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash",creator_id=1, memory=None):
+async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash-lite",creator_id=1, memory=None):
     model_classes = {
         "google": ChatGoogleGenerativeAI, 
         "clova": ChatClovaX, 
@@ -536,8 +534,7 @@ class MessageAPI(Resource):
                     # creator_id='1'
                 )
             print(f"Celery task created with id: {task.id}")
-            # 비동기 작업 실행
-            asyncio.run(process_models(chat_room_id, user_input, creator_id, memory))
+
             
             save_conversation_summary(chat_room_id, memory)
             print("Conversation summary saved.")  # 대화 요약 저장 완료 출력
