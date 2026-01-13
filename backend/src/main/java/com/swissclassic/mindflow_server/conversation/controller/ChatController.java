@@ -24,123 +24,117 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 @RequestMapping("/api/messages")
 @Tag(name = "send", description = "채팅 관련 API")
 public class ChatController {
-    private final AiServerService aiServerService;
-    private final ChatRoomService roomService;
-    private final ChatLogService chatLogService;
-    private final ConversationSummaryService conversationSummaryService;
-    private final MemoryService memoryService;
+        private final AiServerService aiServerService;
+        private final ChatRoomService roomService;
+        private final ChatLogService chatLogService;
+        private final ConversationSummaryService conversationSummaryService;
+        private final MemoryService memoryService;
 
-    @PostMapping("/send")
-    @Operation(description = "gemini-2.0-flash-exp")
-    public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
+        @PostMapping("/send")
+        @Operation(description = "gemini-2.0-flash-exp")
+        public ChatApiResponse getChatResponse(@RequestBody ChatRequest chatRequest) {
 
+                ChatApiResponse answer = aiServerService.getChatResponse(chatRequest);
 
-        ChatApiResponse answer = aiServerService.getChatResponse(chatRequest);
+                // log.info("Flask 에서 도착한 Answer Sentences: {}", answer.getAnswerSentences());
+                log.info("Flask chat_room_id: {}", answer.getChatRoomId());
 
-//        log.info("Flask 에서 도착한 Answer Sentences: {}", answer.getAnswerSentences());
-        log.info("Flask chat_room_id: {}", answer.getChatRoomId());
+                chatLogService.saveChatLog(
+                                chatRequest.getChatRoomId(),
+                                chatRequest.getUserInput(),
+                                answer.getResponse(),
 
+                                chatRequest.getModel(),
+                                chatRequest.getDetailModel(),
+                                // chatRequest.getCreatorId()
 
-        chatLogService.saveChatLog(
-                chatRequest.getChatRoomId(),
-                chatRequest.getUserInput(),
-                answer.getResponse(),
+                                answer.getAnswerSentences(), // Pass the full answer sentences
+                                chatRequest.getCreatorId()
 
-                chatRequest.getModel(),
-                chatRequest.getDetailModel(),
-//                chatRequest.getCreatorId()
+                );
 
-                answer.getAnswerSentences(),  // Pass the full answer sentences
-                chatRequest.getCreatorId()
+                return answer;
+        }
 
-        );
+        @PostMapping("/all")
+        public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
+                return aiServerService.getAllChatResponse(chatRequest);
+        }
 
-        return answer;
-    }
+        // 여기는 말만 summary지 실제로는 대화를 저장함
+        @PostMapping("/choiceModel")
+        FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest conversationSummaryRequest) {
 
-    @PostMapping("/all")
-    public ChatAllResponse getAllResponse(@RequestBody ChatAllRequest chatRequest) {
-        return aiServerService.getAllChatResponse(chatRequest);
-    }
+                ChatRoom room = roomService.createChatRoom(
+                                roomService.getTitle(conversationSummaryRequest.getUserInput()),
+                                conversationSummaryRequest.getCreatorId());
+                long roomId = room.getId();
 
+                // Flask의 응답 형식과 동일하게 AnswerSentence 리스트 생성
+                List<ChatApiResponse.AnswerSentence> answerSentences = Arrays.stream(
+                                conversationSummaryRequest
+                                                .getAnswer()
+                                                .split("\\."))
+                                .filter(line -> !line.trim()
+                                                .isEmpty())
+                                .map(line -> {
+                                        ChatApiResponse.AnswerSentence sentence = new ChatApiResponse.AnswerSentence();
+                                        sentence.setSentenceId(
+                                                        NanoIdUtils.randomNanoId(NanoIdUtils.DEFAULT_NUMBER_GENERATOR,
+                                                                        NanoIdUtils.DEFAULT_ALPHABET, 7));
+                                        sentence.setContent(line.trim());
+                                        return sentence;
+                                })
+                                .collect(Collectors.toList());
 
-    // 여기는 말만 summary지 실제로는 대화를 저장함
-    @PostMapping("/choiceModel")
-    FirstChatRespose firstChat(@RequestBody ConversationSummaryRequest conversationSummaryRequest) {
+                // 수정된 saveChatLog 메서드 호출
 
-        ChatRoom room = roomService.createChatRoom(
-                roomService.getTitle(conversationSummaryRequest.getUserInput()),
-                conversationSummaryRequest.getCreatorId()
-        );
-        long roomId = room.getId();
+                chatLogService.saveChatLog(
+                                roomId,
+                                conversationSummaryRequest.getUserInput(),
+                                conversationSummaryRequest.getAnswer(),
 
-        // Flask의 응답 형식과 동일하게 AnswerSentence 리스트 생성
-        List<ChatApiResponse.AnswerSentence> answerSentences = Arrays.stream(
-                conversationSummaryRequest
-                        .getAnswer()
-                        .split("\\."))
-                        .filter(line -> !line.trim()
-                        .isEmpty())
-                        .map(line -> {
-                    ChatApiResponse.AnswerSentence sentence = new ChatApiResponse.AnswerSentence();
-                    sentence.setSentenceId(NanoIdUtils.randomNanoId(NanoIdUtils.DEFAULT_NUMBER_GENERATOR,
-                            NanoIdUtils.DEFAULT_ALPHABET, 7));
-                    sentence.setContent(line.trim());
-                    return sentence;
-                })
-                .collect(Collectors.toList());
+                                conversationSummaryRequest.getModel(),
+                                conversationSummaryRequest.getDetailModel(),
+                                // (conversationSummaryRequest.getCreatorId())
 
-        // 수정된 saveChatLog 메서드 호출
+                                answerSentences, // 새로 생성한 AnswerSentence 리스트
+                                conversationSummaryRequest.getCreatorId()
 
-        chatLogService.saveChatLog(
-                roomId,
-                conversationSummaryRequest.getUserInput(),
-                conversationSummaryRequest.getAnswer(),
+                );
 
-               conversationSummaryRequest.getModel(),
-                conversationSummaryRequest.getDetailModel()
-                ,
-//                (conversationSummaryRequest.getCreatorId())
+                // ConversationSummary conversationSummary = new ConversationSummary();
+                // conversationSummary.setTimestamp(String.valueOf(Instant.now()));
+                // conversationSummary.setChatRoomId(roomId);
+                // conversationSummary.setSummaryContent(
+                // "User:" + conversationSummaryRequest.getUserInput() + "\nAI" +
+                // conversationSummaryRequest.getAnswer());
+                //
+                // conversationSummaryService.saveConversationSummary(conversationSummary);
+                memoryService.setMemory(roomId);
 
-                answerSentences,  // 새로 생성한 AnswerSentence 리스트
-                conversationSummaryRequest.getCreatorId()
+                // 마인드맵 생성을 위한 요청 추가
+                log.info("초기 마인드맵 생성!!!!!!!!!!!!!!!!!!!!!!!");
+                // 마인드맵 생성 요청 시 MongoDB에 저장된 sentenceId 전달
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("chatRoomId", roomId);
+                requestBody.put("userInput", conversationSummaryRequest.getUserInput());
+                requestBody.put("creatorId", conversationSummaryRequest.getCreatorId());
+                requestBody.put("answerSentences", answerSentences); // 이미 저장된 sentenceId 사용
 
-        );
+                aiServerService.createFirstMindmap(requestBody); // 새로운 메서드
 
+                FirstChatRespose firstChatRespose = new FirstChatRespose();
+                firstChatRespose.setChatRoomId((roomId));
 
+                return firstChatRespose;
+        }
 
-        ConversationSummary conversationSummary = new ConversationSummary();
-        conversationSummary.setTimestamp(String.valueOf(Instant.now()));
-        conversationSummary.setChatRoomId(roomId);
-        conversationSummary.setSummaryContent(
-                "User:" + conversationSummaryRequest.getUserInput() + "\nAI" + conversationSummaryRequest.getAnswer());
-
-        conversationSummaryService.saveConversationSummary(conversationSummary);
-        memoryService.setMemory(roomId);
-
-        // 마인드맵 생성을 위한 요청 추가
-        log.info("초기 마인드맵 생성!!!!!!!!!!!!!!!!!!!!!!!");
-        // 마인드맵 생성 요청 시 MongoDB에 저장된 sentenceId 전달
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("chatRoomId", roomId);
-        requestBody.put("userInput", conversationSummaryRequest.getUserInput());
-        requestBody.put("creatorId", conversationSummaryRequest.getCreatorId());
-        requestBody.put("answerSentences", answerSentences);  // 이미 저장된 sentenceId 사용
-
-        aiServerService.createFirstMindmap(requestBody);  // 새로운 메서드
-
-
-        FirstChatRespose firstChatRespose = new FirstChatRespose();
-        firstChatRespose.setChatRoomId((roomId));
-
-        return firstChatRespose;
-    }
-
-    @GetMapping("/room-title/{chatRoomId}")
-    @Operation(summary = "flask 에서 chatRoomId로 title 가져오는 용도", description = "chatRoomId를 입력하세요.")
-    public ResponseEntity<String> getChatRoomTitle(@PathVariable long chatRoomId) {
-        ChatRoom chatRoom = roomService.getChatRoomById(chatRoomId);
-        return ResponseEntity.ok(chatRoom.getTitle());
-    }
+        @GetMapping("/room-title/{chatRoomId}")
+        @Operation(summary = "flask 에서 chatRoomId로 title 가져오는 용도", description = "chatRoomId를 입력하세요.")
+        public ResponseEntity<String> getChatRoomTitle(@PathVariable long chatRoomId) {
+                ChatRoom chatRoom = roomService.getChatRoomById(chatRoomId);
+                return ResponseEntity.ok(chatRoom.getTitle());
+        }
 
 }

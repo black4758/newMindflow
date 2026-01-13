@@ -48,6 +48,7 @@ db = client['mindflow_db']
 chat_rooms = db['chat_rooms']
 chat_logs = db['chat_logs']
 conversation_summaries = db['conversation_summaries']
+chat_memories = db['chat_memories']
 stream_time=0.05
 
 google_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.5, max_tokens=4096,streaming=True)
@@ -62,15 +63,29 @@ chat_sessions = TTLCache(maxsize=1000, ttl=1800)
 
 
 
+from langchain.schema import HumanMessage, AIMessage
+
 # MongoDB에서 메모리 로드 함수 수정 (디버깅 메시지 포함)
-def load_memory_from_db(chat_room_id):
+def load_memory_from_db(chat_room_id, new_memory):
+    # 1. 요약본 로드
     summary_doc = conversation_summaries.find_one({"chat_room_id": chat_room_id})
     if summary_doc:
-        print(f"Loaded summary content for chat_room_id {chat_room_id}")
-
+        print(f"[{chat_room_id}] Loaded summary content")
+        new_memory.moving_summary_buffer = summary_doc["summary_content"]
     else:
-        print(f"No summary content found for chat_room_id {chat_room_id}.")
-    return summary_doc["summary_content"] if summary_doc else ""
+        print(f"[{chat_room_id}] No summary content found")
+
+    # 2. 최근 대화 로드 (chat_memories)
+    memory_doc = chat_memories.find_one({"chat_room_id": chat_room_id})
+    if memory_doc and "messages" in memory_doc:
+        print(f"[{chat_room_id}] Loaded {len(memory_doc['messages'])} recent messages")
+        for msg in memory_doc['messages']:
+            if msg['role'] == 'user':
+                new_memory.chat_memory.add_user_message(msg['content'])
+            elif msg['role'] == 'assistant':
+                new_memory.chat_memory.add_ai_message(msg['content'])
+    else:
+        print(f"[{chat_room_id}] No recent messages found")
 
 
 # 메모리 초기화 및 로드 함수 (캐시 사용)
@@ -85,13 +100,8 @@ def get_memory(chat_room_id):
     # 캐시에 없으면 새로 생성 및 초기화
     new_memory = ConversationSummaryBufferMemory(llm=google_llm, max_token_limit=2000, human_prefix="User", ai_prefix="AI")
     
-    # DB에서 기존 요약 데이터 로드
-    existing_summary = load_memory_from_db(chat_room_id)
-    if existing_summary:
-        print(f"[{chat_room_id}] DB에서 기존 요약 데이터를 불러옵니다.")
-        new_memory.moving_summary_buffer = existing_summary
-    else:
-        print(f"[{chat_room_id}] 이전에 저장된 대화 내용이 없습니다. 새로 시작합니다.")
+    # DB에서 기존 요약 데이터 및 최근 대화 로드
+    load_memory_from_db(chat_room_id, new_memory)
         
     # 캐시에 저장
     chat_sessions[chat_room_id] = new_memory
@@ -147,6 +157,10 @@ async def llm_generate_async(user_input, llm, model_name):
     return full_response
 
 
+async def process_models(chat_room_id, user_input, creator_id, memory):
+    print(f"[{chat_room_id}] process_models called (Placeholder)")
+    # TODO: Restore original logic if needed. For now, preventing crash.
+    pass
 
 
 async def generate_model_responses_async(user_input):
@@ -252,11 +266,31 @@ def generate_response_for_google(user_input, model_class, detail_model, creator_
 
 
 
-def save_conversation_summary(chat_room_id, memory_content):
-    updated_summary = memory_content
+def save_conversation_summary(chat_room_id, memory):
+    # 1. 요약본 저장 (summary_content) - 내용이 있을 때만 저장
+    summary_content = memory.moving_summary_buffer
+    if summary_content:
+        conversation_summaries.update_one(
+            {"chat_room_id": int(chat_room_id)}, 
+            {"$set": {"summary_content": summary_content.strip(), "timestamp": datetime.now().isoformat()}}, 
+            upsert=True
+        )
 
-    conversation_summaries.update_one({"chat_room_id": int(chat_room_id)}, {
-        "$set": {"summary_content": updated_summary.strip(), "timestamp": datetime.now().isoformat()}}, upsert=True)
+    # 2. 최근 대화 저장 (chat_memories) - HumanMessage, AIMessage 객체를 딕셔너리로 변환
+    messages = memory.chat_memory.messages
+
+    serialized_messages = []
+    for msg in messages:
+        if type(msg).__name__ == 'HumanMessage' or msg.type == 'human':
+            serialized_messages.append({"role": "user", "content": msg.content})
+        elif type(msg).__name__ == 'AIMessage' or msg.type == 'ai':
+            serialized_messages.append({"role": "assistant", "content": msg.content})
+    
+    chat_memories.update_one(
+        {"chat_room_id": int(chat_room_id)},
+        {"$set": {"messages": serialized_messages, "updated_at": datetime.now().isoformat()}},
+        upsert=True
+    )
 
 
 def serialize_message(message):
@@ -314,8 +348,7 @@ class InitMemoryAPI(Resource):
             
             # 3. MongoDB에 영구 저장 (문자열 ID 변환 주의)
             # 현재 메모리 상태(전체 히스토리)를 가져와서 저장
-            memory_content = memory.load_memory_variables({})["history"]
-            save_conversation_summary(chat_room_id, memory_content)
+            save_conversation_summary(chat_room_id, memory)
 
             print(f"[{chat_room_id}] 초기 대화 내용(init-memory)이 저장되었습니다.")
             
@@ -503,8 +536,10 @@ class MessageAPI(Resource):
                     # creator_id='1'
                 )
             print(f"Celery task created with id: {task.id}")
-
-            save_conversation_summary(chat_room_id, memory_content)
+            # 비동기 작업 실행
+            asyncio.run(process_models(chat_room_id, user_input, creator_id, memory))
+            
+            save_conversation_summary(chat_room_id, memory)
             print("Conversation summary saved.")  # 대화 요약 저장 완료 출력
 
             response_data = {
