@@ -20,6 +20,9 @@ from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
 
 
 from tasks import create_mindmap
@@ -59,52 +62,44 @@ chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096
 claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
 
 
-# 메모리 관리를 위한 캐시 생성 (최대 1000개 방, 30분(1800초) 동안 유지)
-chat_sessions = TTLCache(maxsize=1000, ttl=1800)
+class MongoDBChatHistory(BaseChatMessageHistory):
+    def __init__(self, session_id: str):
+        self.session_id = session_id
 
+    @property
+    def messages(self) -> list[BaseMessage]:
+        doc = chat_memories.find_one({"chat_room_id": int(self.session_id)})
+        messages = []
+        if doc and "messages" in doc:
+            for msg in doc['messages']:
+                if msg['role'] == 'user':
+                    messages.append(HumanMessage(content=msg['content']))
+                elif msg['role'] == 'assistant':
+                    messages.append(AIMessage(content=msg['content']))
+        return messages
 
+    def add_message(self, message: BaseMessage) -> None:
+        if isinstance(message, HumanMessage):
+            role = "user"
+        elif isinstance(message, AIMessage):
+            role = "assistant"
+        else:
+            return
 
-# MongoDB에서 메모리 로드 함수 수정 (디버깅 메시지 포함)
-def load_memory_from_db(chat_room_id, new_memory):
-    # 1. 요약본 로드
-    summary_doc = conversation_summaries.find_one({"chat_room_id": chat_room_id})
-    if summary_doc:
-        print(f"[{chat_room_id}] Loaded summary content")
-        new_memory.moving_summary_buffer = summary_doc["summary_content"]
-    else:
-        print(f"[{chat_room_id}] No summary content found")
+        chat_memories.update_one(
+            {"chat_room_id": int(self.session_id)},
+            {
+                "$push": {"messages": {"role": role, "content": message.content}},
+                "$set": {"updated_at": datetime.now().isoformat()}
+            },
+            upsert=True
+        )
 
-    # 2. 최근 대화 로드 (chat_memories)
-    memory_doc = chat_memories.find_one({"chat_room_id": chat_room_id})
-    if memory_doc and "messages" in memory_doc:
-        print(f"[{chat_room_id}] Loaded {len(memory_doc['messages'])} recent messages")
-        for msg in memory_doc['messages']:
-            if msg['role'] == 'user':
-                new_memory.chat_memory.add_user_message(msg['content'])
-            elif msg['role'] == 'assistant':
-                new_memory.chat_memory.add_ai_message(msg['content'])
-    else:
-        print(f"[{chat_room_id}] No recent messages found")
+    def clear(self) -> None:
+        chat_memories.delete_one({"chat_room_id": int(self.session_id)})
 
-
-# 메모리 초기화 및 로드 함수 (캐시 사용)
-def get_memory(chat_room_id):
-    chat_room_id = int(chat_room_id)  # 키 통일성을 위해 정수로 변환
-    
-    # 캐시에 있으면 반환 (접근 시 TTL 갱신을 위해 재할당)
-    if chat_room_id in chat_sessions:
-        chat_sessions[chat_room_id] = chat_sessions[chat_room_id]
-        return chat_sessions[chat_room_id]
-    
-    # 캐시에 없으면 새로 생성 및 초기화
-    new_memory = ConversationSummaryBufferMemory(llm=google_llm, max_token_limit=2000, human_prefix="User", ai_prefix="AI")
-    
-    # DB에서 기존 요약 데이터 및 최근 대화 로드
-    load_memory_from_db(chat_room_id, new_memory)
-        
-    # 캐시에 저장
-    chat_sessions[chat_room_id] = new_memory
-    return new_memory
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    return MongoDBChatHistory(session_id)
 
 
 def generate_room_title(user_input):
@@ -197,27 +192,38 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-
 
 
     if model == "google":
-        return generate_response_for_google(user_input, model_class, detail_model, creator_id, memory)
+        return generate_response_for_google(user_input, model_class, detail_model, creator_id, chat_room_id)
     
 
     if model_class:
-        return await generate_response_for_model(user_input, model_class, detail_model, creator_id, memory)  
+        return await generate_response_for_model(user_input, model_class, detail_model, creator_id, chat_room_id)  
     
     return {"error": "Invalid model"}
 
-async def generate_response_for_model(user_input, model_class, detail_model, creator_id, memory):
-    history = memory.load_memory_variables({}).get("history", "")
+async def generate_response_for_model(user_input, model_class, detail_model, creator_id, chat_room_id):
+    # history는 자동으로 채워짐
     prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는 챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자),\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("system", "너는 챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
+        ("placeholder", "{history}"),
         ("human", "{user_input}")
     ])
 
     model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
     chain = prompt | model | StrOutputParser()
 
+    chain_with_history = RunnableWithMessageHistory(
+        chain,
+        get_session_history,
+        input_messages_key="user_input",
+        history_messages_key="history",
+    )
+
     full_response = ""  
 
-    async for chunk in chain.astream({"history": history, "user_input": user_input}):
+    async for chunk in chain_with_history.astream(
+        {"user_input": user_input},
+        config={"configurable": {"session_id": str(chat_room_id)}}
+    ):
         if not chunk.strip():  
             continue
 
@@ -230,21 +236,31 @@ async def generate_response_for_model(user_input, model_class, detail_model, cre
 
         await asyncio.sleep(stream_time)
 
-    memory.save_context({"input": user_input}, {"output": full_response})
-
     return full_response
 
-def generate_response_for_google(user_input, model_class, detail_model, creator_id, memory):
-    history = memory.load_memory_variables({}).get("history", "")
+def generate_response_for_google(user_input, model_class, detail_model, creator_id, chat_room_id):
     prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는  챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)\n\nChat history:\n{history}\n\nUser: {user_input}\nAssistant:"),
+        ("system", "너는  챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
+        ("placeholder", "{history}"),
         ("human", "{user_input}")
     ])
 
     model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
     chain = prompt | model | StrOutputParser()
     
-    answer = chain.invoke({"history": history, "user_input": user_input})
+    chain_with_history = RunnableWithMessageHistory(
+        chain,
+        get_session_history,
+        input_messages_key="user_input",
+        history_messages_key="history",
+    )
+
+    # Google 모델은 invoke로 (동기 처리 필요시, Flask 라우트가 비동기를 지원하므로 사실 invoke도 괜찮음, 여기선 invoke 유지)
+    answer = chain_with_history.invoke(
+        {"user_input": user_input},
+        config={"configurable": {"session_id": str(chat_room_id)}}
+    )
+    
     parts = answer.split(' ')
 
     for part in parts:
@@ -255,39 +271,13 @@ def generate_response_for_google(user_input, model_class, detail_model, creator_
         }, room=creator_id)
         time.sleep(stream_time)
 
-    memory.save_context({"input": user_input}, {"output": answer})
-
     return answer
 
 
 
 
 
-def save_conversation_summary(chat_room_id, memory):
-    # 1. 요약본 저장 (summary_content) - 내용이 있을 때만 저장
-    summary_content = memory.moving_summary_buffer
-    if summary_content:
-        conversation_summaries.update_one(
-            {"chat_room_id": int(chat_room_id)}, 
-            {"$set": {"summary_content": summary_content.strip(), "timestamp": datetime.now().isoformat()}}, 
-            upsert=True
-        )
 
-    # 2. 최근 대화 저장 (chat_memories) - HumanMessage, AIMessage 객체를 딕셔너리로 변환
-    messages = memory.chat_memory.messages
-
-    serialized_messages = []
-    for msg in messages:
-        if type(msg).__name__ == 'HumanMessage' or msg.type == 'human':
-            serialized_messages.append({"role": "user", "content": msg.content})
-        elif type(msg).__name__ == 'AIMessage' or msg.type == 'ai':
-            serialized_messages.append({"role": "assistant", "content": msg.content})
-    
-    chat_memories.update_one(
-        {"chat_room_id": int(chat_room_id)},
-        {"$set": {"messages": serialized_messages, "updated_at": datetime.now().isoformat()}},
-        upsert=True
-    )
 
 
 def serialize_message(message):
@@ -337,16 +327,13 @@ class InitMemoryAPI(Resource):
             if not all([chat_room_id, user_input, model_response]):
                  return make_response(json.dumps({'error': '모든 필드(chatRoomId, userInput, modelResponse)가 필요합니다.'}, ensure_ascii=False), 400)
 
-            # 1. 메모리 로드 (없으면 생성)
-            memory = get_memory(chat_room_id)
+            # 1. 
+            history = get_session_history(str(chat_room_id))
 
-            # 2. 초기 대화 내용 주입 (Human: 질문, AI: 답변)
-            memory.save_context({"input": user_input}, {"output": model_response})
+            # 2. 초기 대화 내용 주입
+            history.add_user_message(user_input)
+            history.add_ai_message(model_response)
             
-            # 3. MongoDB에 영구 저장 (문자열 ID 변환 주의)
-            # 현재 메모리 상태(전체 히스토리)를 가져와서 저장
-            save_conversation_summary(chat_room_id, memory)
-
             print(f"[{chat_room_id}] 초기 대화 내용(init-memory)이 저장되었습니다.")
             
             return make_response(json.dumps({'message': 'Memory initialized successfully', 'chatRoomId': chat_room_id}, ensure_ascii=False), 200)
@@ -362,10 +349,9 @@ class SetMemory(Resource):
     @ns_chatbot.response(400, '필수 필드 누락')
     @ns_chatbot.response(500, '내부 서버 오류')
     def post(self, chatRoomId):
-        print("작동")
+        print("작동 (Legacy API - No-op)")
         
-        # chatRoomId에 해당하는 메모리 로드 (없으면 생성)
-        memory = get_memory(chatRoomId)
+        # 메모리 설정 로직 제거됨 (자동 관리)
         
         return {"message": "Memory set successfully", "chatRoomId": chatRoomId}, 200
 
@@ -419,6 +405,21 @@ class TitleAPI(Resource):
 
             # 에러 응답도 ensure_ascii=False로 처리
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
+
+
+@ns_chatbot.route('/cleanup/<int:chatRoomId>')
+class CleanupAPI(Resource):
+    @ns_chatbot.response(200, '메모리 삭제 성공')
+    @ns_chatbot.response(500, '서버 내부 오류')
+    def delete(self, chatRoomId):
+        try:
+            history = get_session_history(str(chatRoomId))
+            history.clear()
+            print(f"[{chatRoomId}] Chat history deleted.")
+            return {"message": "Chat history deleted successfully", "chatRoomId": chatRoomId}, 200
+        except Exception as e:
+            print(f"Error deleting chat history: {e}")
+            return {"error": str(e)}, 500
 
 
 def escape_cypher_quotes(text):
@@ -479,10 +480,9 @@ class MessageAPI(Resource):
 
             detail_model = data.get('detailModel', 'HCX-003')
 
-            # 메모리 로드 (방 ID 기준)
-            memory = get_memory(chat_room_id)
-            print(memory.load_memory_variables({})["history"])
-            print(f"Initialized memory for room {chat_room_id}")
+            # 메모리 로드 제거 (자동 관리)
+            # memory = get_memory(chat_room_id)
+            print(f"Processing message for room {chat_room_id}")
 
 
             if not user_input:
@@ -496,7 +496,7 @@ class MessageAPI(Resource):
             })
             # 비동기 함수 호출 (await)
             # 챗봇 응답
-            response_obj = asyncio.run(chatbot_response(user_input, model=model, detail_model=detail_model, creator_id=creator_id, memory=memory))
+            response_obj = asyncio.run(chatbot_response(user_input, model=model, detail_model=detail_model, creator_id=creator_id, chat_room_id=chat_room_id))
              
             response_content_serialized = (response_obj)
 
@@ -506,7 +506,7 @@ class MessageAPI(Resource):
                 if sentence.strip()  # 빈 문장 제거
             ]
             
-            memory_content = memory.load_memory_variables({})["history"]
+            # memory_content 제거 (필요시 get_session_history로 조회 가능)
            
 
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
@@ -535,8 +535,7 @@ class MessageAPI(Resource):
             print(f"Celery task created with id: {task.id}")
 
             
-            save_conversation_summary(chat_room_id, memory)
-            print("Conversation summary saved.")  # 대화 요약 저장 완료 출력
+
 
             response_data = {
                 

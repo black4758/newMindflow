@@ -60,6 +60,14 @@ const Sidebar = ({ onOpenModal, refreshTrigger, setRefreshTrigger, onChatRoomSel
   const handleDeleteRoom = async (chatroomId) => {
     try {
       const response = await api.delete(`/api/chatroom/delete/${chatroomId}`)
+
+      // Python 서버 쪽 대화 기록도 삭제 (에러가 나도 진행)
+      try {
+        await api.delete(`/chatbot/cleanup/${chatroomId}`)
+      } catch (e) {
+        console.warn("Python chat history cleanup failed:", e)
+      }
+
       if (response.status === 200 || response.status === 204) {
         // 1. 채팅방 목록 업데이트
         setAllChatRooms((prev) => prev.filter((room) => room.id !== chatroomId))
