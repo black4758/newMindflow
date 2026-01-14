@@ -1,24 +1,17 @@
 """
 MongoDB 기반 채팅 히스토리 관리 서비스
 """
-import os
 from datetime import datetime
-from pymongo import MongoClient
-from dotenv import load_dotenv
 
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
 from langchain_core.chat_history import BaseChatMessageHistory
 
-load_dotenv()
+from .db_service import get_chat_memories, get_chat_rooms, get_chat_logs
 
-# MongoDB 클라이언트 초기화
-client = MongoClient(os.getenv('MONGODB_URI'))
-db = client['mindflow_db']
-
-# 컬렉션 정의
-chat_rooms = db['chat_rooms']
-chat_logs = db['chat_logs']
-chat_memories = db['chat_memories']
+# 컬렉션 접근 (하위 호환성 유지)
+chat_memories = get_chat_memories()
+chat_rooms = get_chat_rooms()
+chat_logs = get_chat_logs()
 
 
 class MongoDBChatHistory(BaseChatMessageHistory):

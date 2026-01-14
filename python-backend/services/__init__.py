@@ -31,6 +31,17 @@ from .chat_service import (
     stream_time
 )
 
+from .db_service import (
+    get_mongo_client,
+    get_mongo_db,
+    get_chat_memories,
+    get_chat_rooms,
+    get_chat_logs,
+    get_neo4j_driver,
+    get_redis_url,
+    close_connections
+)
+
 __all__ = [
     # LLM Service
     'google_llm',
@@ -55,6 +66,16 @@ __all__ = [
     'generate_model_responses_async',
     'chatbot_response',
     'generate_response_for_model',
-    'stream_time'
+    'stream_time',
+    # DB Service
+    'get_mongo_client',
+    'get_mongo_db',
+    'get_chat_memories',
+    'get_chat_rooms',
+    'get_chat_logs',
+    'get_neo4j_driver',
+    'get_redis_url',
+    'close_connections'
 ]
+
 

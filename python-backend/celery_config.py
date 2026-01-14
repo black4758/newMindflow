@@ -1,19 +1,13 @@
 from celery import Celery
-from pymongo import MongoClient
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import os
 
+from services.db_service import get_chat_memories, get_redis_url
+
 load_dotenv()
 
-# Docker 환경인지 확인
-IS_DOCKER = os.getenv('IS_DOCKER', 'false').lower() == 'true'
-
-# Redis 호스트 설정
-REDIS_HOST = 'redis' if IS_DOCKER else 'localhost'
-REDIS_PORT = '6379' if IS_DOCKER else '6380'  # 로컬에서는 6380 포트 사용
-REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+REDIS_URL = get_redis_url()
 
 celery = Celery('mindflow',
                 broker=REDIS_URL,
@@ -32,10 +26,8 @@ celery.conf.update(
     broker_connection_retry_on_startup=True
 )
 
-# MongoDB 설정 (독립적 연결)
-mongo_client = MongoClient(os.getenv('MONGODB_URI'))
-db = mongo_client['mindflow_db']
-chat_memories = db['chat_memories']
+# MongoDB 컬렉션 (db_service에서 가져옴)
+chat_memories = get_chat_memories()
 
 # 요약용 LLM 설정
 summary_llm = ChatOpenAI(
