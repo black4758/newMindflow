@@ -4,11 +4,12 @@ from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_anthropic import ChatAnthropic
-from neo4j import GraphDatabase
 from celery_config import celery
 from flask_socketio import SocketIO
 import requests
 import traceback
+
+from services.db_service import get_neo4j_driver
 
 # socketio 인스턴스 생성 (Redis 메시지 큐 사용)
 socketio = SocketIO(message_queue='redis://redis:6379/0')
@@ -17,19 +18,11 @@ load_dotenv()
 
 SPRING_SERVER_URL = os.getenv("SPRING_SERVER_URL")
 
-try:
-    neo4j_id = os.getenv("NEO4J_USER")
-    neo4j_pw = os.getenv("NEO4J_PASSWORD")
-    neo4j_uri = os.getenv("NEO4J_URI")
-    neo4j_driver = GraphDatabase.driver(
-        neo4j_uri,
-        auth=(neo4j_id, neo4j_pw),
-        database="mindmap"
-    )
-except Exception as e:
-    print(f"Neo4j 연결 오류 상세: {str(e)}")
+# Neo4j 드라이버 (db_service에서 가져옴)
+neo4j_driver = get_neo4j_driver()
 
 chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
+
 
 query_prompt = ChatPromptTemplate.from_messages([("user", """
 다음은 현재 마인드맵의 구조와 새로운 대화입니다. 이를 바탕으로 마인드맵을 업데이트하는 Cypher 쿼리를 생성해주세요.
