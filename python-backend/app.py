@@ -28,11 +28,12 @@ load_dotenv()
 # Socket.IO 인스턴스를 chat_service에 주입
 init_socketio(socketio)
 
-print("환경변수 확인:")
-for key in ['MONGODB_URI', 'GOOGLE_API_KEY', 'NCP_CLOVASTUDIO_API_KEY', 'NCP_APIGW_API_KEY', 'OPENAI_API_KEY',
-            'ANTHROPIC_API_KEY']:
-    value = os.getenv(key)
-    print(f"{key}: {'설정됨' if value else '설정되지 않음'}")
+# 환경변수 상태 출력 (시작 시 1회)
+env_keys = ['MONGODB_URI', 'GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY']
+env_status = {k: '✓' if os.getenv(k) else '✗' for k in env_keys}
+print(f"[환경변수] {env_status}")
+
+
 
 
 
@@ -91,12 +92,12 @@ class InitMemoryAPI(Resource):
             history.add_user_message(user_input)
             history.add_ai_message(model_response)
             
-            print(f"[{chat_room_id}] 초기 대화 내용(init-memory)이 저장되었습니다.")
+            print(f"[메모리] 초기화: room={chat_room_id}")
             
             return make_response(json.dumps({'message': 'Memory initialized successfully', 'chatRoomId': chat_room_id}, ensure_ascii=False), 200)
 
         except Exception as e:
-            print(f"Error initializing memory: {e}")
+            print(f"[메모리] 초기화 오류: {e}")
             return make_response(json.dumps({'error': str(e)}, ensure_ascii=False), 500)
 
 
@@ -106,10 +107,7 @@ class SetMemory(Resource):
     @ns_chatbot.response(400, '필수 필드 누락')
     @ns_chatbot.response(500, '내부 서버 오류')
     def post(self, chatRoomId):
-        print("작동 (Legacy API - No-op)")
-        
-        # 메모리 설정 로직 제거됨 (자동 관리)
-        
+                
         return {"message": "Memory set successfully", "chatRoomId": chatRoomId}, 200
 
 
@@ -123,7 +121,7 @@ class AllAPI(Resource):
     def post(self):  # 비동기 함수가 아님!
         try:
             data = request.get_json()
-            print(data)
+            # data = request.get_json()
             user_input = data.get('userInput')
             
             responses = asyncio.run(generate_model_responses_async(user_input))  
@@ -172,10 +170,10 @@ class CleanupAPI(Resource):
         try:
             history = get_session_history(str(chatRoomId))
             history.clear()
-            print(f"[{chatRoomId}] Chat history deleted.")
+            print(f"[히스토리] 삭제: room={chatRoomId}")
             return {"message": "Chat history deleted successfully", "chatRoomId": chatRoomId}, 200
         except Exception as e:
-            print(f"Error deleting chat history: {e}")
+            print(f"[히스토리] 삭제 오류: {e}")
             return {"error": str(e)}, 500
 
 
@@ -209,7 +207,7 @@ def escape_cypher_quotes(text):
 @socketio.on('join')
 def handle_join(data):
     room = data['room']  # 클라이언트가 보낸 room 정보
-    print(room)
+    # Socket room join
     join_room(room)
     
     # 추가적인 세션 관리 로직을 여기에 추가 가능
@@ -227,7 +225,7 @@ class MessageAPI(Resource):
 
         try:
             data = request.get_json()
-            print(f"Received data: {data}")  # 데이터를 받아서 출력
+            print(f"[메시지] 요청: room={data.get('chatRoomId')}")
             chat_room_id = data.get('chatRoomId')
             model = data.get('model', 'clova')
             user_input = data.get('userInput')
@@ -239,11 +237,11 @@ class MessageAPI(Resource):
 
             # 메모리 로드 제거 (자동 관리)
             # memory = get_memory(chat_room_id)
-            print(f"Processing message for room {chat_room_id}")
+            # message processing
 
 
             if not user_input:
-                print("user_input is missing")  # user_input이 없을 경우 출력
+                print("[메시지] 오류: user_input 없음")
                 return make_response(json.dumps({'error': 'user_input은 필수입니다'}, ensure_ascii=False), 400)
 
             socketio.emit('mindmap_status', {
@@ -273,7 +271,7 @@ class MessageAPI(Resource):
                 for sentence in answer_sentences
             ]
             
-            print("문장 아이디 부여: ", sentences_with_ids)
+            # sentences_with_ids 생성 완료
             
             
             task = create_mindmap.delay(  
@@ -287,7 +285,7 @@ class MessageAPI(Resource):
                     creator_id=creator_id
                     # creator_id='1'
                 )
-            print(f"Celery task created with id: {task.id}")
+            # Celery task 시작
 
             # 대화 요약 Task 트리거 (백그라운드)
             summarize_messages.delay(chat_room_id)
@@ -305,11 +303,11 @@ class MessageAPI(Resource):
             }
 
             response_json = json.dumps(response_data, ensure_ascii=False)
-            print(f"응답 JSON: {response_json}")  # 최종 응답 JSON 출력
+            print(f"[메시지] 응답 완료: room={chat_room_id}")
             return make_response(response_json, 200, {"Content-Type": "application/json"})
 
         except Exception as e:
-            print(f"Error: {e!r}")  # 예외 발생 시 오류 출력
+            print(f"[메시지] 오류: {e!r}")
             error_response = {'error': str(e)}
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
 
@@ -354,7 +352,7 @@ class FirstMindmapAPI(Resource):
             return {'status': 'success', 'task_id': task.id}, 200
 
         except Exception as e:
-            print(f"Error creating first mindmap: {e}")
+            print(f"[첫마인드맵] 오류: {e}")
             return {'error': str(e)}, 500
 
 def run_this():

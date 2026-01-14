@@ -3,11 +3,17 @@
 MongoDB, Neo4j 연결을 중앙에서 관리
 """
 import os
+import logging
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from neo4j import GraphDatabase
 
 load_dotenv()
+
+# 불필요한 경고 로그 숨기기
+logging.getLogger("neo4j").setLevel(logging.ERROR)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 # Docker 환경인지 확인
 IS_DOCKER = os.getenv('IS_DOCKER', 'false').lower() == 'true'

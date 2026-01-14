@@ -57,7 +57,7 @@ def summarize_messages(chat_room_id, threshold=50):
         chain = prompt | summary_llm | StrOutputParser()
         new_summary = chain.invoke({})
         
-        print(f"[{chat_room_id}] New Summary Generated: {new_summary}")
+        print(f"[요약] room={chat_room_id}, 생성 완료")
 
         # 3. DB 업데이트 (단일 문서 업데이트로 통합)
         chat_memories.update_one(
@@ -68,15 +68,14 @@ def summarize_messages(chat_room_id, threshold=50):
             }
         )
         
-        print(f"[{chat_room_id}] Summarization Completed: {target_count} messages condensed.")
+        print(f"[요약] room={chat_room_id}, {target_count}개 메시지 압축")
         return True
 
     except Exception as e:
-        print(f"Summarization error: {e}")
-        traceback.print_exc()
+        print(f"[요약] 오류: {e}")
         return False
 
 @celery.task
 def test_task():
-    print("Test task received!")
+    print("[테스트] task received")
     return True
