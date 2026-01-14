@@ -129,7 +129,7 @@ const MainPage = ({
   const modelList = ["chatgpt", "claude", "google", "clova"]
   // 각 모델별 세부 버전 정의
   const detailModelList = {
-    chatgpt: ["gpt-3.5-turbo", "gpt-3.5-turbo-1106", "gpt-4"],
+    chatgpt: ["gpt-4o-mini", "gpt-3.5-turbo", "gpt-3.5-turbo-1106", "gpt-4"],
     claude: ["claude-3-5-sonnet-latest", "claude-3-opus-20240229", "claude-3-5-haiku-20241022"],
     google: ["gemini-2.0-flash-exp", "gemini-2.0-flash-lite-preview-02-05", "gemini-2.0-flash", "gemini-2.5-flash-lite"],
     clova: ["HCX-003"],

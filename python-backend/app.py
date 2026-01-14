@@ -17,12 +17,12 @@ from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 
 
-from tasks import create_mindmap
+from tasks import create_mindmap, summarize_messages
 from socket_config import app, socketio
 
 load_dotenv()
@@ -49,13 +49,12 @@ db = client['mindflow_db']
 # 컬렉션 정의
 chat_rooms = db['chat_rooms']
 chat_logs = db['chat_logs']
-conversation_summaries = db['conversation_summaries']
 chat_memories = db['chat_memories']
 stream_time=0.05
 
 google_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5, max_tokens=4096,streaming=True)
 clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
-chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
+chatgpt_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, max_tokens=4096,streaming=True)
 claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
 
 
@@ -73,6 +72,12 @@ class MongoDBChatHistory(BaseChatMessageHistory):
                     messages.append(HumanMessage(content=msg['content']))
                 elif msg['role'] == 'assistant':
                     messages.append(AIMessage(content=msg['content']))
+        # 요약본이 있는지 확인하고 맨 앞에 추가
+        # 같은 doc 안에 summary 필드로 존재함
+        if doc and "summary" in doc:
+             summary_message = SystemMessage(content=f"이전 대화 요약: {doc['summary']}")
+             messages.insert(0, summary_message)
+             
         return messages
 
     def add_message(self, message: BaseMessage) -> None:
@@ -105,7 +110,7 @@ def generate_room_title(user_input):
         [("system", "입력을 받은걸로 짧은 키워드나 한 문장으로 제목을 만들어줘. 제목만 말해줘."), ("human", "{user_input}")])
     
     # LCEL Chain 생성
-    chain = title_prompt | google_llm | StrOutputParser()
+    chain = title_prompt | chatgpt_llm | StrOutputParser()
     
     # Chain 실행
     return chain.invoke({"user_input": user_input}).strip()
@@ -152,7 +157,7 @@ async def llm_generate_async(user_input, llm, model_name):
 async def generate_model_responses_async(user_input):
     models = {
         'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
-        'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-3.5-turbo"},
+        'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-4o-mini"},
         'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
         'google': {'llm': google_llm, 'detail_model': "gemini-2.5-flash-lite"}
     }
@@ -174,7 +179,7 @@ async def generate_model_responses_async(user_input):
     return results
 
 
-async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash-lite",creator_id=1, memory=None):
+async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash-lite",creator_id=1, chat_room_id=None):
     model_classes = {
         "google": ChatGoogleGenerativeAI, 
         "clova": ChatClovaX, 
@@ -186,7 +191,10 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-
 
 
     if model == "google":
+        # Google 선택 시에도 GPT-4o-mini 강제 사용
+        # Google 전용 함수 대신 일반 함수 사용
         return generate_response_for_google(user_input, model_class, detail_model, creator_id, chat_room_id)
+
     
 
     if model_class:
@@ -520,6 +528,9 @@ class MessageAPI(Resource):
                     # creator_id='1'
                 )
             print(f"Celery task created with id: {task.id}")
+
+            # 대화 요약 Task 트리거 (백그라운드)
+            summarize_messages.delay(chat_room_id)
 
             
             response_data = {

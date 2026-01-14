@@ -1,20 +1,16 @@
 import json
 import os
-
 from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain_anthropic import ChatAnthropic
 from neo4j import GraphDatabase
-
 from celery_config import celery
-
 from flask_socketio import SocketIO
-
 import requests
 import traceback
 
-# tasks.py의 상단에 socketio 인스턴스 생성
+# socketio 인스턴스 생성 (Redis 메시지 큐 사용)
 socketio = SocketIO(message_queue='redis://redis:6379/0')
 
 load_dotenv()
@@ -22,32 +18,20 @@ load_dotenv()
 SPRING_SERVER_URL = os.getenv("SPRING_SERVER_URL")
 
 try:
-    # bolt:// 프로토콜 사용 및 데이터베이스 이름 지정
     neo4j_id = os.getenv("NEO4J_USER")
     neo4j_pw = os.getenv("NEO4J_PASSWORD")
-    neo4j_uri = os.getenv("NEO4J_URI")  # mindmap은 docker-compose에서 지정한 데이터베이스 이름
+    neo4j_uri = os.getenv("NEO4J_URI")
     neo4j_driver = GraphDatabase.driver(
         neo4j_uri,
         auth=(neo4j_id, neo4j_pw),
-        database="mindmap"  # 명시적으로 데이터베이스 지정
+        database="mindmap"
     )
-
-    # 연결 테스트를 위한 간단한 쿼리 실행
-    with neo4j_driver.session(database="mindmap") as session:
-        result = session.run("RETURN 1 as test")
-        print(result.single()["test"])
-
-    print("Neo4j 연결 성공")
 except Exception as e:
     print(f"Neo4j 연결 오류 상세: {str(e)}")
-    print(f"오류 타입: {type(e).__name__}")
 
-# LangChain 설정
 chat_model = ChatAnthropic(model="claude-3-5-sonnet-latest", max_tokens=4096)
 
-# Neo4j 쿼리 생성용 프롬프트 템플릿
 query_prompt = ChatPromptTemplate.from_messages([("user", """
-
 다음은 현재 마인드맵의 구조와 새로운 대화입니다. 이를 바탕으로 마인드맵을 업데이트하는 Cypher 쿼리를 생성해주세요.
 
 현재 마인드맵 구조:
@@ -67,7 +51,7 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
      * content
      * creator_id
      * created_at
-   - 첫 노드 생성 예예시:
+   - 첫 노드 생성 예시:
      CREATE (n:Topic {{
          title: '제목',
          content: '내용',
@@ -144,7 +128,6 @@ query_prompt = ChatPromptTemplate.from_messages([("user", """
 기존 노드와의 연결을 최우선으로 고려하고, 완전히 새로운 주제인 경우에만 새 루트 노드를 생성하세요.
 Cypher 쿼리만 반환하고 다른 설명은 하지 말아주세요. 단, APOC 라이브러리를 이용한 쿼리는 쓰면 안되요.""")])
 
-# LangChain 체인 구성
 query_chain = query_prompt | chat_model | StrOutputParser()
 
 
@@ -177,15 +160,11 @@ def escape_cypher_quotes(text):
     if text is None:
         return text
 
-    # 축약형(I'm, don't 등)과 따옴표를 포함한 텍스트를 처리하기 위해
-    # 작은따옴표를 두 개의 작은따옴표로 이스케이프 처리
     escaped_text = ""
     prev_char = None
 
     for char in text:
         if char == "'":
-            # 이전 문자가 알파벳이고 다음 문자가 m, s, t, ve, ll 등인 경우를 처리하기 위해
-            # 그대로 작은따옴표 하나만 사용
             if (prev_char and prev_char.isalpha()) and len(escaped_text) < len(text) - 1:
                 escaped_text += "'"
             else:
@@ -201,49 +180,31 @@ def escape_cypher_quotes(text):
 def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences, creator_id):
     print(f"Task received with chat_room_id: {chat_room_id}")
 
-    # Spring 서버에서 채팅방 제목 조회
     chat_room_title = None
 
     try:
         url = f"{SPRING_SERVER_URL}/api/messages/room-title/{chat_room_id}"
-        print(f"Spring 서버 요청 URL: {url}")  # URL 로깅
         
         response = requests.get(url)
-        print(f"Spring 서버 응답 상태 코드: {response.status_code}")  # 상태 코드 로깅
-        print(f"Spring 서버 응답 내용: {response.text}")  # 응답 내용 로깅
         
         if response.status_code == 200:
             chat_room_title = response.text
             print(f"설정된 채팅방 제목: {chat_room_title}")
         else:
             print(f"채팅방 제목 조회 실패: HTTP {response.status_code}")
-            print(f"응답 내용: {response.text}")
     except Exception as e:
-        print(f"채팅방 제목 조회 중 예외 발생:")
-        print(f"예외 타입: {type(e)}")
-        print(f"예외 메시지: {str(e)}")
-        traceback.print_exc()  # 상세한 스택 트레이스 출력
+        print(f"채팅방 제목 조회 중 예외 발생: {str(e)}")
+        traceback.print_exc()
 
-    # 채팅방 제목이 None인 경우 로그
     if chat_room_title is None:
         print("주의: 채팅방 제목이 None으로 설정됨")
 
 
     try:
-        print(f"""
-        마인드맵 생성 시작:
-        - account_id: {account_id}
-        - chat_room_id: {chat_room_id}
-        - chat_id: {chat_id}
-        - question: {question}
-        - creator_id : {creator_id}
-        - sentences: {len(answer_sentences)}개
-        """)
+        print(f"마인드맵 생성 시작: chat_room_id={chat_room_id}, sentences={len(answer_sentences)}개")
 
-        # 마인드맵 구조 가져오기
         current_structure = get_mindmap_structure(creator_id, chat_room_id)
 
-        # 쿼리 생성을 위한 데이터 준비
         query_data = {
                         "structure": json.dumps(current_structure, indent=2, default=str) if current_structure else "아직 생성된 노드가 없습니다.",
                         "question": escape_cypher_quotes(question), 
@@ -251,27 +212,24 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
                         "account_id": account_id, 
                         "chat_room_id": chat_room_id, 
                         "creator_id": creator_id,
-                        "chat_room_title": chat_room_title,  # 채팅방 제목 추가
+                        "chat_room_title": chat_room_title,
                     }
 
-        # 마인드맵 생성 상태
         socketio.emit('mindmap_status', {
             'status': 'generating',
             'message': '마인드맵을 생성하고 있습니다',
             'chatRoomId': chat_room_id
         })
 
-        # 쿼리 생성 및 실행
         print("Cypher 쿼리 생성 시작")
         query = query_chain.invoke(query_data)
-        print(f"""생성된 Cypher 쿼리:{query}""")
+        print(f"생성된 Cypher 쿼리: {query}")
 
         print("Neo4j 쿼리 실행 시작")
         with neo4j_driver.session(database="mindmap") as session:
             session.run(query)
         print("마인드맵 생성 작업 완료")
 
-        # 완료 상태
         socketio.emit('mindmap_status', {
             'status': 'completed',
             'message': '마인드맵 생성이 완료되었습니다',
@@ -280,18 +238,8 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
 
         return True
     except Exception as e:
-        print(f"""마인드맵 생성 오류:
-- Error Type: {type(e).__name__}
-- Error Message: {str(e)}
-- Input Data: 
-  account_id: {account_id}
-  chat_room_id: {chat_room_id}
-  chat_id: {chat_id}
-  question: {question}
-  answer_sentences: {answer_sentences}
-""")
+        print(f"마인드맵 생성 오류: {str(e)}")
         
-        # 에러 상태
         socketio.emit('mindmap_status', {
             'status': 'error',
             'message': f'마인드맵 생성 중 오류가 발생했습니다: {str(e)}',
@@ -299,9 +247,3 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         })
 
         return False
-
-
-@celery.task
-def test_task():
-    print("Test task received!")
-    return True
