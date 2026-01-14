@@ -10,22 +10,19 @@ from flask_restx import Api, Resource, fields
 from flask_socketio import join_room
 
 from pymongo import MongoClient
-from cachetools import TTLCache
 from nanoid import generate
-
-from langchain.memory import ConversationSummaryBufferMemory
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 
 
-from tasks import create_mindmap
+from tasks import create_mindmap, summarize_messages
 from socket_config import app, socketio
 
 load_dotenv()
@@ -52,13 +49,12 @@ db = client['mindflow_db']
 # 컬렉션 정의
 chat_rooms = db['chat_rooms']
 chat_logs = db['chat_logs']
-conversation_summaries = db['conversation_summaries']
 chat_memories = db['chat_memories']
 stream_time=0.05
 
 google_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5, max_tokens=4096,streaming=True)
 clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
-chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
+chatgpt_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, max_tokens=4096,streaming=True)
 claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
 
 
@@ -76,6 +72,12 @@ class MongoDBChatHistory(BaseChatMessageHistory):
                     messages.append(HumanMessage(content=msg['content']))
                 elif msg['role'] == 'assistant':
                     messages.append(AIMessage(content=msg['content']))
+        # 요약본이 있는지 확인하고 맨 앞에 추가
+        # 같은 doc 안에 summary 필드로 존재함
+        if doc and "summary" in doc:
+             summary_message = SystemMessage(content=f"이전 대화 요약: {doc['summary']}")
+             messages.insert(0, summary_message)
+             
         return messages
 
     def add_message(self, message: BaseMessage) -> None:
@@ -108,11 +110,10 @@ def generate_room_title(user_input):
         [("system", "입력을 받은걸로 짧은 키워드나 한 문장으로 제목을 만들어줘. 제목만 말해줘."), ("human", "{user_input}")])
     
     # LCEL Chain 생성
-    chain = title_prompt | google_llm | StrOutputParser()
+    chain = title_prompt | chatgpt_llm | StrOutputParser()
     
     # Chain 실행
     return chain.invoke({"user_input": user_input}).strip()
-
 
 async def llm_generate_async(user_input, llm, model_name):
     prompt = ChatPromptTemplate.from_messages([
@@ -130,21 +131,11 @@ async def llm_generate_async(user_input, llm, model_name):
         })
         await asyncio.sleep(stream_time)
 
-    # ✅ Google LLM은 동기 방식이라 별도 처리
-    if model_name == "google":
-        def sync_google_response():
-            return chain.invoke({"user_input": user_input})
-
-        answer = await asyncio.to_thread(sync_google_response)  # Google LLM을 별도 쓰레드에서 실행
-        for word in answer.split():
-            await send_to_websocket(word + " ")
-        return answer
-
-    # ✅ 나머지 모델 (스트리밍 방식)
+    # ✅ 모든 모델 (Google 포함) astream으로 통합
     full_response = ""
     
     async for chunk in chain.astream({"user_input": user_input}):
-        if chunk.strip():
+        if chunk and chunk.strip():
             await send_to_websocket(chunk)
             full_response += chunk
 
@@ -152,13 +143,10 @@ async def llm_generate_async(user_input, llm, model_name):
 
 
 
-
-
-
 async def generate_model_responses_async(user_input):
     models = {
         'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
-        'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-3.5-turbo"},
+        'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-4o-mini"},
         'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
         'google': {'llm': google_llm, 'detail_model': "gemini-2.5-flash-lite"}
     }
@@ -180,7 +168,7 @@ async def generate_model_responses_async(user_input):
     return results
 
 
-async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash-lite",creator_id=1, memory=None):
+async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash-lite",creator_id=1, chat_room_id=None):
     model_classes = {
         "google": ChatGoogleGenerativeAI, 
         "clova": ChatClovaX, 
@@ -188,12 +176,6 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-
         "claude": ChatAnthropic
     }
     model_class = model_classes.get(model)
-
-
-
-    if model == "google":
-        return generate_response_for_google(user_input, model_class, detail_model, creator_id, chat_room_id)
-    
 
     if model_class:
         return await generate_response_for_model(user_input, model_class, detail_model, creator_id, chat_room_id)  
@@ -207,7 +189,7 @@ async def generate_response_for_model(user_input, model_class, detail_model, cre
         ("placeholder", "{history}"),
         ("human", "{user_input}")
     ])
-
+    
     model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
     chain = prompt | model | StrOutputParser()
 
@@ -220,14 +202,14 @@ async def generate_response_for_model(user_input, model_class, detail_model, cre
 
     full_response = ""  
 
+    # Google 모델도 astream을 지원하므로 통일
     async for chunk in chain_with_history.astream(
         {"user_input": user_input},
         config={"configurable": {"session_id": str(chat_room_id)}}
     ):
-        if not chunk.strip():  
+        if not chunk or not chunk.strip():  
             continue
 
-        print(chunk)  
         full_response += chunk  
 
         socketio.emit('stream', {
@@ -237,46 +219,6 @@ async def generate_response_for_model(user_input, model_class, detail_model, cre
         await asyncio.sleep(stream_time)
 
     return full_response
-
-def generate_response_for_google(user_input, model_class, detail_model, creator_id, chat_room_id):
-    prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는  챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
-        ("placeholder", "{history}"),
-        ("human", "{user_input}")
-    ])
-
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
-    chain = prompt | model | StrOutputParser()
-    
-    chain_with_history = RunnableWithMessageHistory(
-        chain,
-        get_session_history,
-        input_messages_key="user_input",
-        history_messages_key="history",
-    )
-
-    # Google 모델은 invoke로 (동기 처리 필요시, Flask 라우트가 비동기를 지원하므로 사실 invoke도 괜찮음, 여기선 invoke 유지)
-    answer = chain_with_history.invoke(
-        {"user_input": user_input},
-        config={"configurable": {"session_id": str(chat_room_id)}}
-    )
-    
-    parts = answer.split(' ')
-
-    for part in parts:
-        message = f"{part} "
-        print(part)
-        socketio.emit('stream', {
-            'content': message,
-        }, room=creator_id)
-        time.sleep(stream_time)
-
-    return answer
-
-
-
-
-
 
 
 
@@ -505,9 +447,7 @@ class MessageAPI(Resource):
                 for sentence in response_content_serialized.replace('\n', ' ').split('.')  # 개행은 공백으로 바꾸고, 마침표로 분리
                 if sentence.strip()  # 빈 문장 제거
             ]
-            
-            # memory_content 제거 (필요시 get_session_history로 조회 가능)
-           
+                       
 
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
             sentences_with_ids = [
@@ -534,9 +474,10 @@ class MessageAPI(Resource):
                 )
             print(f"Celery task created with id: {task.id}")
 
+            # 대화 요약 Task 트리거 (백그라운드)
+            summarize_messages.delay(chat_room_id)
+
             
-
-
             response_data = {
                 
                 'status': 'success',
