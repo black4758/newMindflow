@@ -1,31 +1,32 @@
 import json
 import os
-import time
 import asyncio
-from datetime import datetime
 
 from dotenv import load_dotenv
 from flask import Flask, request, make_response
 from flask_restx import Api, Resource, fields
 from flask_socketio import join_room
 
-from pymongo import MongoClient
 from nanoid import generate
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_anthropic import ChatAnthropic
-from langchain_community.chat_models import ChatClovaX
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage, SystemMessage
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory
-
 
 from tasks import create_mindmap, summarize_messages
 from socket_config import app, socketio
 
+# 분리된 서비스 import
+from services import (
+    get_all_models_info,
+    get_session_history,
+    init_socketio,
+    generate_room_title,
+    generate_model_responses_async,
+    chatbot_response,
+    chat_memories
+)
+
 load_dotenv()
+
+# Socket.IO 인스턴스를 chat_service에 주입
+init_socketio(socketio)
 
 print("환경변수 확인:")
 for key in ['MONGODB_URI', 'GOOGLE_API_KEY', 'NCP_CLOVASTUDIO_API_KEY', 'NCP_APIGW_API_KEY', 'OPENAI_API_KEY',
@@ -33,192 +34,6 @@ for key in ['MONGODB_URI', 'GOOGLE_API_KEY', 'NCP_CLOVASTUDIO_API_KEY', 'NCP_API
     value = os.getenv(key)
     print(f"{key}: {'설정됨' if value else '설정되지 않음'}")
 
-
-# 환경 변수로 API 키 설정 (Google, CLOVA Studio, OpenAI, Anthropic)
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-NCP_CLOVASTUDIO_API_KEY = os.getenv("NCP_CLOVASTUDIO_API_KEY")
-NCP_APIGW_API_KEY = os.getenv("NCP_APIGW_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-# MongoDB 클라이언트 초기화
-
-client = MongoClient(os.getenv('MONGODB_URI'))
-
-db = client['mindflow_db']
-
-# 컬렉션 정의
-chat_rooms = db['chat_rooms']
-chat_logs = db['chat_logs']
-chat_memories = db['chat_memories']
-stream_time=0.05
-
-google_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", temperature=0.5, max_tokens=4096,streaming=True)
-clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
-chatgpt_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, max_tokens=4096,streaming=True)
-claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
-
-
-class MongoDBChatHistory(BaseChatMessageHistory):
-    def __init__(self, session_id: str):
-        self.session_id = session_id
-
-    @property
-    def messages(self) -> list[BaseMessage]:
-        doc = chat_memories.find_one({"chat_room_id": int(self.session_id)})
-        messages = []
-        if doc and "messages" in doc:
-            for msg in doc['messages']:
-                if msg['role'] == 'user':
-                    messages.append(HumanMessage(content=msg['content']))
-                elif msg['role'] == 'assistant':
-                    messages.append(AIMessage(content=msg['content']))
-        # 요약본이 있는지 확인하고 맨 앞에 추가
-        # 같은 doc 안에 summary 필드로 존재함
-        if doc and "summary" in doc:
-             summary_message = SystemMessage(content=f"이전 대화 요약: {doc['summary']}")
-             messages.insert(0, summary_message)
-             
-        return messages
-
-    def add_message(self, message: BaseMessage) -> None:
-        if isinstance(message, HumanMessage):
-            role = "user"
-        elif isinstance(message, AIMessage):
-            role = "assistant"
-        else:
-            return
-
-        chat_memories.update_one(
-            {"chat_room_id": int(self.session_id)},
-            {
-                "$push": {"messages": {"role": role, "content": message.content}},
-                "$set": {"updated_at": datetime.now().isoformat()}
-            },
-            upsert=True
-        )
-
-    def clear(self) -> None:
-        chat_memories.delete_one({"chat_room_id": int(self.session_id)})
-
-def get_session_history(session_id: str) -> BaseChatMessageHistory:
-    return MongoDBChatHistory(session_id)
-
-
-def generate_room_title(user_input):
-    # ChatPromptTemplate 생성
-    title_prompt = ChatPromptTemplate.from_messages(
-        [("system", "입력을 받은걸로 짧은 키워드나 한 문장으로 제목을 만들어줘. 제목만 말해줘."), ("human", "{user_input}")])
-    
-    # LCEL Chain 생성
-    chain = title_prompt | chatgpt_llm | StrOutputParser()
-    
-    # Chain 실행
-    return chain.invoke({"user_input": user_input}).strip()
-
-async def llm_generate_async(user_input, llm, model_name):
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "너는 챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
-        ("human", "{user_input}")
-    ])
-    
-    chain = prompt | llm | StrOutputParser()
-
-    async def send_to_websocket(content):
-        """스트리밍 데이터 즉시 전송"""
-        socketio.emit('all_stream', {
-            'content': content,
-            'model_name': model_name
-        })
-        await asyncio.sleep(stream_time)
-
-    # ✅ 모든 모델 (Google 포함) astream으로 통합
-    full_response = ""
-    
-    async for chunk in chain.astream({"user_input": user_input}):
-        if chunk and chunk.strip():
-            await send_to_websocket(chunk)
-            full_response += chunk
-
-    return full_response
-
-
-
-async def generate_model_responses_async(user_input):
-    models = {
-        'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
-        'chatgpt': {'llm': chatgpt_llm, 'detail_model': "gpt-4o-mini"},
-        'claude': {'llm': claude_llm, 'detail_model': "claude-3-5-sonnet-latest"},
-        'google': {'llm': google_llm, 'detail_model': "gemini-2.5-flash-lite"}
-    }
-
-    async def run_model(model_name, model_info):
-        """각 모델을 독립적으로 실행하며 스트리밍"""
-        response = await llm_generate_async(user_input, model_info['llm'], model_name)
-        return model_name, {'response': response, 'detail_model': model_info['detail_model']}
-
-    tasks = [asyncio.create_task(run_model(model, info)) for model, info in models.items()]
-    
-    results = {}
-
-    # ✅ 한 모델이 완료되면 즉시 저장 (각각 독립적으로 실행됨)
-    for task in asyncio.as_completed(tasks):
-        model_name, result = await task
-        results[model_name] = result
-
-    return results
-
-
-async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-flash-lite",creator_id=1, chat_room_id=None):
-    model_classes = {
-        "google": ChatGoogleGenerativeAI, 
-        "clova": ChatClovaX, 
-        "chatgpt": ChatOpenAI,
-        "claude": ChatAnthropic
-    }
-    model_class = model_classes.get(model)
-
-    if model_class:
-        return await generate_response_for_model(user_input, model_class, detail_model, creator_id, chat_room_id)  
-    
-    return {"error": "Invalid model"}
-
-async def generate_response_for_model(user_input, model_class, detail_model, creator_id, chat_room_id):
-    # history는 자동으로 채워짐
-    prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는 챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
-        ("placeholder", "{history}"),
-        ("human", "{user_input}")
-    ])
-    
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
-    chain = prompt | model | StrOutputParser()
-
-    chain_with_history = RunnableWithMessageHistory(
-        chain,
-        get_session_history,
-        input_messages_key="user_input",
-        history_messages_key="history",
-    )
-
-    full_response = ""  
-
-    # Google 모델도 astream을 지원하므로 통일
-    async for chunk in chain_with_history.astream(
-        {"user_input": user_input},
-        config={"configurable": {"session_id": str(chat_room_id)}}
-    ):
-        if not chunk or not chunk.strip():  
-            continue
-
-        full_response += chunk  
-
-        socketio.emit('stream', {
-            'content': chunk
-        }, room=creator_id)
-
-        await asyncio.sleep(stream_time)
-
-    return full_response
 
 
 
