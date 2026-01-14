@@ -10,10 +10,7 @@ from flask_restx import Api, Resource, fields
 from flask_socketio import join_room
 
 from pymongo import MongoClient
-from cachetools import TTLCache
 from nanoid import generate
-
-from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import ChatClovaX
@@ -152,9 +149,6 @@ async def llm_generate_async(user_input, llm, model_name):
 
 
 
-
-
-
 async def generate_model_responses_async(user_input):
     models = {
         'clova': {'llm': clova_llm, 'detail_model': "HCX-003"},
@@ -272,11 +266,6 @@ def generate_response_for_google(user_input, model_class, detail_model, creator_
         time.sleep(stream_time)
 
     return answer
-
-
-
-
-
 
 
 
@@ -505,9 +494,7 @@ class MessageAPI(Resource):
                 for sentence in response_content_serialized.replace('\n', ' ').split('.')  # 개행은 공백으로 바꾸고, 마침표로 분리
                 if sentence.strip()  # 빈 문장 제거
             ]
-            
-            # memory_content 제거 (필요시 get_session_history로 조회 가능)
-           
+                       
 
             # 각 문장에 sentenceId 부여 및 Cypher 이스케이프 처리
             sentences_with_ids = [
@@ -535,8 +522,6 @@ class MessageAPI(Resource):
             print(f"Celery task created with id: {task.id}")
 
             
-
-
             response_data = {
                 
                 'status': 'success',
