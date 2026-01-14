@@ -1,5 +1,5 @@
 from celery_config import celery, chat_memories, summary_llm
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from datetime import datetime
 import traceback

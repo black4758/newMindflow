@@ -13,7 +13,7 @@ from flask import make_response
 from flask_restx import Api, Resource, fields
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -56,7 +56,7 @@ chat_rooms = db['chat_rooms']
 chat_logs = db['chat_logs']
 conversation_summaries = db['conversation_summaries']
 
-google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.5, max_tokens=4096,streaming=True)
+google_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.5, max_tokens=4096,streaming=True)
 clova_llm = ChatClovaX(model="HCX-003", max_tokens=4096, temperature=0.5,streaming=True)
 chatgpt_llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5, max_tokens=4096,streaming=True)
 claude_llm = ChatAnthropic(model="claude-3-5-sonnet-latest", temperature=0.5, max_tokens=4096,streaming=True)
@@ -121,7 +121,7 @@ def generate_response_for_model(user_input, model_class, detail_model):
 
 
 
-def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash-exp"):
+def chatbot_response(user_input, model="google", detail_model="gemini-2.0-flash"):
     model_classes = {"google": ChatGoogleGenerativeAI, "clova": ChatClovaX, "chatgpt": ChatOpenAI,
                      "claude": ChatAnthropic}
     model_class = model_classes.get(model)
@@ -175,7 +175,7 @@ def generate_model_responses(user_input):
     return {
         'google':{
             'response':google_response,
-            'detail_model':"gemini-2.0-flash-exp"
+            'detail_model':"gemini-2.0-flash"
         } ,
         'clova': {
             'response':clova_response,

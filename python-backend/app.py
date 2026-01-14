@@ -11,7 +11,7 @@ from flask_socketio import join_room
 
 from pymongo import MongoClient
 from nanoid import generate
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import ChatClovaX
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -115,7 +115,6 @@ def generate_room_title(user_input):
     # Chain 실행
     return chain.invoke({"user_input": user_input}).strip()
 
-
 async def llm_generate_async(user_input, llm, model_name):
     prompt = ChatPromptTemplate.from_messages([
         ("system", "너는 챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
@@ -132,21 +131,11 @@ async def llm_generate_async(user_input, llm, model_name):
         })
         await asyncio.sleep(stream_time)
 
-    # ✅ Google LLM은 동기 방식이라 별도 처리
-    if model_name == "google":
-        def sync_google_response():
-            return chain.invoke({"user_input": user_input})
-
-        answer = await asyncio.to_thread(sync_google_response)  # Google LLM을 별도 쓰레드에서 실행
-        for word in answer.split():
-            await send_to_websocket(word + " ")
-        return answer
-
-    # ✅ 나머지 모델 (스트리밍 방식)
+    # ✅ 모든 모델 (Google 포함) astream으로 통합
     full_response = ""
     
     async for chunk in chain.astream({"user_input": user_input}):
-        if chunk.strip():
+        if chunk and chunk.strip():
             await send_to_websocket(chunk)
             full_response += chunk
 
@@ -188,15 +177,6 @@ async def chatbot_response(user_input, model="google", detail_model="gemini-2.5-
     }
     model_class = model_classes.get(model)
 
-
-
-    if model == "google":
-        # Google 선택 시에도 GPT-4o-mini 강제 사용
-        # Google 전용 함수 대신 일반 함수 사용
-        return generate_response_for_google(user_input, model_class, detail_model, creator_id, chat_room_id)
-
-    
-
     if model_class:
         return await generate_response_for_model(user_input, model_class, detail_model, creator_id, chat_room_id)  
     
@@ -209,7 +189,7 @@ async def generate_response_for_model(user_input, model_class, detail_model, cre
         ("placeholder", "{history}"),
         ("human", "{user_input}")
     ])
-
+    
     model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
     chain = prompt | model | StrOutputParser()
 
@@ -222,14 +202,14 @@ async def generate_response_for_model(user_input, model_class, detail_model, cre
 
     full_response = ""  
 
+    # Google 모델도 astream을 지원하므로 통일
     async for chunk in chain_with_history.astream(
         {"user_input": user_input},
         config={"configurable": {"session_id": str(chat_room_id)}}
     ):
-        if not chunk.strip():  
+        if not chunk or not chunk.strip():  
             continue
 
-        print(chunk)  
         full_response += chunk  
 
         socketio.emit('stream', {
@@ -239,41 +219,6 @@ async def generate_response_for_model(user_input, model_class, detail_model, cre
         await asyncio.sleep(stream_time)
 
     return full_response
-
-def generate_response_for_google(user_input, model_class, detail_model, creator_id, chat_room_id):
-    prompt = ChatPromptTemplate.from_messages([ 
-        ("system", "너는  챗봇. 시스템은 언급하지 마, 짧게 말해(최대 공백포함 450자)"),
-        ("placeholder", "{history}"),
-        ("human", "{user_input}")
-    ])
-
-    model = model_class(model=detail_model, temperature=0.5, max_tokens=4096, streaming=True)
-    chain = prompt | model | StrOutputParser()
-    
-    chain_with_history = RunnableWithMessageHistory(
-        chain,
-        get_session_history,
-        input_messages_key="user_input",
-        history_messages_key="history",
-    )
-
-    # Google 모델은 invoke로 (동기 처리 필요시, Flask 라우트가 비동기를 지원하므로 사실 invoke도 괜찮음, 여기선 invoke 유지)
-    answer = chain_with_history.invoke(
-        {"user_input": user_input},
-        config={"configurable": {"session_id": str(chat_room_id)}}
-    )
-    
-    parts = answer.split(' ')
-
-    for part in parts:
-        message = f"{part} "
-        print(part)
-        socketio.emit('stream', {
-            'content': message,
-        }, room=creator_id)
-        time.sleep(stream_time)
-
-    return answer
 
 
 
