@@ -115,7 +115,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: celery_container
-    command: celery -A tasks worker --loglevel=info
+    command: celery -A celery_config.celery worker --loglevel=info
     restart: always
     depends_on:
       - redis
