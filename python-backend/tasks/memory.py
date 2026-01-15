@@ -2,7 +2,10 @@ from celery_config import celery, chat_memories, summary_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from datetime import datetime
-import traceback
+import logging
+from utils.logger import log_error
+
+logger = logging.getLogger(__name__)
 
 @celery.task
 def summarize_messages(chat_room_id, threshold=50):
@@ -57,7 +60,7 @@ def summarize_messages(chat_room_id, threshold=50):
         chain = prompt | summary_llm | StrOutputParser()
         new_summary = chain.invoke({})
         
-        print(f"[요약] room={chat_room_id}, 생성 완료")
+        logger.info(f"요약 생성 완료: room={chat_room_id}")
 
         # 3. DB 업데이트 (단일 문서 업데이트로 통합)
         chat_memories.update_one(
@@ -68,14 +71,14 @@ def summarize_messages(chat_room_id, threshold=50):
             }
         )
         
-        print(f"[요약] room={chat_room_id}, {target_count}개 메시지 압축")
+        logger.info(f"요약 완료: room={chat_room_id}, {target_count}개 메시지 압축")
         return True
 
     except Exception as e:
-        print(f"[요약] 오류: {e}")
+        log_error(logger, "메시지 요약 오류", e, {"chat_room_id": chat_room_id})
         return False
 
 @celery.task
 def test_task():
-    print("[테스트] task received")
+    logger.info("테스트 task received")
     return True

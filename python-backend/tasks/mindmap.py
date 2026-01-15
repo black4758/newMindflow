@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -10,6 +11,9 @@ import requests
 import traceback
 
 from services.db_service import get_neo4j_driver
+from utils.logger import log_error, log_info_block
+
+logger = logging.getLogger(__name__)
 
 # socketio 인스턴스 생성 (Redis 메시지 큐 사용)
 socketio = SocketIO(message_queue='redis://redis:6379/0')
@@ -171,7 +175,7 @@ def escape_cypher_quotes(text):
 
 @celery.task
 def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences, creator_id):
-    print(f"Task received with chat_room_id: {chat_room_id}")
+    logger.info(f"Task received with chat_room_id: {chat_room_id}")
 
     chat_room_title = None
 
@@ -182,19 +186,19 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
         
         if response.status_code == 200:
             chat_room_title = response.text
-            print(f"설정된 채팅방 제목: {chat_room_title}")
+            logger.info(f"설정된 채팅방 제목: {chat_room_title}")
         else:
-            print(f"채팅방 제목 조회 실패: HTTP {response.status_code}")
+            logger.warning(f"채팅방 제목 조회 실패: HTTP {response.status_code}")
     except Exception as e:
-        print(f"채팅방 제목 조회 중 예외 발생: {str(e)}")
+        logger.error(f"채팅방 제목 조회 중 예외 발생: {str(e)}")
         traceback.print_exc()
 
     if chat_room_title is None:
-        print("주의: 채팅방 제목이 None으로 설정됨")
+        logger.warning("주의: 채팅방 제목이 None으로 설정됨")
 
 
     try:
-        print(f"마인드맵 생성 시작: chat_room_id={chat_room_id}, sentences={len(answer_sentences)}개")
+        logger.info(f"마인드맵 생성 시작: chat_room_id={chat_room_id}, sentences={len(answer_sentences)}개")
 
         current_structure = get_mindmap_structure(creator_id, chat_room_id)
 
@@ -214,14 +218,16 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
             'chatRoomId': chat_room_id
         })
 
-        print("Cypher 쿼리 생성 시작")
+        logger.info("Cypher 쿼리 생성 시작")
         query = query_chain.invoke(query_data)
-        print(f"생성된 Cypher 쿼리: {query}")
+        
+        # Cypher 쿼리 구조화 출력
+        log_info_block(logger, "생성된 Cypher 쿼리", content=query)
 
-        print("Neo4j 쿼리 실행 시작")
+        logger.info("Neo4j 쿼리 실행 시작")
         with neo4j_driver.session(database="mindmap") as session:
             session.run(query)
-        print("마인드맵 생성 작업 완료")
+        logger.info("마인드맵 생성 작업 완료")
 
         socketio.emit('mindmap_status', {
             'status': 'completed',
@@ -231,7 +237,11 @@ def create_mindmap(account_id, chat_room_id, chat_id, question, answer_sentences
 
         return True
     except Exception as e:
-        print(f"마인드맵 생성 오류: {str(e)}")
+        log_error(logger, "마인드맵 생성 오류", e, {
+            "chat_room_id": chat_room_id,
+            "question": question,
+            "sentence_count": len(answer_sentences)
+        })
         
         socketio.emit('mindmap_status', {
             'status': 'error',

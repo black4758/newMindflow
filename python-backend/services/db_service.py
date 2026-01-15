@@ -7,8 +7,11 @@ import logging
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from neo4j import GraphDatabase
+from utils.logger import log_error
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # 불필요한 경고 로그 숨기기
 logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -61,7 +64,10 @@ def get_neo4j_driver():
                 database="mindmap"
             )
         except Exception as e:
-            print(f"Neo4j 연결 오류: {str(e)}")
+            log_error(logger, "Neo4j 연결 오류", e, {
+                "uri": os.getenv("NEO4J_URI"),
+                "user": os.getenv("NEO4J_USER")
+            })
             raise
     return _neo4j_driver
 
