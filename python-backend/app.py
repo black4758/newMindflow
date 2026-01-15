@@ -11,6 +11,9 @@ from nanoid import generate
 
 from tasks import create_mindmap, summarize_messages
 from socket_config import app, socketio
+from utils.logger import configure_logging, log_error, log_info_block
+
+import logging
 
 # 분리된 서비스 import
 from services import (
@@ -28,10 +31,14 @@ load_dotenv()
 # Socket.IO 인스턴스를 chat_service에 주입
 init_socketio(socketio)
 
+# 로깅 설정 (앱 시작 시 한 번만)
+configure_logging()
+logger = logging.getLogger(__name__)
+
 # 환경변수 상태 출력 (시작 시 1회)
 env_keys = ['MONGODB_URI', 'GOOGLE_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY']
-env_status = {k: '✓' if os.getenv(k) else '✗' for k in env_keys}
-print(f"[환경변수] {env_status}")
+env_status = {k: '설정됨' if os.getenv(k) else '미설정' for k in env_keys}
+logger.info(f"환경변수 상태: {env_status}")
 
 
 
@@ -92,12 +99,12 @@ class InitMemoryAPI(Resource):
             history.add_user_message(user_input)
             history.add_ai_message(model_response)
             
-            print(f"[메모리] 초기화: room={chat_room_id}")
+            logger.info(f"메모리 초기화: room={chat_room_id}")
             
             return make_response(json.dumps({'message': 'Memory initialized successfully', 'chatRoomId': chat_room_id}, ensure_ascii=False), 200)
 
         except Exception as e:
-            print(f"[메모리] 초기화 오류: {e}")
+            log_error(logger, "메모리 초기화 오류", e, {"chat_room_id": chat_room_id})
             return make_response(json.dumps({'error': str(e)}, ensure_ascii=False), 500)
 
 
@@ -170,10 +177,10 @@ class CleanupAPI(Resource):
         try:
             history = get_session_history(str(chatRoomId))
             history.clear()
-            print(f"[히스토리] 삭제: room={chatRoomId}")
+            logger.info(f"히스토리 삭제: room={chatRoomId}")
             return {"message": "Chat history deleted successfully", "chatRoomId": chatRoomId}, 200
         except Exception as e:
-            print(f"[히스토리] 삭제 오류: {e}")
+            log_error(logger, "히스토리 삭제 오류", e, {"chat_room_id": chatRoomId})
             return {"error": str(e)}, 500
 
 
@@ -225,13 +232,13 @@ class MessageAPI(Resource):
 
         try:
             data = request.get_json()
-            print(f"[메시지] 요청: room={data.get('chatRoomId')}")
+            logger.info(f"메시지 요청: room={data.get('chatRoomId')}")
             chat_room_id = data.get('chatRoomId')
             model = data.get('model', 'clova')
             user_input = data.get('userInput')
 
             # 다양한 키 이름을 지원하도록 수정
-            creator_id = data.get('creatorId') or data.get('userId') or data.get('user_id')
+            creator_id = data.get('creatorId')
 
             detail_model = data.get('detailModel', 'HCX-003')
 
@@ -241,7 +248,7 @@ class MessageAPI(Resource):
 
 
             if not user_input:
-                print("[메시지] 오류: user_input 없음")
+                logger.warning("메시지 오류: user_input 없음")
                 return make_response(json.dumps({'error': 'user_input은 필수입니다'}, ensure_ascii=False), 400)
 
             socketio.emit('mindmap_status', {
@@ -303,11 +310,15 @@ class MessageAPI(Resource):
             }
 
             response_json = json.dumps(response_data, ensure_ascii=False)
-            print(f"[메시지] 응답 완료: room={chat_room_id}")
+            logger.info(f"메시지 응답 완료: room={chat_room_id}")
             return make_response(response_json, 200, {"Content-Type": "application/json"})
 
         except Exception as e:
-            print(f"[메시지] 오류: {e!r}")
+            log_error(logger, "메시지 처리 오류", e, {
+                "chat_room_id": data.get('chatRoomId'),
+                "model": data.get('model'),
+                "creator_id": data.get('creatorId')
+            })
             error_response = {'error': str(e)}
             return make_response(json.dumps(error_response, ensure_ascii=False), 500)
 
@@ -352,7 +363,10 @@ class FirstMindmapAPI(Resource):
             return {'status': 'success', 'task_id': task.id}, 200
 
         except Exception as e:
-            print(f"[첫마인드맵] 오류: {e}")
+            log_error(logger, "첫 마인드맵 생성 오류", e, {
+                "chat_room_id": chat_room_id,
+                "creator_id": creator_id
+            })
             return {'error': str(e)}, 500
 
 def run_this():
