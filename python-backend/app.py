@@ -231,7 +231,7 @@ class MessageAPI(Resource):
             user_input = data.get('userInput')
 
             # 다양한 키 이름을 지원하도록 수정
-            creator_id = data.get('creatorId') or data.get('userId') or data.get('user_id')
+            creator_id = data.get('creatorId')
 
             detail_model = data.get('detailModel', 'HCX-003')
 
