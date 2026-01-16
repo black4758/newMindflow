@@ -49,7 +49,11 @@ def log_error(logger: logging.Logger, title: str, error: Exception, context: Dic
     """
     separator = "=" * 80
     logger.error(separator)
-    logger.error(f"{title}")
+    if '\n' in title:
+        for line in title.strip().split('\n'):
+            logger.error(f"  {line.strip()}")
+    else:
+        logger.error(f"{title}")
     logger.error(separator)
     
     if context:
