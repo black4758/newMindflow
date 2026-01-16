@@ -17,13 +17,11 @@ import logging
 
 # 분리된 서비스 import
 from services import (
-    get_all_models_info,
     get_session_history,
     init_socketio,
     generate_room_title,
     generate_model_responses_async,
-    chatbot_response,
-    chat_memories
+    chatbot_response
 )
 
 load_dotenv()
@@ -54,9 +52,6 @@ def serialize_message(message):
     return getattr(message, 'content', '') if hasattr(message, 'content') else str(message)
 
 
-# app = Flask(__name__)
-# app.config['SECRET_KEY'] = 'REDACTED'
-# socketio = SocketIO(app, cors_allowed_origins="*",host='0.0.0.0')
 
 api = Api(app, version='1.0', title='다중 AI 챗봇 API', description='다양한 AI 모델을 활용한 챗봇 API')
 
@@ -106,17 +101,6 @@ class InitMemoryAPI(Resource):
         except Exception as e:
             log_error(logger, "메모리 초기화 오류", e, {"chat_room_id": chat_room_id})
             return make_response(json.dumps({'error': str(e)}, ensure_ascii=False), 500)
-
-
-@ns_chatbot.route('/setMemory/<int:chatRoomId>')
-class SetMemory(Resource):
-    @ns_chatbot.response(200, '성공적인 응답')
-    @ns_chatbot.response(400, '필수 필드 누락')
-    @ns_chatbot.response(500, '내부 서버 오류')
-    def post(self, chatRoomId):
-                
-        return {"message": "Memory set successfully", "chatRoomId": chatRoomId}, 200
-
 
 
 @ns_chatbot.route('/all')
